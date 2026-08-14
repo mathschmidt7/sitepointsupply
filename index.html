@@ -664,7 +664,7 @@ p{ margin:0; }
       <a href="#times">Times</a>
       <a href="#produtos" data-filter-link="todos">Produtos</a>
       <a href="#produtos" data-filter-link="futebol">Futebol</a>
-      <a href="#produtos" data-filter-link="nba">NBA</a>
+      <a href="#produtos" data-filter-link="nba" data-cat-nav="nba">NBA</a>
       <a href="#produtos" data-filter-link="ofertas">Ofertas</a>
       <a href="#sobre">Sobre nós</a>
       <a href="#faq">FAQ</a>
@@ -711,7 +711,7 @@ p{ margin:0; }
       <a href="#times" data-close-drawer>Times</a>
       <a href="#produtos" data-close-drawer data-filter-link="todos">Produtos</a>
       <a href="#produtos" data-close-drawer data-filter-link="futebol">Futebol</a>
-      <a href="#produtos" data-close-drawer data-filter-link="nba">NBA</a>
+      <a href="#produtos" data-close-drawer data-filter-link="nba" data-cat-nav="nba">NBA</a>
       <a href="#produtos" data-close-drawer data-filter-link="ofertas">Ofertas</a>
       <a href="#sobre" data-close-drawer>Sobre nós</a>
       <a href="#faq" data-close-drawer>FAQ</a>
@@ -769,7 +769,7 @@ p{ margin:0; }
       </span>
     </a>
 
-    <a class="cat-card" href="#produtos" data-filter-link="nba">
+    <a class="cat-card" href="#produtos" data-filter-link="nba" data-cat-nav="nba">
       <span class="cat-icon" aria-hidden="true">
         <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="50" cy="50" r="42"></circle><path d="M8 50h84M50 8v84M18 18c14 12 14 52 0 64M82 18C68 30 68 70 82 82"></path></svg>
       </span>
@@ -842,7 +842,7 @@ p{ margin:0; }
     <div class="filter-row" id="filterRow" role="tablist" aria-label="Filtrar produtos por categoria">
       <button class="filter-btn is-active" data-filter="todos" role="tab" aria-selected="true">Todos</button>
       <button class="filter-btn" data-filter="futebol" role="tab" aria-selected="false">Futebol</button>
-      <button class="filter-btn" data-filter="nba" role="tab" aria-selected="false">NBA</button>
+      <button class="filter-btn" data-filter="nba" role="tab" aria-selected="false" data-cat-nav="nba">NBA</button>
       <button class="filter-btn" data-filter="ofertas" role="tab" aria-selected="false">Ofertas</button>
     </div>
 
@@ -1032,7 +1032,7 @@ p{ margin:0; }
       <ul>
         <li><a href="#produtos">Produtos</a></li>
         <li><a href="#produtos" data-filter-link="futebol">Futebol</a></li>
-        <li><a href="#produtos" data-filter-link="nba">NBA</a></li>
+        <li><a href="#produtos" data-filter-link="nba" data-cat-nav="nba">NBA</a></li>
         <li><a href="#produtos" data-filter-link="ofertas">Ofertas</a></li>
         <li><a href="#sobre">Sobre nós</a></li>
         <li><a href="#faq">FAQ</a></li>
@@ -1251,6 +1251,10 @@ p{ margin:0; }
 
     <div class="admin-panel-view" data-admin-view="teams">
       <p style="color:var(--gray);font-size:12.5px;margin-bottom:16px">Ligas e times aparecem na seção "Times e seleções" do site, nessa mesma ordem.</p>
+      <div style="background:var(--graphite);border:1px solid rgba(247,247,244,.08);padding:14px 18px;margin-bottom:18px;display:flex;gap:22px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="adminShowFutebol" style="width:auto" checked> Mostrar Futebol na loja</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="adminShowNba" style="width:auto" checked> Mostrar NBA na loja</label>
+      </div>
       <div class="admin-toolbar">
         <select id="adminTeamsCategory" class="filter-select">
           <option value="futebol">Futebol</option>
@@ -1429,6 +1433,11 @@ p{ margin:0; }
   // diamante padrão em SVG. Preenchido = usa essa imagem no lugar dele.
   var LOGO_URL = "";
 
+  // Editável em Painel administrativo → Times e Ligas (topo). Categorias
+  // aqui ("futebol" e/ou "nba") ficam totalmente fora do site — sem
+  // sumir os dados, só escondidas até serem reativadas.
+  var HIDDEN_CATEGORIES = [];
+
   // Editável em Painel administrativo → Times e Ligas. Chave = nome exato
   // do time/liga, valor = URL da imagem enviada. Vazio = usa as iniciais
   // do nome como selo.
@@ -1463,7 +1472,7 @@ p{ margin:0; }
       { liga:"NBA", teams:["Los Angeles Lakers","Golden State Warriors","Chicago Bulls","Boston Celtics","Miami Heat","Brooklyn Nets"] }
     ]
   };
-  var TIPOS = ["Camisa", "Regata", "Retrô", "Shorts", "Kit"];
+  var TIPOS = ["Camisa", "Regata", "Retrô", "Shorts", "Kit", "Agasalho"];
 
   // PLACEHOLDER — catálogo real de produtos e preços da Point Supply.
   // "originalPrice" é opcional: se preenchido, mostra preço "de/por"
@@ -1691,6 +1700,7 @@ p{ margin:0; }
   function renderLeagueRows(){
     var container = document.getElementById("leagueRows");
     var cats = (currentFilter === "futebol" || currentFilter === "nba") ? [currentFilter] : ["futebol", "nba"];
+    cats = cats.filter(function(c){ return HIDDEN_CATEGORIES.indexOf(c) === -1; });
     container.innerHTML = "";
     cats.forEach(function(cat){
       TEAM_GROUPS[cat].forEach(function(group){
@@ -1711,6 +1721,17 @@ p{ margin:0; }
         selectTeam(chip.dataset.team, chip.dataset.liga, chip.dataset.category);
       });
     });
+  }
+
+  function applyCategoryVisibility(){
+    document.querySelectorAll("[data-cat-nav]").forEach(function(el){
+      el.style.display = HIDDEN_CATEGORIES.indexOf(el.dataset.catNav) !== -1 ? "none" : "";
+    });
+    // Se a categoria ativa acabou de ser escondida, volta pra "Todos".
+    if(HIDDEN_CATEGORIES.indexOf(currentFilter) !== -1){
+      setCategoryPill("todos");
+      clearTeam(true);
+    }
   }
 
   function setCategoryPill(category){
@@ -1871,13 +1892,14 @@ p{ margin:0; }
     var tipo = filterTipo.value;
     var visibleCount = 0;
     grid.querySelectorAll(".product-card").forEach(function(card){
+      var isHiddenCategory = HIDDEN_CATEGORIES.indexOf(card.dataset.category) !== -1;
       var matchesCategory = currentFilter === "todos" ? true :
         currentFilter === "ofertas" ? card.dataset.offer === "1" :
         card.dataset.category === currentFilter;
       var matchesTeam = currentTeam === "todos" || card.dataset.time === currentTeam;
       var matchesTipo = tipo === "todos" || card.dataset.tipo === tipo;
       var matchesQuery = !query || card.dataset.name.indexOf(query) !== -1;
-      var show = matchesCategory && matchesTeam && matchesTipo && matchesQuery;
+      var show = !isHiddenCategory && matchesCategory && matchesTeam && matchesTipo && matchesQuery;
       card.hidden = !show;
       if(show) visibleCount++;
     });
@@ -1907,6 +1929,7 @@ p{ margin:0; }
   });
 
   updateRefineSelects();
+  applyCategoryVisibility();
   renderProducts();
   renderLeagueRows();
   applyFilters();
@@ -2345,6 +2368,7 @@ p{ margin:0; }
     renderAdminLeagues();
     renderAdminFaq();
     renderAdminDiscounts();
+    syncCategoryCheckboxes();
     document.getElementById("adminLogoUrlInput").value = LOGO_URL;
     if(LOGO_URL){
       var preview = document.getElementById("adminLogoPreview");
@@ -2557,7 +2581,8 @@ p{ margin:0; }
       discounts: PROGRESSIVE_DISCOUNTS,
       logoUrl: LOGO_URL,
       teamLogos: TEAM_LOGOS,
-      leagueLogos: LEAGUE_LOGOS
+      leagueLogos: LEAGUE_LOGOS,
+      hiddenCategories: HIDDEN_CATEGORIES
     };
     var res = await callBackend("saveConfig", Object.assign({ config: JSON.stringify(payload) }, authParams()));
     return res.ok;
@@ -2783,6 +2808,25 @@ p{ margin:0; }
   }
 
   adminTeamsCategory.addEventListener("change", renderAdminLeagues);
+
+  var adminShowFutebol = document.getElementById("adminShowFutebol");
+  var adminShowNba = document.getElementById("adminShowNba");
+
+  function syncCategoryCheckboxes(){
+    adminShowFutebol.checked = HIDDEN_CATEGORIES.indexOf("futebol") === -1;
+    adminShowNba.checked = HIDDEN_CATEGORIES.indexOf("nba") === -1;
+  }
+
+  async function toggleCategoryHidden(cat, show){
+    var idx = HIDDEN_CATEGORIES.indexOf(cat);
+    if(show && idx !== -1){ HIDDEN_CATEGORIES.splice(idx, 1); }
+    if(!show && idx === -1){ HIDDEN_CATEGORIES.push(cat); }
+    applyCategoryVisibility();
+    await saveSiteConfig();
+  }
+
+  adminShowFutebol.addEventListener("change", function(){ toggleCategoryHidden("futebol", adminShowFutebol.checked); });
+  adminShowNba.addEventListener("change", function(){ toggleCategoryHidden("nba", adminShowNba.checked); });
   document.getElementById("adminAddLeagueBtn").addEventListener("click", async function(){
     var name = window.prompt("Nome da nova liga (ex: Eredivisie):");
     if(!name || !name.trim()) return;
@@ -2959,7 +3003,9 @@ p{ margin:0; }
     if(cfg.logoUrl){ LOGO_URL = cfg.logoUrl; applyLogo(); }
     if(cfg.teamLogos){ TEAM_LOGOS = cfg.teamLogos; }
     if(cfg.leagueLogos){ LEAGUE_LOGOS = cfg.leagueLogos; }
+    if(cfg.hiddenCategories){ HIDDEN_CATEGORIES = cfg.hiddenCategories; }
 
+    applyCategoryVisibility();
     renderProducts();
     renderLeagueRows();
     applyFilters();
@@ -2972,4 +3018,3 @@ p{ margin:0; }
 </script>
 </body>
 </html>
-corrige icone whatsapp de vez
