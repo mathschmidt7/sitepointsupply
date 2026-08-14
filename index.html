@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=EB+Garamond:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 /* ============================================================
    POINT SUPPLY — Landing Page + mini painel administrativo
@@ -1161,9 +1162,12 @@ p{ margin:0; }
     </button>
     <h3 class="modal-title" id="adminLoginTitle">Área do lojista</h3>
     <p style="color:var(--gray);font-size:12.5px;margin-bottom:16px">Acesso restrito ao administrador da loja. Este é um protótipo — veja o aviso completo após entrar.</p>
+    <div id="googleSignInWrap" style="margin-bottom:14px;display:flex;justify-content:center"></div>
+    <div id="googleSignInDivider" style="display:none;align-items:center;gap:10px;color:var(--gray);font-size:11.5px;margin:4px 0 16px"><span style="flex:1;height:1px;background:rgba(247,247,244,.15)"></span>ou entre com usuário e senha<span style="flex:1;height:1px;background:rgba(247,247,244,.15)"></span></div>
     <form id="adminLoginForm" class="form-grid">
+      <label class="form-field">Usuário<input type="text" name="username" required autocomplete="username"></label>
       <label class="form-field">Senha<input type="password" name="password" required autocomplete="current-password"></label>
-      <p class="form-error" id="adminLoginError" hidden>Senha incorreta.</p>
+      <p class="form-error" id="adminLoginError" hidden>Usuário ou senha incorretos.</p>
       <button type="submit" class="btn btn-primary btn-block">Entrar</button>
     </form>
   </div>
@@ -1379,7 +1383,12 @@ p{ margin:0; }
   // (arquivo "apps-script-backend.js" enviado junto, com o passo a passo).
   // Sem essa URL configurada, carrinho e WhatsApp funcionam normalmente,
   // mas cadastro de cliente, rastreio e painel administrativo ficam inativos.
-  var APPS_SCRIPT_URL = "COLE_AQUI_A_URL_DO_SEU_WEB_APP";
+  var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycb.../exec";
+
+  // PLACEHOLDER (opcional) — permite entrar no painel com a Conta Google
+  // em vez de usuário/senha. Ver seção "LOGIN COM GOOGLE" no final do
+  // apps-script-backend.js para o passo a passo completo.
+  var GOOGLE_CLIENT_ID = "COLE_AQUI_SEU_GOOGLE_CLIENT_ID";
 
   var STATUS_STAGES = ["Pedido recebido", "Em preparação", "Enviado", "Entregue"];
 
@@ -2151,7 +2160,12 @@ p{ margin:0; }
   var adminPanel = document.getElementById("adminPanel");
   var adminSales = [];
   var adminCustomers = [];
-  var adminPassword = "";
+  var adminAuth = null; // { username, password } OU { idToken }
+  var googleReady = false;
+
+  function authParams(){
+    return adminAuth || {};
+  }
 
   function showAdmin(){
     storefrontRoot.style.display = "none";
@@ -2163,17 +2177,66 @@ p{ margin:0; }
   function hideAdmin(){
     adminPanel.hidden = true;
     storefrontRoot.style.display = "";
-    adminPassword = "";
+    adminAuth = null;
   }
+
+  function hasGoogleAuth(){ return GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID.indexOf("COLE_AQUI") === -1; }
+
+  async function finishAdminLogin(auth, errorEl){
+    var res = await callBackend("adminLogin", auth);
+    if(res.ok){
+      adminAuth = auth;
+      closeModal("adminLoginModal");
+      showAdmin();
+      loadAdminData();
+    } else if(errorEl){
+      errorEl.textContent = "Acesso negado. Confira o usuário/senha ou a conta Google usada.";
+      errorEl.hidden = false;
+    }
+    return res.ok;
+  }
+
+  async function handleGoogleCredential(response){
+    var errorEl = document.getElementById("adminLoginError");
+    errorEl.hidden = true;
+    if(!hasBackend()){
+      errorEl.textContent = "O painel ainda não foi conectado ao backend (Google Apps Script). Veja o arquivo apps-script-backend.js.";
+      errorEl.hidden = false;
+      return;
+    }
+    await finishAdminLogin({ idToken: response.credential }, errorEl);
+  }
+
+  function tryInitGoogleSignIn(){
+    if(googleReady || !hasGoogleAuth()) return;
+    if(typeof google === "undefined" || !google.accounts) return;
+    google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleGoogleCredential });
+    googleReady = true;
+  }
+  window.addEventListener("load", tryInitGoogleSignIn);
 
   document.getElementById("adminTrigger").addEventListener("click", function(){
     document.getElementById("adminLoginForm").reset();
     document.getElementById("adminLoginError").hidden = true;
     openModal("adminLoginModal");
+
+    tryInitGoogleSignIn();
+    var wrap = document.getElementById("googleSignInWrap");
+    var divider = document.getElementById("googleSignInDivider");
+    if(googleReady){
+      wrap.innerHTML = "";
+      google.accounts.id.renderButton(wrap, { theme: "filled_black", size: "large", width: 280, text: "signin_with" });
+      wrap.style.display = "flex";
+      divider.style.display = "flex";
+    } else {
+      wrap.style.display = "none";
+      divider.style.display = "none";
+    }
   });
 
   document.getElementById("adminLoginForm").addEventListener("submit", async function(e){
     e.preventDefault();
+    var user = e.target.username.value.trim();
     var pass = e.target.password.value;
     var errorEl = document.getElementById("adminLoginError");
     errorEl.hidden = true;
@@ -2186,18 +2249,8 @@ p{ margin:0; }
 
     var submitBtn = e.target.querySelector("button[type=submit]");
     submitBtn.disabled = true; submitBtn.textContent = "Verificando...";
-    var res = await callBackend("adminLogin", { password: pass });
+    await finishAdminLogin({ username: user, password: pass }, errorEl);
     submitBtn.disabled = false; submitBtn.textContent = "Entrar";
-
-    if(res.ok){
-      adminPassword = pass;
-      closeModal("adminLoginModal");
-      showAdmin();
-      loadAdminData();
-    } else {
-      errorEl.textContent = "Senha incorreta.";
-      errorEl.hidden = false;
-    }
   });
 
   document.getElementById("adminExitBtn").addEventListener("click", hideAdmin);
@@ -2221,8 +2274,8 @@ p{ margin:0; }
   });
 
   async function loadAdminData(){
-    var salesRes = await callBackend("getSales", { password: adminPassword });
-    var custRes = await callBackend("getCustomers", { password: adminPassword });
+    var salesRes = await callBackend("getSales", authParams());
+    var custRes = await callBackend("getCustomers", authParams());
     if(!salesRes.ok || !custRes.ok){
       hideAdmin();
       alert("Não foi possível carregar os dados. A sessão pode ter expirado — entre novamente.");
@@ -2283,7 +2336,7 @@ p{ margin:0; }
   async function clearAllAdminData(){
     var ok = window.confirm("Isso vai apagar TODOS os dados de vendas e clientes salvos (reais e de exemplo). Essa ação não pode ser desfeita. Deseja continuar?");
     if(!ok) return;
-    var res = await callBackend("clearAll", { password: adminPassword });
+    var res = await callBackend("clearAll", authParams());
     if(!res.ok){ alert("Não foi possível apagar os dados agora. Tente novamente."); return; }
     await loadAdminData();
   }
@@ -2355,7 +2408,7 @@ p{ margin:0; }
         input.addEventListener("change", async function(){
           var field = input.dataset.field;
           sale[field] = input.value;
-          await callBackend("updateSale", { id: sale.id, field: field, value: input.value, password: adminPassword });
+          await callBackend("updateSale", Object.assign({ id: sale.id, field: field, value: input.value }, authParams()));
           if(field === "saleValue" || field === "costValue"){
             var profitCell = tr.children[6];
             profitCell.textContent = formatBRL((Number(sale.saleValue) || 0) - (Number(sale.costValue) || 0));
@@ -2366,7 +2419,7 @@ p{ margin:0; }
       tr.querySelector(".admin-row-delete").addEventListener("click", async function(){
         var delBtn = tr.querySelector(".admin-row-delete");
         delBtn.disabled = true;
-        var res = await callBackend("deleteSale", { id: sale.id, password: adminPassword });
+        var res = await callBackend("deleteSale", Object.assign({ id: sale.id }, authParams()));
         if(res.ok){
           adminSales = adminSales.filter(function(s){ return s !== sale; });
           renderAdminSalesTable();
@@ -2449,7 +2502,7 @@ p{ margin:0; }
       discounts: PROGRESSIVE_DISCOUNTS,
       logoUrl: LOGO_URL
     };
-    var res = await callBackend("saveConfig", { config: JSON.stringify(payload), password: adminPassword });
+    var res = await callBackend("saveConfig", Object.assign({ config: JSON.stringify(payload) }, authParams()));
     return res.ok;
   }
 
