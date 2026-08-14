@@ -1383,7 +1383,7 @@ p{ margin:0; }
   // (arquivo "apps-script-backend.js" enviado junto, com o passo a passo).
   // Sem essa URL configurada, carrinho e WhatsApp funcionam normalmente,
   // mas cadastro de cliente, rastreio e painel administrativo ficam inativos.
-  var APPS_SCRIPT_URL = "hhttps://script.google.com/macros/s/AKfycbwq50iZDDyhfePouhNC3IiaIsI1PZQhl7RxHmZPbrSle-Ny5iHkBB0imoi-XYBX6WCf/exec";
+  var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwq50iZDDyhfePouhNC3IiaIsI1PZQhl7RxHmZPbrSle-Ny5iHkBB0imoi-XYBX6WCf/exec";
 
   // PLACEHOLDER (opcional) — permite entrar no painel com a Conta Google
   // em vez de usuário/senha. Ver seção "LOGIN COM GOOGLE" no final do
@@ -2190,7 +2190,13 @@ p{ margin:0; }
       showAdmin();
       loadAdminData();
     } else if(errorEl){
-      errorEl.textContent = "Acesso negado. Confira o usuário/senha ou a conta Google usada.";
+      if(res.error === "network"){
+        errorEl.textContent = "Não foi possível conectar ao backend. Confira sua internet e se a URL do Apps Script (APPS_SCRIPT_URL) está correta.";
+      } else if(res.error && res.error.indexOf("http-") === 0){
+        errorEl.textContent = "O backend respondeu com erro (" + res.error + "). Confira se a implantação está com acesso \"Qualquer pessoa\".";
+      } else {
+        errorEl.textContent = "Usuário ou senha incorretos (ou conta Google sem acesso). Confira as Propriedades do script ADMIN_USERNAME/ADMIN_PASSWORD.";
+      }
       errorEl.hidden = false;
     }
     return res.ok;
