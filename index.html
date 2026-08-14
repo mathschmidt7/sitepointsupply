@@ -1,0 +1,2786 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Point Supply — Camisas de futebol e artigos esportivos</title>
+<meta name="description" content="Point Supply: camisas de futebol, NBA e artigos esportivos. Consulte tamanhos, disponibilidade e feche seu pedido direto pelo WhatsApp.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%230A0A0A'/%3E%3Cpath d='M14 34 L38 14 L60 26 L82 14 L96 34 L55 92 Z' fill='none' stroke='%23F7F7F4' stroke-width='6' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=EB+Garamond:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   POINT SUPPLY — Landing Page + mini painel administrativo
+   PLACEHOLDERS a substituir antes de publicar:
+   - WHATSAPP_NUMBER (já atualizado com o número informado)
+   - APPS_SCRIPT_URL (cole a URL do seu Web App — ver apps-script-backend.js
+     e o passo a passo enviado junto para publicar o backend no Google Sheets)
+   - A senha do painel é definida DENTRO do Google Apps Script (Propriedades
+     do script), nunca neste arquivo.
+   - PRODUCTS, TEAM_GROUPS, SIZE_CHART, PROGRESSIVE_DISCOUNTS no <script>
+   - Imagens reais dos produtos (hoje: marca d'água tipográfica)
+   Sem a APPS_SCRIPT_URL configurada, a loja e o WhatsApp funcionam
+   normalmente, mas cadastro de cliente, rastreio e painel administrativo
+   ficam inativos (a interface avisa isso na hora).
+   ============================================================ */
+
+:root{
+  --black:#0A0A0A;
+  --graphite:#151515;
+  --gray:#8C8C87;
+  --silver:#D8D8D3;
+  --off:#F7F7F4;
+  --wa:#25D366;
+  --danger:#ff8a80;
+  --font-display:'Anton', sans-serif;
+  --font-label:'EB Garamond', serif;
+  --font-body:'Inter', sans-serif;
+  --container:1280px;
+  --ease:cubic-bezier(.4,0,.2,1);
+  --header-h:76px;
+}
+
+*,*::before,*::after{ box-sizing:border-box; }
+html{ scroll-behavior:smooth; }
+@media (prefers-reduced-motion: reduce){
+  html{ scroll-behavior:auto; }
+  *,*::before,*::after{ animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; scroll-behavior:auto !important; }
+}
+body{
+  margin:0;
+  background:var(--black);
+  color:var(--off);
+  font-family:var(--font-body);
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+img{ max-width:100%; display:block; }
+a{ color:inherit; text-decoration:none; }
+ul{ list-style:none; margin:0; padding:0; }
+button{ font-family:inherit; cursor:pointer; }
+h1,h2,h3,h4{ margin:0; font-weight:700; letter-spacing:-0.01em; font-family:var(--font-body); }
+p{ margin:0; }
+.container{ width:100%; max-width:var(--container); margin:0 auto; padding:0 24px; }
+:focus-visible{ outline:2px solid var(--off); outline-offset:3px; }
+
+.skip-link{
+  position:absolute; left:-9999px; top:0; background:var(--off); color:var(--black);
+  padding:12px 20px; z-index:1000; font-weight:600;
+}
+.skip-link:focus{ left:16px; top:16px; }
+
+/* Display type — usado para peças grandes de marca (logo, headlines) */
+.font-display, .logo-word, .hero h1, .section-title, .diff-title, .editorial h2,
+.about h2, .wa-section h2, .final-cta h2, .cat-name, .admin-topbar .logo-word,
+.modal-title{
+  font-family:var(--font-display); font-weight:400; text-transform:uppercase; letter-spacing:.015em;
+}
+
+.eyebrow{
+  display:inline-flex; align-items:center; gap:10px;
+  font-family:var(--font-label); font-size:14px; font-weight:500;
+  letter-spacing:.22em; text-transform:uppercase; color:var(--gray);
+}
+.eyebrow::before{ content:""; width:20px; height:1px; background:var(--gray); }
+
+.section{ padding:96px 0; position:relative; }
+.section--tight{ padding:72px 0; }
+.section-head{ max-width:640px; margin-bottom:48px; }
+.section-title{ font-size:clamp(26px,4vw,42px); line-height:1.08; margin-top:14px; }
+.section-title--center{ margin-left:auto; margin-right:auto; text-align:center; }
+.section-text{ color:var(--gray); font-size:16px; line-height:1.7; margin-top:14px; }
+
+.reveal{ opacity:0; transform:translateY(24px); transition:opacity .7s var(--ease), transform .7s var(--ease); }
+.reveal.is-visible{ opacity:1; transform:translateY(0); }
+
+/* Buttons */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:10px;
+  padding:16px 30px; font-family:var(--font-body); font-weight:600; font-size:14.5px;
+  letter-spacing:.01em; border-radius:2px; border:1px solid transparent;
+  transition:background .25s var(--ease), color .25s var(--ease), border-color .25s var(--ease), transform .2s var(--ease);
+  white-space:nowrap;
+}
+.btn:active{ transform:scale(.97); }
+.btn-primary{ background:var(--off); color:var(--black); }
+.btn-primary:hover{ background:#fff; }
+.btn-outline{ background:transparent; color:var(--off); border-color:rgba(247,247,244,.35); }
+.btn-outline:hover{ border-color:var(--off); background:rgba(247,247,244,.06); }
+.btn-whatsapp{ background:var(--wa); color:#08240f; }
+.btn-whatsapp:hover{ background:#2fe07a; }
+.btn-block{ width:100%; }
+.btn-sm{ padding:11px 18px; font-size:13px; }
+.btn[disabled]{ opacity:.6; cursor:not-allowed; }
+
+.icon{ width:18px; height:18px; flex-shrink:0; }
+
+/* ---------- Marca d'água diamante (peças de mídia placeholder) ---------- */
+.ghost-panel{
+  position:relative; overflow:hidden;
+  background:radial-gradient(120% 120% at 20% 0%, #181818 0%, var(--black) 55%);
+  isolation:isolate;
+}
+.ghost-panel::before{
+  content:""; position:absolute; right:-6%; bottom:-10%; width:70%; padding-top:58%;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 100'%3E%3Cpath d='M10 32 L34 10 L60 24 L86 10 L110 32 L60 94 Z' fill='none' stroke='%23F7F7F4' stroke-width='4' opacity='0.1'/%3E%3Cpath d='M10 32H110M34 10L60 94M86 10L60 94' fill='none' stroke='%23F7F7F4' stroke-width='3' opacity='0.1'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-size:contain; z-index:0; pointer-events:none;
+}
+.ghost-panel::after{
+  content:""; position:absolute; inset:0; z-index:0; pointer-events:none;
+  background-image:repeating-linear-gradient(-35deg, rgba(247,247,244,.03) 0 1px, transparent 1px 46px);
+  opacity:.5;
+}
+.ghost-panel > *{ position:relative; z-index:1; }
+
+/* Logo */
+.logo{ display:flex; align-items:center; gap:10px; }
+.logo-mark{ width:22px; height:18.3px; aspect-ratio:6/5; color:var(--off); flex-shrink:0; }
+.logo-word{ font-size:19px; }
+.logo-word span{ color:var(--gray); }
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+.header{
+  position:fixed; top:0; left:0; right:0; z-index:500;
+  height:var(--header-h);
+  display:flex; align-items:center;
+  background:rgba(10,10,10,.7);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  border-bottom:1px solid rgba(247,247,244,.08);
+  transition:background .3s var(--ease), border-color .3s var(--ease), height .3s var(--ease);
+}
+.header.is-scrolled{ background:rgba(10,10,10,.94); height:64px; }
+.header-inner{ display:flex; align-items:center; justify-content:space-between; width:100%; }
+
+.nav-desktop{ display:flex; align-items:center; gap:34px; }
+.nav-desktop a{
+  font-size:14px; font-weight:500; color:var(--off); opacity:.82;
+  position:relative; padding:6px 0; transition:opacity .2s;
+}
+.nav-desktop a::after{
+  content:""; position:absolute; left:0; right:0; bottom:0; height:1px;
+  background:var(--off); transform:scaleX(0); transform-origin:left; transition:transform .25s var(--ease);
+}
+.nav-desktop a:hover{ opacity:1; }
+.nav-desktop a:hover::after{ transform:scaleX(1); }
+
+.header-actions{ display:flex; align-items:center; gap:4px; }
+.icon-btn{
+  display:flex; align-items:center; justify-content:center;
+  width:44px; height:44px; background:transparent; border:none; color:var(--off);
+  border-radius:50%; position:relative; transition:background .2s;
+}
+.icon-btn:hover{ background:rgba(247,247,244,.08); }
+.cart-badge{
+  position:absolute; top:2px; right:2px; min-width:16px; height:16px; padding:0 3px;
+  background:var(--off); border:1px solid var(--black); color:var(--black);
+  font-size:10px; font-weight:700; border-radius:50%;
+  display:flex; align-items:center; justify-content:center; line-height:1;
+}
+.cart-badge[hidden]{ display:none; }
+
+.header-wa-btn{
+  display:inline-flex; align-items:center; gap:8px; margin-left:10px;
+  padding:10px 18px; background:var(--wa); color:#08240f; border-radius:2px;
+  font-size:13.5px; font-weight:700;
+}
+.header-wa-btn:hover{ background:#2fe07a; }
+
+.search-flyout{
+  position:absolute; top:100%; left:0; right:0; background:rgba(10,10,10,.98);
+  border-bottom:1px solid rgba(247,247,244,.08); padding:0; overflow:hidden;
+  max-height:0; transition:max-height .3s var(--ease);
+}
+.search-flyout.is-open{ max-height:90px; }
+.search-flyout-inner{ display:flex; align-items:center; gap:12px; padding:18px 24px; max-width:var(--container); margin:0 auto; }
+.search-flyout input{
+  flex:1; background:transparent; border:none; border-bottom:1px solid rgba(247,247,244,.3);
+  color:var(--off); font-family:var(--font-body); font-size:16px; padding:8px 2px; min-width:0;
+}
+.search-flyout input:focus{ outline:none; border-color:var(--off); }
+.search-flyout input::placeholder{ color:var(--gray); }
+
+.menu-toggle{ display:none; }
+
+/* Mobile nav / cart drawer (painel lateral genérico) */
+.mobile-drawer{ position:fixed; inset:0; z-index:600; visibility:hidden; }
+.mobile-drawer.is-open{ visibility:visible; }
+.mobile-drawer-backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.6); opacity:0; transition:opacity .3s var(--ease); }
+.mobile-drawer.is-open .mobile-drawer-backdrop{ opacity:1; }
+.mobile-drawer-panel{
+  position:absolute; top:0; right:0; bottom:0; width:min(84vw,380px);
+  background:var(--graphite); padding:24px; display:flex; flex-direction:column;
+  transform:translateX(100%); transition:transform .35s var(--ease);
+  border-left:1px solid rgba(247,247,244,.08); overflow-y:auto;
+}
+.mobile-drawer.is-open .mobile-drawer-panel{ transform:translateX(0); }
+.mobile-drawer-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:36px; }
+.mobile-nav{ display:flex; flex-direction:column; gap:4px; }
+.mobile-nav a{
+  padding:15px 4px; font-family:var(--font-display); font-weight:400; text-transform:uppercase; font-size:19px;
+  border-bottom:1px solid rgba(247,247,244,.08);
+}
+.mobile-drawer-footer{ margin-top:auto; padding-top:24px; }
+
+/* Modal genérico (tabela de medidas, checkout, login admin) */
+.modal{ position:fixed; inset:0; z-index:700; visibility:hidden; display:flex; align-items:center; justify-content:center; padding:20px; }
+.modal.is-open{ visibility:visible; }
+.modal-backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.72); opacity:0; transition:opacity .3s var(--ease); }
+.modal.is-open .modal-backdrop{ opacity:1; }
+.modal-box{
+  position:relative; background:var(--graphite); border:1px solid rgba(247,247,244,.1);
+  max-width:480px; width:100%; max-height:86vh; overflow-y:auto; padding:32px;
+  transform:translateY(16px); opacity:0; transition:transform .3s var(--ease), opacity .3s var(--ease);
+}
+.modal.is-open .modal-box{ transform:translateY(0); opacity:1; }
+.modal-close{ position:absolute; top:14px; right:14px; }
+.modal-title{ font-size:22px; margin-bottom:16px; padding-right:34px; }
+
+/* Formulários */
+.form-grid{ display:flex; flex-direction:column; gap:14px; }
+.form-field{ display:flex; flex-direction:column; gap:6px; font-size:12.5px; color:var(--gray); font-weight:600; }
+.form-field input, .form-field select{
+  background:var(--black); border:1px solid rgba(247,247,244,.18); color:var(--off);
+  padding:11px 12px; font-family:var(--font-body); font-size:14px; border-radius:2px;
+}
+.form-field input:focus, .form-field select:focus{ outline:2px solid var(--off); outline-offset:1px; }
+.form-note{ font-size:11.5px; color:var(--gray); line-height:1.5; }
+.form-error{ font-size:12.5px; color:var(--danger); }
+.checkout-success{ text-align:center; padding:8px 0 4px; }
+.checkout-success .order-id{ font-family:var(--font-display); text-transform:uppercase; font-size:28px; letter-spacing:.06em; margin:14px 0; }
+.checkout-success-actions{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:16px; }
+
+/* ============================================================
+   HERO
+   ============================================================ */
+.hero{
+  position:relative; min-height:100svh; display:flex; align-items:flex-end;
+  padding-top:var(--header-h);
+  background:
+    radial-gradient(90% 70% at 75% 15%, rgba(247,247,244,.05) 0%, transparent 60%),
+    linear-gradient(180deg, #0A0A0A 0%, #0A0A0A 55%, #060606 100%);
+  overflow:hidden;
+}
+.hero-watermark{ position:absolute; z-index:0; right:-8%; top:8%; width:min(55vw,560px); height:auto; aspect-ratio:6/5; color:var(--off); opacity:.05; pointer-events:none; }
+.hero::after{
+  content:""; position:absolute; inset:0; z-index:0; pointer-events:none;
+  background-image:repeating-linear-gradient(115deg, rgba(247,247,244,.03) 0 1px, transparent 1px 64px);
+}
+.hero-sweep{
+  position:absolute; z-index:0; top:0; bottom:0; width:40%; left:-45%;
+  background:linear-gradient(100deg, transparent, rgba(247,247,244,.05), transparent);
+  animation:sweep 9s ease-in-out infinite;
+}
+@keyframes sweep{ 0%,100%{ left:-45%; } 50%{ left:105%; } }
+@media (prefers-reduced-motion: reduce){ .hero-sweep{ display:none; } }
+
+.hero-inner{ position:relative; z-index:1; width:100%; padding:80px 0 96px; }
+.hero-eyebrow{ margin-bottom:22px; }
+.hero h1{ font-size:clamp(38px,7vw,80px); line-height:1.03; max-width:16ch; color:var(--off); }
+.hero-sub{ margin-top:24px; max-width:44ch; font-size:clamp(15px,1.6vw,18px); color:var(--gray); line-height:1.7; }
+.hero-ctas{ display:flex; flex-wrap:wrap; gap:14px; margin-top:38px; }
+.hero-scroll-cue{
+  position:absolute; right:24px; bottom:32px; z-index:1; display:flex; align-items:center; gap:10px;
+  color:var(--gray); font-size:12px; letter-spacing:.1em; text-transform:uppercase; writing-mode:vertical-rl;
+}
+.hero-scroll-cue .line{ width:1px; height:52px; background:linear-gradient(var(--gray), transparent); }
+@media (max-width:780px){ .hero-scroll-cue{ display:none; } }
+
+/* ============================================================
+   CATEGORIES
+   ============================================================ */
+.cat-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:2px; background:rgba(247,247,244,.08); }
+.cat-card{
+  position:relative; overflow:hidden;
+  background:radial-gradient(120% 120% at 20% 0%, #181818 0%, var(--black) 55%);
+  min-height:420px; padding:28px; display:flex; flex-direction:column; justify-content:flex-end;
+  transition:transform .5s var(--ease);
+}
+.cat-card:hover{ transform:translateY(-6px); }
+.cat-card:hover .cat-icon{ transform:scale(1.08) translateY(-4px); opacity:.16; }
+.cat-icon{
+  position:absolute; right:14px; top:14px; width:44%; max-width:150px; opacity:.1; color:var(--off);
+  transition:transform .5s var(--ease), opacity .5s var(--ease); z-index:0;
+}
+.cat-icon svg{ width:100%; height:auto; aspect-ratio:1/1; }
+.cat-name{ font-size:22px; margin-bottom:10px; position:relative; z-index:1; }
+.cat-text{ color:var(--gray); font-size:14px; line-height:1.6; max-width:26ch; position:relative; z-index:1; }
+.cat-link{ margin-top:20px; display:inline-flex; align-items:center; gap:8px; font-size:13px; font-weight:600; letter-spacing:.03em; position:relative; z-index:1; }
+.cat-link svg{ width:15px; height:15px; transition:transform .25s var(--ease); }
+.cat-card:hover .cat-link svg{ transform:translateX(4px); }
+
+@media (max-width:960px){ .cat-grid{ grid-template-columns:repeat(2,1fr); } }
+@media (max-width:560px){ .cat-grid{ grid-template-columns:1fr; } .cat-card{ min-height:280px; } }
+
+/* ============================================================
+   PRODUCTS + FILTERS + DESCONTOS
+   ============================================================ */
+.discount-banner{
+  background:var(--graphite); border:1px solid rgba(247,247,244,.12); padding:14px 20px;
+  font-size:13.5px; color:var(--gray); margin-bottom:28px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+}
+.discount-banner strong{ color:var(--off); }
+
+.filter-row{ display:flex; flex-wrap:wrap; gap:10px; margin-bottom:18px; }
+.filter-btn{
+  padding:9px 18px; border-radius:999px; border:1px solid rgba(247,247,244,.2);
+  background:transparent; color:var(--gray); font-size:13px; font-weight:600; transition:all .2s var(--ease);
+}
+.filter-btn:hover{ color:var(--off); border-color:rgba(247,247,244,.5); }
+.filter-btn.is-active{ background:var(--off); color:var(--black); border-color:var(--off); }
+
+.filter-refine{ display:flex; flex-wrap:wrap; gap:10px; margin:0 0 32px; align-items:center; }
+.filter-select{
+  background:var(--graphite); border:1px solid rgba(247,247,244,.15); color:var(--off);
+  font-size:13px; padding:9px 14px; border-radius:2px; font-family:var(--font-body);
+}
+.filter-select:focus{ outline:2px solid var(--off); outline-offset:2px; }
+.filter-clear{ background:none; border:none; color:var(--gray); font-size:12.5px; text-decoration:underline; padding:6px 4px; }
+.filter-clear:hover{ color:var(--off); }
+
+.product-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:22px; }
+.product-card{
+  background:var(--graphite); border:1px solid rgba(247,247,244,.06); display:flex; flex-direction:column;
+  transition:opacity .3s, transform .3s, border-color .3s;
+}
+.product-card:hover{ border-color:rgba(247,247,244,.18); transform:translateY(-4px); }
+.product-card[hidden]{ display:none; }
+.product-media{ aspect-ratio:4/5; }
+.product-tag{
+  position:absolute; top:14px; left:14px; z-index:2; padding:5px 11px; font-size:10.5px;
+  font-weight:700; letter-spacing:.08em; text-transform:uppercase; background:var(--off); color:var(--black);
+}
+.product-tag--offer{ background:var(--black); color:var(--off); border:1px solid var(--off); }
+.product-body{ padding:18px 20px 20px; display:flex; flex-direction:column; gap:9px; flex:1; }
+.product-meta-row{ display:flex; flex-wrap:wrap; gap:6px 10px; font-size:11px; color:var(--gray); text-transform:uppercase; letter-spacing:.06em; font-weight:600; }
+.product-name{ font-family:var(--font-body); font-weight:700; font-size:16.5px; }
+.product-price-row{ display:flex; align-items:baseline; gap:8px; }
+.product-price{ font-weight:700; font-size:15px; }
+.product-installment{ font-size:12px; color:var(--gray); }
+.product-sizes{ display:flex; align-items:center; gap:6px; margin-top:2px; flex-wrap:wrap; }
+.size-chip{
+  width:30px; height:30px; display:flex; align-items:center; justify-content:center;
+  font-size:11.5px; border:1px solid rgba(247,247,244,.22); color:var(--gray); background:transparent; transition:all .18s;
+}
+.size-chip:hover{ border-color:var(--off); color:var(--off); }
+.size-chip.is-selected{ background:var(--off); color:var(--black); border-color:var(--off); }
+.size-chart-link{ background:none; border:none; color:var(--gray); font-size:11.5px; text-decoration:underline; padding:2px 0; margin-left:2px; }
+.size-chart-link:hover{ color:var(--off); }
+.product-avail{ font-size:12px; color:#7fd99a; display:flex; align-items:center; gap:6px; }
+.product-avail::before{ content:""; width:6px; height:6px; border-radius:50%; background:#7fd99a; }
+.product-actions{ display:flex; gap:8px; margin-top:auto; padding-top:6px; }
+.product-actions .btn{ flex:1; padding:11px 10px; font-size:12.5px; }
+
+@media (max-width:960px){ .product-grid{ grid-template-columns:repeat(2,1fr); gap:14px; } }
+@media (max-width:560px){
+  .product-grid{ gap:12px; }
+  .product-body{ padding:12px 12px 14px; gap:7px; }
+  .product-actions{ flex-direction:column; }
+  .product-name{ font-size:14.5px; }
+}
+.no-results{ text-align:center; color:var(--gray); padding:60px 0; display:none; }
+.no-results.is-visible{ display:block; }
+
+/* ---------- Times e ligas ---------- */
+.league-rows{ display:flex; flex-direction:column; gap:26px; margin-top:44px; }
+.league-row-title{ font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--gray); margin:0 0 12px; padding:0 24px; }
+.team-scroll{
+  display:flex; gap:10px; overflow-x:auto; padding:2px 24px 10px; scroll-snap-type:x proximity;
+  -webkit-overflow-scrolling:touch; scrollbar-width:thin; scrollbar-color:rgba(247,247,244,.25) transparent;
+}
+.team-scroll::-webkit-scrollbar{ height:5px; }
+.team-scroll::-webkit-scrollbar-thumb{ background:rgba(247,247,244,.2); border-radius:99px; }
+.team-chip{
+  flex:0 0 auto; scroll-snap-align:start; display:flex; align-items:center; gap:9px;
+  background:var(--graphite); border:1px solid rgba(247,247,244,.1); color:var(--off);
+  padding:8px 16px 8px 8px; border-radius:999px; font-size:13px; font-weight:600; white-space:nowrap;
+  transition:all .2s var(--ease);
+}
+.team-chip:hover{ border-color:rgba(247,247,244,.35); transform:translateY(-2px); }
+.team-chip.is-active{ background:var(--off); color:var(--black); border-color:var(--off); }
+.team-badge{
+  display:flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:50%;
+  background:rgba(247,247,244,.1); color:var(--off); font-size:10.5px; font-weight:800; flex-shrink:0;
+  font-family:var(--font-display);
+}
+.team-chip.is-active .team-badge{ background:var(--black); color:var(--off); }
+.team-badge--lg{ width:48px; height:48px; font-size:15px; background:var(--graphite); border:1px solid rgba(247,247,244,.15); }
+
+.team-header{ display:flex; flex-direction:column; gap:14px; margin-bottom:22px; }
+.team-header-back{ align-self:flex-start; background:none; border:none; color:var(--gray); font-size:13px; font-weight:600; }
+.team-header-back:hover{ color:var(--off); }
+.team-header-info{ display:flex; align-items:center; gap:14px; }
+.team-header-name{ font-size:19px; }
+.team-header-count{ font-size:13px; color:var(--gray); }
+
+.price-original{ font-size:13px; color:var(--gray); text-decoration:line-through; margin-right:8px; }
+.price-current{ font-weight:700; font-size:16px; color:var(--off); }
+.product-tag--pronta{ top:14px; right:14px; left:auto; background:var(--wa); color:#08240f; }
+.size-helper{ font-size:12px; color:var(--gray); margin-top:-2px; }
+.size-helper .size-chart-link{ font-size:12px; }
+@media (max-width:640px){
+  .league-row-title, .team-scroll{ padding-left:20px; padding-right:20px; }
+}
+
+/* ============================================================
+   DIFERENCIAIS
+   ============================================================ */
+.diff-section{ background:var(--black); }
+.diff-title{ font-size:clamp(28px,5vw,50px); max-width:14ch; }
+.diff-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:rgba(247,247,244,.08); margin-top:56px; }
+.diff-item{ background:var(--black); padding:32px 24px; }
+.diff-num{ font-family:var(--font-display); font-size:13px; color:var(--gray); }
+.diff-name{ font-size:19px; margin:20px 0 10px; font-weight:700; }
+.diff-text{ font-size:14px; color:var(--gray); line-height:1.6; }
+@media (max-width:900px){ .diff-grid{ grid-template-columns:repeat(2,1fr); } }
+@media (max-width:560px){ .diff-grid{ grid-template-columns:1fr; } }
+
+/* ============================================================
+   BANNER EDITORIAL
+   ============================================================ */
+.editorial{ min-height:56vh; display:flex; align-items:center; justify-content:center; text-align:center; padding:100px 24px; }
+.editorial h2{ font-size:clamp(28px,6vw,60px); max-width:16ch; margin:0 auto; }
+.editorial .btn{ margin-top:34px; }
+
+/* ============================================================
+   SOBRE
+   ============================================================ */
+.about{ display:grid; grid-template-columns:1fr 1fr; gap:64px; align-items:center; }
+.about-media{ aspect-ratio:1/1; }
+.about h2{ font-size:clamp(26px,4vw,40px); }
+.about .btn{ margin-top:30px; }
+@media (max-width:860px){
+  .about{ grid-template-columns:1fr; gap:36px; }
+  .about-media{ order:-1; aspect-ratio:16/10; }
+}
+
+/* ============================================================
+   COMO COMPRAR
+   ============================================================ */
+.steps{ display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:rgba(247,247,244,.08); margin-top:52px; }
+.step{ background:var(--graphite); padding:34px 26px; }
+.step-num{ font-family:var(--font-display); font-size:32px; color:rgba(247,247,244,.16); }
+.step-name{ font-size:18px; margin:18px 0 8px; font-weight:700; }
+.step-text{ font-size:14px; color:var(--gray); line-height:1.6; }
+@media (max-width:900px){ .steps{ grid-template-columns:repeat(2,1fr); } }
+@media (max-width:560px){ .steps{ grid-template-columns:1fr; } }
+
+/* ============================================================
+   RASTREIO DE PEDIDO
+   ============================================================ */
+.tracking-box{ display:flex; gap:10px; max-width:440px; margin:32px auto 0; flex-wrap:wrap; justify-content:center; }
+.tracking-box input{
+  flex:1; min-width:200px; background:var(--graphite); border:1px solid rgba(247,247,244,.15);
+  color:var(--off); padding:13px 16px; font-family:var(--font-body); font-size:14px; border-radius:2px;
+}
+.tracking-box input:focus{ outline:2px solid var(--off); outline-offset:2px; }
+.tracking-result{ max-width:540px; margin:28px auto 0; background:var(--graphite); border:1px solid rgba(247,247,244,.1); padding:22px 24px; font-size:14px; }
+.tracking-result-title{ font-weight:700; font-size:15px; }
+.tracking-items{ margin-top:8px; color:var(--gray); font-size:13.5px; line-height:1.7; }
+.tracking-steps{ display:flex; justify-content:space-between; margin-top:28px; gap:4px; }
+.tracking-step{ flex:1; text-align:center; font-size:11px; color:var(--gray); position:relative; padding-top:18px; }
+.tracking-step::before{ content:""; position:absolute; top:0; left:50%; transform:translateX(-50%); width:10px; height:10px; border-radius:50%; background:var(--graphite); border:2px solid var(--gray); z-index:1; }
+.tracking-step.is-done{ color:var(--off); }
+.tracking-step.is-done::before{ background:var(--off); border-color:var(--off); }
+.tracking-step:not(:last-child)::after{ content:""; position:absolute; top:4px; left:calc(50% + 8px); right:calc(-50% + 8px); height:2px; background:var(--gray); }
+.tracking-step.is-done:not(:last-child)::after{ background:var(--off); }
+.tracking-code{ margin-top:16px; font-size:12.5px; color:var(--gray); }
+.tracking-not-found{ text-align:center; color:var(--gray); font-size:14px; }
+.tracking-not-found .btn{ margin-top:16px; }
+
+/* ============================================================
+   SEÇÃO WHATSAPP
+   ============================================================ */
+.wa-section{
+  position:relative; text-align:center; padding:100px 24px; overflow:hidden;
+  background:radial-gradient(80% 100% at 50% 100%, rgba(247,247,244,.05), transparent 65%), var(--black);
+}
+.wa-icon-big{ width:56px; height:56px; color:var(--wa); margin:0 auto 26px; }
+.wa-section h2{ font-size:clamp(26px,5vw,44px); max-width:16ch; margin:0 auto; }
+.wa-section p{ max-width:52ch; margin:18px auto 0; color:var(--gray); font-size:16px; line-height:1.7; }
+.wa-section .btn{ margin-top:34px; }
+
+/* ============================================================
+   TABELA DE MEDIDAS
+   ============================================================ */
+.size-table{ width:100%; border-collapse:collapse; font-size:13.5px; }
+.size-table th, .size-table td{ padding:10px 8px; text-align:left; border-bottom:1px solid rgba(247,247,244,.1); }
+.size-table th{ color:var(--gray); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.06em; }
+
+/* ============================================================
+   FAQ
+   ============================================================ */
+.faq-list{ max-width:820px; margin:48px auto 0; border-top:1px solid rgba(247,247,244,.1); }
+.faq-item{ border-bottom:1px solid rgba(247,247,244,.1); }
+.faq-q{
+  width:100%; background:none; border:none; color:var(--off); text-align:left;
+  display:flex; justify-content:space-between; align-items:center; gap:16px;
+  padding:24px 4px; font-family:var(--font-body); font-weight:700; font-size:16px;
+}
+.faq-q .chev{ width:18px; height:18px; flex-shrink:0; transition:transform .3s var(--ease); color:var(--gray); }
+.faq-item.is-open .faq-q .chev{ transform:rotate(45deg); }
+.faq-a{ max-height:0; overflow:hidden; transition:max-height .35s var(--ease); }
+.faq-a-inner{ padding:0 4px 24px; color:var(--gray); font-size:14.5px; line-height:1.7; max-width:64ch; }
+
+/* ============================================================
+   INSTAGRAM
+   ============================================================ */
+.insta-grid{ display:grid; grid-template-columns:repeat(6,1fr); gap:2px; margin-top:12px; }
+.insta-tile{ aspect-ratio:1/1; position:relative; overflow:hidden; }
+.insta-tile .icon{ position:relative; z-index:1; width:26px; height:26px; margin:16px; color:rgba(247,247,244,.6); }
+.insta-cta{ display:flex; justify-content:center; margin-top:40px; }
+@media (max-width:860px){ .insta-grid{ grid-template-columns:repeat(3,1fr); } }
+
+/* ============================================================
+   CTA FINAL
+   ============================================================ */
+.final-cta{ text-align:center; padding:110px 24px; background:var(--black); }
+.final-cta h2{ font-size:clamp(26px,5.5vw,48px); max-width:16ch; margin:0 auto; }
+.final-cta p{ color:var(--gray); margin-top:16px; font-size:16px; }
+.final-cta-actions{ display:flex; justify-content:center; flex-wrap:wrap; gap:14px; margin-top:36px; }
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+.footer{ background:var(--graphite); border-top:1px solid rgba(247,247,244,.08); padding:72px 0 28px; }
+.footer-grid{ display:grid; grid-template-columns:1.6fr 1fr 1fr 1fr; gap:40px; }
+.footer-desc{ color:var(--gray); font-size:14px; margin-top:14px; max-width:32ch; line-height:1.6; }
+.footer-col h4{ font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:var(--gray); margin-bottom:16px; font-weight:700; }
+.footer-col ul{ display:flex; flex-direction:column; gap:11px; }
+.footer-col a, .footer-col button{ font-size:14px; color:var(--off); opacity:.85; transition:opacity .2s; background:none; border:none; padding:0; text-align:left; }
+.footer-col a:hover, .footer-col button:hover{ opacity:1; }
+.footer-bottom{
+  margin-top:56px; padding-top:24px; border-top:1px solid rgba(247,247,244,.08);
+  display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; font-size:12.5px; color:var(--gray);
+}
+@media (max-width:860px){ .footer-grid{ grid-template-columns:1fr 1fr; } }
+@media (max-width:520px){ .footer-grid{ grid-template-columns:1fr; gap:32px; } }
+
+/* ============================================================
+   WHATSAPP FLUTUANTE
+   ============================================================ */
+.wa-float{
+  position:fixed; right:26px; bottom:26px; z-index:400;
+  display:flex; align-items:center; background:var(--wa); color:#08240f;
+  border-radius:999px; height:58px; padding:0 20px 0 0; overflow:hidden;
+  box-shadow:0 10px 30px rgba(0,0,0,.35);
+  animation:pulse-wa 2.6s ease-in-out 1;
+}
+.wa-float-icon{ width:58px; height:58px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.wa-float-icon svg{ width:28px; height:28px; }
+.wa-float-label{ max-width:0; overflow:hidden; white-space:nowrap; font-size:14px; font-weight:700; transition:max-width .35s var(--ease), margin .35s var(--ease); }
+.wa-float:hover .wa-float-label{ max-width:220px; margin-left:2px; }
+@keyframes pulse-wa{ 0%{ transform:scale(1); } 8%{ transform:scale(1.08); } 16%{ transform:scale(1); } }
+.wa-bar{ display:none; }
+@media (max-width:768px){
+  .wa-float{ display:none; }
+  .wa-bar{
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    position:fixed; left:0; right:0; bottom:0; z-index:400; height:58px;
+    background:var(--wa); color:#08240f; font-weight:700; font-size:15px;
+  }
+  #storefrontRoot{ padding-bottom:58px; }
+}
+
+/* ============================================================
+   RESPONSIVO GERAL
+   ============================================================ */
+@media (max-width:960px){
+  .nav-desktop, .header-wa-btn{ display:none; }
+  .menu-toggle{ display:flex; }
+  .about, .section{ padding:72px 0; }
+}
+@media (min-width:961px){ .menu-toggle{ display:none; } }
+@media (max-width:640px){
+  .section{ padding:64px 0; }
+  .hero-inner{ padding:56px 0 64px; }
+  .editorial{ padding:72px 24px; }
+}
+
+/* ============================================================
+   PAINEL ADMINISTRATIVO
+   ============================================================ */
+.admin-topbar{
+  display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+  position:fixed; top:0; left:0; right:0; background:rgba(10,10,10,.96);
+  backdrop-filter:blur(10px); padding:16px 24px; z-index:50; border-bottom:1px solid rgba(247,247,244,.08);
+}
+.admin-badge{ font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--gray); border:1px solid rgba(247,247,244,.2); padding:5px 10px; }
+.admin-topbar .btn{ margin-left:auto; }
+.admin-panel{ min-height:100vh; padding:110px 24px 60px; max-width:1180px; margin:0 auto; }
+.admin-panel[hidden]{ display:none; }
+.admin-warning{ background:#241a06; border:1px solid #6b4b0a; color:#f2c766; font-size:12.5px; line-height:1.65; padding:16px 20px; margin-bottom:28px; }
+.admin-tabs{ display:flex; gap:6px; border-bottom:1px solid rgba(247,247,244,.1); margin-bottom:28px; overflow-x:auto; }
+.admin-tab{ background:none; border:none; color:var(--gray); padding:12px 18px; font-size:13.5px; font-weight:600; border-bottom:2px solid transparent; white-space:nowrap; }
+.admin-tab.is-active{ color:var(--off); border-color:var(--off); }
+.admin-panel-view{ display:none; }
+.admin-panel-view.is-active{ display:block; }
+.admin-metrics{ display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; }
+.admin-metric-card{ background:var(--graphite); border:1px solid rgba(247,247,244,.08); padding:20px; }
+.admin-metric-value{ font-family:var(--font-display); font-size:26px; text-transform:uppercase; }
+.admin-metric-label{ font-size:12px; color:var(--gray); margin-top:6px; }
+.admin-toolbar{ display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap; }
+.admin-table-wrap{ overflow-x:auto; border:1px solid rgba(247,247,244,.08); }
+.admin-table{ width:100%; border-collapse:collapse; font-size:12.5px; min-width:860px; }
+.admin-table th, .admin-table td{ padding:10px 12px; border-bottom:1px solid rgba(247,247,244,.08); text-align:left; white-space:nowrap; }
+.admin-table th{ color:var(--gray); text-transform:uppercase; font-size:10.5px; letter-spacing:.05em; background:var(--graphite); position:sticky; top:0; }
+.admin-table input, .admin-table select{ background:var(--black); border:1px solid rgba(247,247,244,.15); color:var(--off); font-size:12px; padding:6px 7px; width:100%; min-width:76px; border-radius:2px; }
+.admin-row-delete{ background:none; border:none; color:var(--gray); font-size:17px; line-height:1; }
+.admin-row-delete:hover{ color:var(--danger); }
+.admin-empty{ color:var(--gray); font-size:13.5px; padding:24px 4px; }
+.admin-trigger{ font-size:11.5px; color:var(--gray); text-decoration:underline; background:none; border:none; }
+.admin-trigger:hover{ color:var(--off); }
+</style>
+</head>
+<body>
+<a href="#main" class="skip-link">Pular para o conteúdo</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="icon-diamond" viewBox="0 0 120 100">
+    <path d="M10 32 L34 10 L60 24 L86 10 L110 32 L60 94 Z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M10 32H110M34 10L60 94M86 10L60 94" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+</svg>
+
+<div class="storefront" id="storefrontRoot">
+
+<!-- ============================================================
+     HEADER
+     ============================================================ -->
+<header class="header" id="siteHeader">
+  <div class="container header-inner">
+    <a href="#top" class="logo">
+      <svg class="logo-mark" viewBox="0 0 120 100" width="120" height="100" aria-hidden="true"><use href="#icon-diamond"></use></svg>
+      <span class="logo-word">POINT<span>SUPPLY</span></span>
+    </a>
+
+    <nav class="nav-desktop" aria-label="Navegação principal">
+      <a href="#top">Início</a>
+      <a href="#times">Times</a>
+      <a href="#produtos" data-filter-link="todos">Produtos</a>
+      <a href="#produtos" data-filter-link="futebol">Futebol</a>
+      <a href="#produtos" data-filter-link="nba">NBA</a>
+      <a href="#produtos" data-filter-link="ofertas">Ofertas</a>
+      <a href="#sobre">Sobre nós</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+
+    <div class="header-actions">
+      <button class="icon-btn" id="searchToggle" aria-expanded="false" aria-controls="searchFlyout" aria-label="Buscar produtos">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+      </button>
+      <button class="icon-btn" id="cartToggle" aria-label="Abrir carrinho">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 4h2l2.4 12.4a2 2 0 0 0 2 1.6h7.4a2 2 0 0 0 2-1.6L21 8H6"></path><circle cx="10" cy="21" r="1"></circle><circle cx="18" cy="21" r="1"></circle></svg>
+        <span class="cart-badge" id="cartBadge" hidden>0</span>
+      </button>
+      <a class="header-wa-btn js-wa-generic" id="headerWaBtn" href="#" target="_blank" rel="noopener">
+        <svg class="icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 5C10.2 5 5.5 9.6 5.5 15.3c0 2.9 1.2 5.6 3.3 7.5L7.3 27l4.6-1.5c1.3.5 2.7.8 4.1.8 5.8 0 10.5-4.6 10.5-10.3S21.8 5 16 5Z"></path><path d="M11.8 13.6c-.2 1.7.5 3.5 1.9 4.9 1.4 1.4 3.2 2.1 4.9 1.9"></path></svg>
+        Falar no WhatsApp
+      </a>
+      <button class="icon-btn menu-toggle" id="menuToggle" aria-label="Abrir menu" aria-expanded="false" aria-controls="mobileDrawer">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M3 12h18M3 18h18"></path></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="search-flyout" id="searchFlyout">
+    <div class="search-flyout-inner">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+      <input type="text" id="searchInput" placeholder="Buscar por camisas, time, liga..." aria-label="Buscar produtos">
+    </div>
+  </div>
+</header>
+
+<!-- Mobile drawer -->
+<div class="mobile-drawer" id="mobileDrawer">
+  <div class="mobile-drawer-backdrop" data-close-drawer></div>
+  <div class="mobile-drawer-panel" role="dialog" aria-modal="true" aria-label="Menu">
+    <div class="mobile-drawer-top">
+      <span class="logo"><svg class="logo-mark" viewBox="0 0 120 100" width="120" height="100" aria-hidden="true"><use href="#icon-diamond"></use></svg><span class="logo-word">POINT<span>SUPPLY</span></span></span>
+      <button class="icon-btn" data-close-drawer aria-label="Fechar menu">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+      </button>
+    </div>
+    <nav class="mobile-nav" aria-label="Navegação mobile">
+      <a href="#top" data-close-drawer>Início</a>
+      <a href="#times" data-close-drawer>Times</a>
+      <a href="#produtos" data-close-drawer data-filter-link="todos">Produtos</a>
+      <a href="#produtos" data-close-drawer data-filter-link="futebol">Futebol</a>
+      <a href="#produtos" data-close-drawer data-filter-link="nba">NBA</a>
+      <a href="#produtos" data-close-drawer data-filter-link="ofertas">Ofertas</a>
+      <a href="#sobre" data-close-drawer>Sobre nós</a>
+      <a href="#faq" data-close-drawer>FAQ</a>
+    </nav>
+    <div class="mobile-drawer-footer">
+      <a class="btn btn-whatsapp btn-block js-wa-generic" id="drawerWaBtn" href="#" target="_blank" rel="noopener">Falar no WhatsApp</a>
+    </div>
+  </div>
+</div>
+
+<main id="main">
+
+<!-- ============================================================
+     HERO
+     ============================================================ -->
+<section class="hero" id="top">
+  <svg class="hero-watermark" viewBox="0 0 120 100" width="120" height="100" aria-hidden="true"><use href="#icon-diamond"></use></svg>
+  <div class="hero-sweep" aria-hidden="true"></div>
+  <div class="container hero-inner">
+    <p class="eyebrow hero-eyebrow">Point Supply</p>
+    <h1>Artigos esportivos para quem vive o esporte.</h1>
+    <p class="hero-sub">Camisas e produtos esportivos para acompanhar sua paixão pelo futebol, basquete e pelo universo esportivo.</p>
+    <div class="hero-ctas">
+      <a href="#produtos" class="btn btn-primary">Ver produtos</a>
+      <a href="#" class="btn btn-whatsapp js-wa-generic" target="_blank" rel="noopener">
+        <svg class="icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 5C10.2 5 5.5 9.6 5.5 15.3c0 2.9 1.2 5.6 3.3 7.5L7.3 27l4.6-1.5c1.3.5 2.7.8 4.1.8 5.8 0 10.5-4.6 10.5-10.3S21.8 5 16 5Z"></path><path d="M11.8 13.6c-.2 1.7.5 3.5 1.9 4.9 1.4 1.4 3.2 2.1 4.9 1.9"></path></svg>
+        Falar no WhatsApp
+      </a>
+    </div>
+  </div>
+  <div class="hero-scroll-cue" aria-hidden="true"><span>Role para explorar</span><span class="line"></span></div>
+</section>
+
+<!-- ============================================================
+     CATEGORIAS
+     ============================================================ -->
+<section class="section section--tight reveal">
+  <div class="container">
+    <div class="section-head">
+      <p class="eyebrow">Categorias</p>
+      <h2 class="section-title">Encontre seu estilo</h2>
+      <p class="section-text">Explore nossas principais categorias e encontre produtos para acompanhar sua paixão pelo esporte.</p>
+    </div>
+  </div>
+
+  <div class="cat-grid">
+    <a class="cat-card" href="#produtos" data-filter-link="futebol">
+      <span class="cat-icon" aria-hidden="true">
+        <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="50" cy="50" r="42"></circle><path d="M50 20l14 10-5 17H41l-5-17zM50 20V8M64 30l20-6M36 30 16 24M64 70l16 12M36 70 20 82M20 50H8M92 50H80"></path></svg>
+      </span>
+      <h3 class="cat-name">Futebol</h3>
+      <p class="cat-text">Camisas e artigos para quem acompanha seus clubes e seleções favoritas.</p>
+      <span class="cat-link">Ver futebol
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+      </span>
+    </a>
+
+    <a class="cat-card" href="#produtos" data-filter-link="nba">
+      <span class="cat-icon" aria-hidden="true">
+        <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="50" cy="50" r="42"></circle><path d="M8 50h84M50 8v84M18 18c14 12 14 52 0 64M82 18C68 30 68 70 82 82"></path></svg>
+      </span>
+      <h3 class="cat-name">NBA</h3>
+      <p class="cat-text">Produtos inspirados no universo do basquete e da NBA.</p>
+      <span class="cat-link">Ver NBA
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+      </span>
+    </a>
+
+    <a class="cat-card" href="#produtos" data-filter-link="todos">
+      <span class="cat-icon" aria-hidden="true">
+        <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M32 12 20 24l6 10-6 6v40h60V40l-6-6 6-10-12-12-8 8h-12z"></path></svg>
+      </span>
+      <h3 class="cat-name">Camisas</h3>
+      <p class="cat-text">Modelos para usar no dia a dia, acompanhar os jogos ou adicionar à sua coleção.</p>
+      <span class="cat-link">Ver camisas
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+      </span>
+    </a>
+
+    <a class="cat-card" href="#produtos" data-filter-link="ofertas">
+      <span class="cat-icon" aria-hidden="true">
+        <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M14 54 54 14h32v32L46 86a5 5 0 0 1-7 0L14 61a5 5 0 0 1 0-7Z"></path><circle cx="66" cy="34" r="6"></circle></svg>
+      </span>
+      <h3 class="cat-name">Ofertas</h3>
+      <p class="cat-text">Confira os produtos disponíveis em condições especiais.</p>
+      <span class="cat-link">Ver ofertas
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+      </span>
+    </a>
+  </div>
+</section>
+
+<!-- ============================================================
+     TIMES E SELEÇÕES
+     ============================================================ -->
+<section class="section section--tight reveal" id="times">
+  <div class="container">
+    <p class="eyebrow">Times e seleções</p>
+    <h2 class="section-title">Escolha seu time</h2>
+    <p class="section-text">Navegue pelas ligas e encontre camisas do seu time do coração.</p>
+  </div>
+  <div class="league-rows" id="leagueRows"><!-- linhas por liga inseridas via JS --></div>
+</section>
+
+<!-- ============================================================
+     PRODUTOS EM DESTAQUE
+     ============================================================ -->
+<section class="section" id="produtos">
+  <div class="container">
+    <div class="section-head">
+      <p class="eyebrow">Destaques</p>
+      <h2 class="section-title">Produtos selecionados para quem vive o esporte</h2>
+    </div>
+
+    <div class="discount-banner reveal" id="discountBanner"></div>
+
+    <div class="team-header" id="teamHeader" hidden>
+      <button type="button" class="team-header-back" id="teamHeaderBack">← Ver todos os times</button>
+      <div class="team-header-info">
+        <span class="team-badge team-badge--lg" id="teamHeaderBadge"></span>
+        <div>
+          <h3 class="team-header-name" id="teamHeaderName"></h3>
+          <span class="team-header-count" id="teamHeaderCount"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="filter-row" id="filterRow" role="tablist" aria-label="Filtrar produtos por categoria">
+      <button class="filter-btn is-active" data-filter="todos" role="tab" aria-selected="true">Todos</button>
+      <button class="filter-btn" data-filter="futebol" role="tab" aria-selected="false">Futebol</button>
+      <button class="filter-btn" data-filter="nba" role="tab" aria-selected="false">NBA</button>
+      <button class="filter-btn" data-filter="ofertas" role="tab" aria-selected="false">Ofertas</button>
+    </div>
+
+    <div class="filter-refine" id="filterRefine">
+      <select id="filterTipo" class="filter-select" aria-label="Filtrar por tipo de produto"></select>
+      <button type="button" class="filter-clear" id="filterClear">Limpar filtros</button>
+    </div>
+
+    <div class="product-grid" id="productGrid"><!-- produtos inseridos via JS --></div>
+    <p class="no-results" id="noResults">Nenhum produto encontrado com esses filtros. Fale com a gente pelo WhatsApp e a gente te ajuda a encontrar.</p>
+  </div>
+</section>
+
+<!-- ============================================================
+     DIFERENCIAIS
+     ============================================================ -->
+<section class="section diff-section reveal">
+  <div class="container">
+    <p class="eyebrow">Por que a Point Supply</p>
+    <h2 class="diff-title">Simples. Direto. Esportivo.</h2>
+
+    <div class="diff-grid">
+      <div class="diff-item">
+        <span class="diff-num">01</span>
+        <h3 class="diff-name">Atendimento pelo WhatsApp</h3>
+        <p class="diff-text">Fale diretamente com nossa equipe para tirar dúvidas.</p>
+      </div>
+      <div class="diff-item">
+        <span class="diff-num">02</span>
+        <h3 class="diff-name">Produtos selecionados</h3>
+        <p class="diff-text">Opções voltadas para quem realmente gosta de esporte.</p>
+      </div>
+      <div class="diff-item">
+        <span class="diff-num">03</span>
+        <h3 class="diff-name">Informações claras</h3>
+        <p class="diff-text">Tenha acesso às principais informações antes de comprar.</p>
+      </div>
+      <div class="diff-item">
+        <span class="diff-num">04</span>
+        <h3 class="diff-name">Compra prática</h3>
+        <p class="diff-text">Encontre o que procura e conte com nossa equipe quando precisar.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     BANNER EDITORIAL
+     ============================================================ -->
+<section class="editorial ghost-panel reveal">
+  <div>
+    <h2>Mais que um produto. Uma forma de viver o esporte.</h2>
+    <a href="#sobre" class="btn btn-outline">Conheça a Point Supply</a>
+  </div>
+</section>
+
+<!-- ============================================================
+     SOBRE
+     ============================================================ -->
+<section class="section" id="sobre">
+  <div class="container about">
+    <div>
+      <p class="eyebrow">Sobre nós</p>
+      <h2>Feita para quem vive o esporte.</h2>
+      <p class="section-text">A Point Supply é uma loja voltada para quem gosta de esporte e busca produtos para representar seus times, jogadores e modalidades favoritas.</p>
+      <p class="section-text">Trabalhamos com artigos esportivos selecionados, oferecendo uma experiência de compra simples e um atendimento próximo para ajudar você a encontrar o que procura.</p>
+      <a href="#" target="_blank" rel="noopener" class="btn btn-primary js-instagram-link">Acompanhe no Instagram</a>
+    </div>
+    <div class="about-media ghost-panel reveal"></div>
+  </div>
+</section>
+
+<!-- ============================================================
+     COMO COMPRAR
+     ============================================================ -->
+<section class="section section--tight reveal">
+  <div class="container">
+    <p class="eyebrow">Como funciona</p>
+    <h2 class="section-title">Comprar é simples.</h2>
+
+    <div class="steps">
+      <div class="step">
+        <span class="step-num">01</span>
+        <h3 class="step-name">Escolha</h3>
+        <p class="step-text">Encontre o produto que você procura.</p>
+      </div>
+      <div class="step">
+        <span class="step-num">02</span>
+        <h3 class="step-name">Consulte</h3>
+        <p class="step-text">Confira tamanhos, disponibilidade e tire suas dúvidas.</p>
+      </div>
+      <div class="step">
+        <span class="step-num">03</span>
+        <h3 class="step-name">Finalize</h3>
+        <p class="step-text">Faça seu pedido de forma simples e segura.</p>
+      </div>
+      <div class="step">
+        <span class="step-num">04</span>
+        <h3 class="step-name">Receba</h3>
+        <p class="step-text">Acompanhe seu pedido e aguarde a chegada.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     RASTREIO DE PEDIDO
+     ============================================================ -->
+<section class="section section--tight reveal" id="rastreio">
+  <div class="container">
+    <p class="eyebrow" style="justify-content:center;display:flex">Pós-compra</p>
+    <h2 class="section-title section-title--center">Rastreie seu pedido</h2>
+    <p class="section-text" style="text-align:center;max-width:52ch;margin:14px auto 0">Informe o código do pedido recebido após a compra para acompanhar o status. Prefere falar direto com a gente? Chame no WhatsApp.</p>
+
+    <div class="tracking-box">
+      <input type="text" id="trackingInput" placeholder="Ex: PS7K2A1B" aria-label="Código do pedido">
+      <button type="button" class="btn btn-primary" id="trackingBtn">Consultar</button>
+    </div>
+    <div id="trackingResult" hidden></div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SEÇÃO WHATSAPP
+     ============================================================ -->
+<section class="wa-section reveal" id="contato">
+  <svg class="wa-icon-big" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 5C10.2 5 5.5 9.6 5.5 15.3c0 2.9 1.2 5.6 3.3 7.5L7.3 27l4.6-1.5c1.3.5 2.7.8 4.1.8 5.8 0 10.5-4.6 10.5-10.3S21.8 5 16 5Z"></path><path d="M11.8 13.6c-.2 1.7.5 3.5 1.9 4.9 1.4 1.4 3.2 2.1 4.9 1.9"></path></svg>
+  <h2>Ficou com alguma dúvida?</h2>
+  <p>Não encontrou seu tamanho? Quer saber mais sobre um produto? Precisa de ajuda para escolher? Nossa equipe está pronta para te atender pelo WhatsApp.</p>
+  <a href="#" class="btn btn-whatsapp js-wa-generic" target="_blank" rel="noopener">Falar com a Point Supply</a>
+</section>
+
+<!-- ============================================================
+     FAQ
+     ============================================================ -->
+<section class="section section--tight reveal" id="faq">
+  <div class="container">
+    <p class="eyebrow" style="justify-content:center;display:flex">Dúvidas</p>
+    <h2 class="section-title section-title--center">Perguntas frequentes</h2>
+
+    <div class="faq-list" id="faqList"><!-- perguntas inseridas via JS --></div>
+  </div>
+</section>
+
+<!-- ============================================================
+     INSTAGRAM
+     ============================================================ -->
+<section class="section section--tight reveal">
+  <div class="container">
+    <p class="eyebrow" style="justify-content:center;display:flex">Instagram</p>
+    <h2 class="section-title section-title--center">@POINTSUPPLY</h2>
+    <p class="section-text" style="text-align:center;margin-left:auto;margin-right:auto">Esporte, estilo e novidades.</p>
+  </div>
+  <div class="container">
+    <div class="insta-grid" id="instaGrid"><!-- tiles via JS --></div>
+    <div class="insta-cta">
+      <a href="#" target="_blank" rel="noopener" class="btn btn-outline js-instagram-link">Seguir no Instagram</a>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     CTA FINAL
+     ============================================================ -->
+<section class="final-cta reveal">
+  <h2>Encontrou o que estava procurando?</h2>
+  <p>Explore nossos produtos ou fale diretamente com nossa equipe.</p>
+  <div class="final-cta-actions">
+    <a href="#produtos" class="btn btn-outline">Ver produtos</a>
+    <a href="#" class="btn btn-whatsapp js-wa-generic" target="_blank" rel="noopener">Falar no WhatsApp</a>
+  </div>
+</section>
+
+</main>
+
+<!-- ============================================================
+     FOOTER
+     ============================================================ -->
+<footer class="footer">
+  <div class="container footer-grid">
+    <div>
+      <span class="logo"><svg class="logo-mark" viewBox="0 0 120 100" width="120" height="100" aria-hidden="true"><use href="#icon-diamond"></use></svg><span class="logo-word">POINT<span>SUPPLY</span></span></span>
+      <p class="footer-desc">Artigos esportivos para quem vive o esporte.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Navegação</h4>
+      <ul>
+        <li><a href="#produtos">Produtos</a></li>
+        <li><a href="#produtos" data-filter-link="futebol">Futebol</a></li>
+        <li><a href="#produtos" data-filter-link="nba">NBA</a></li>
+        <li><a href="#produtos" data-filter-link="ofertas">Ofertas</a></li>
+        <li><a href="#sobre">Sobre nós</a></li>
+        <li><a href="#faq">FAQ</a></li>
+        <li><a href="#contato">Contato</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Atendimento</h4>
+      <ul>
+        <li><a href="#" class="js-wa-generic" target="_blank" rel="noopener">WhatsApp</a></li>
+        <li><a href="#" target="_blank" rel="noopener" class="js-instagram-link">Instagram</a></li>
+        <li><a href="#rastreio">Rastrear pedido</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Informações</h4>
+      <ul>
+        <li><button type="button" data-open-modal="policyModal" data-policy="privacidade">Política de Privacidade</button></li>
+        <li><button type="button" data-open-modal="policyModal" data-policy="termos">Termos de Uso</button></li>
+        <li><button type="button" data-open-modal="policyModal" data-policy="trocas">Trocas e Devoluções</button></li>
+        <li><button type="button" data-open-modal="policyModal" data-policy="entrega">Entrega</button></li>
+      </ul>
+    </div>
+  </div>
+  <div class="container footer-bottom">
+    <span>© 2026 Point Supply. Todos os direitos reservados.</span>
+    <button type="button" class="admin-trigger" id="adminTrigger">Área do lojista</button>
+  </div>
+</footer>
+
+<!-- ============================================================
+     WHATSAPP FLUTUANTE (desktop) + BARRA (mobile)
+     ============================================================ -->
+<a href="#" class="wa-float js-wa-generic" id="waFloat" target="_blank" rel="noopener" aria-label="Falar com a Point Supply no WhatsApp">
+  <span class="wa-float-icon">
+    <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 5C10.2 5 5.5 9.6 5.5 15.3c0 2.9 1.2 5.6 3.3 7.5L7.3 27l4.6-1.5c1.3.5 2.7.8 4.1.8 5.8 0 10.5-4.6 10.5-10.3S21.8 5 16 5Z"></path><path d="M11.8 13.6c-.2 1.7.5 3.5 1.9 4.9 1.4 1.4 3.2 2.1 4.9 1.9"></path></svg>
+  </span>
+  <span class="wa-float-label">Falar com a Point Supply</span>
+</a>
+<a href="#" class="wa-bar js-wa-generic" id="waBar" target="_blank" rel="noopener">💬 Falar no WhatsApp</a>
+
+<!-- ============================================================
+     CARRINHO
+     ============================================================ -->
+<div class="mobile-drawer" id="cartDrawer">
+  <div class="mobile-drawer-backdrop" data-close-cart></div>
+  <div class="mobile-drawer-panel" role="dialog" aria-modal="true" aria-label="Carrinho">
+    <div class="mobile-drawer-top">
+      <span class="logo-word" style="font-size:17px">Seu carrinho</span>
+      <button class="icon-btn" data-close-cart aria-label="Fechar carrinho">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+      </button>
+    </div>
+    <div id="cartItems" style="display:flex;flex-direction:column;gap:16px;overflow-y:auto"></div>
+    <p id="cartEmpty" style="color:var(--gray);font-size:14px">Seu carrinho está vazio. Adicione produtos para consultar disponibilidade e finalizar pelo WhatsApp.</p>
+    <div id="cartDiscountNote" style="font-size:12.5px;color:var(--gray);margin-top:14px"></div>
+    <div class="mobile-drawer-footer">
+      <button type="button" class="btn btn-whatsapp btn-block" id="cartCheckoutBtn">Finalizar pedido</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL — TABELA DE MEDIDAS
+     ============================================================ -->
+<div class="modal" id="sizeChartModal">
+  <div class="modal-backdrop" data-close-modal="sizeChartModal"></div>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="sizeChartTitle">
+    <button class="icon-btn modal-close" data-close-modal="sizeChartModal" aria-label="Fechar">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+    </button>
+    <h3 class="modal-title" id="sizeChartTitle">Tabela de medidas</h3>
+    <p style="color:var(--gray);font-size:13px;margin-bottom:16px">Medidas de referência em centímetros. Podem variar conforme o modelo — confirme pelo WhatsApp em caso de dúvida.</p>
+    <table class="size-table">
+      <thead><tr><th>Tamanho</th><th>Largura</th><th>Comprimento</th><th>Manga</th></tr></thead>
+      <tbody id="sizeTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL — FINALIZAR PEDIDO (checkout)
+     ============================================================ -->
+<div class="modal" id="checkoutModal">
+  <div class="modal-backdrop" data-close-modal="checkoutModal"></div>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="checkoutTitle">
+    <button class="icon-btn modal-close" data-close-modal="checkoutModal" aria-label="Fechar">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+    </button>
+    <h3 class="modal-title" id="checkoutTitle">Finalizar pedido</h3>
+    <div id="checkoutFormWrap">
+      <p style="color:var(--gray);font-size:13px;margin-bottom:18px">Preencha seus dados para gerar seu código de pedido e continuar no WhatsApp.</p>
+      <form id="checkoutForm" class="form-grid">
+        <label class="form-field">Nome*<input type="text" name="name" required autocomplete="name"></label>
+        <label class="form-field">WhatsApp / Telefone*<input type="tel" name="phone" required placeholder="(71) 9xxxx-xxxx" autocomplete="tel"></label>
+        <label class="form-field">Cidade (opcional)<input type="text" name="city" autocomplete="address-level2"></label>
+        <p class="form-note">Seus dados serão usados apenas para processar este pedido e para contato pelo WhatsApp.</p>
+        <button type="submit" class="btn btn-whatsapp btn-block">Gerar pedido e continuar no WhatsApp</button>
+      </form>
+    </div>
+    <div id="checkoutSuccess" class="checkout-success" hidden></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL — POLÍTICAS (placeholder)
+     ============================================================ -->
+<div class="modal" id="policyModal">
+  <div class="modal-backdrop" data-close-modal="policyModal"></div>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="policyTitle">
+    <button class="icon-btn modal-close" data-close-modal="policyModal" aria-label="Fechar">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+    </button>
+    <h3 class="modal-title" id="policyTitle">Em breve</h3>
+    <p style="color:var(--gray);font-size:14px;line-height:1.7" id="policyText">Este conteúdo ainda será adicionado pela Point Supply. Em caso de dúvida agora, fale com a gente pelo WhatsApp.</p>
+    <a href="#" class="btn btn-whatsapp js-wa-generic" target="_blank" rel="noopener" style="margin-top:20px">Falar no WhatsApp</a>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL — LOGIN ÁREA DO LOJISTA
+     ============================================================ -->
+<div class="modal" id="adminLoginModal">
+  <div class="modal-backdrop" data-close-modal="adminLoginModal"></div>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="adminLoginTitle">
+    <button class="icon-btn modal-close" data-close-modal="adminLoginModal" aria-label="Fechar">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+    </button>
+    <h3 class="modal-title" id="adminLoginTitle">Área do lojista</h3>
+    <p style="color:var(--gray);font-size:12.5px;margin-bottom:16px">Acesso restrito ao administrador da loja. Este é um protótipo — veja o aviso completo após entrar.</p>
+    <form id="adminLoginForm" class="form-grid">
+      <label class="form-field">Senha<input type="password" name="password" required autocomplete="current-password"></label>
+      <p class="form-error" id="adminLoginError" hidden>Senha incorreta.</p>
+      <button type="submit" class="btn btn-primary btn-block">Entrar</button>
+    </form>
+  </div>
+</div>
+
+</div><!-- /#storefrontRoot -->
+
+<!-- ============================================================
+     PAINEL ADMINISTRATIVO (fora do storefront — oculto por padrão)
+     ============================================================ -->
+<div class="admin-panel" id="adminPanel" hidden>
+  <div class="admin-topbar">
+    <span class="logo"><svg class="logo-mark" viewBox="0 0 120 100" width="120" height="100" aria-hidden="true"><use href="#icon-diamond"></use></svg><span class="logo-word">POINT<span>SUPPLY</span></span></span>
+    <span class="admin-badge">Painel administrativo</span>
+    <button type="button" class="btn btn-outline btn-sm" id="adminExitBtn">Voltar à loja</button>
+  </div>
+
+  <div class="admin-warning">
+    ⚠ <strong>Antes de usar com clientes reais:</strong> este painel só é protegido de verdade depois que você publicar o backend em <strong>apps-script-backend.js</strong> e colar a URL em <strong>APPS_SCRIPT_URL</strong> (veja o passo a passo enviado junto). A senha é conferida dentro do Google Apps Script, nunca fica neste arquivo. Ainda assim, é uma senha simples — sem múltiplos usuários, 2FA ou trilha de auditoria — adequada para uma loja pequena, não para dados sensíveis em larga escala. Você é responsável por tratar os dados de clientes conforme a LGPD.
+  </div>
+  <div class="admin-warning" id="adminBackendMissingWarning" style="border-color:#6b1a1a;background:#241010;color:#f28e8e" hidden>
+    ⚠ O backend (Google Apps Script) ainda não foi configurado — configure a URL em <strong>APPS_SCRIPT_URL</strong> para os dados funcionarem de verdade.
+  </div>
+
+  <nav class="admin-tabs" role="tablist">
+    <button class="admin-tab is-active" data-admin-tab="overview" role="tab" aria-selected="true">Visão geral</button>
+    <button class="admin-tab" data-admin-tab="sales" role="tab" aria-selected="false">Vendas</button>
+    <button class="admin-tab" data-admin-tab="customers" role="tab" aria-selected="false">Clientes</button>
+    <button class="admin-tab" data-admin-tab="products" role="tab" aria-selected="false">Produtos</button>
+    <button class="admin-tab" data-admin-tab="teams" role="tab" aria-selected="false">Times e Ligas</button>
+    <button class="admin-tab" data-admin-tab="faq" role="tab" aria-selected="false">FAQ</button>
+    <button class="admin-tab" data-admin-tab="discounts" role="tab" aria-selected="false">Descontos</button>
+    <button class="admin-tab" data-admin-tab="appearance" role="tab" aria-selected="false">Aparência</button>
+  </nav>
+
+  <div class="admin-content">
+    <div class="admin-panel-view is-active" data-admin-view="overview">
+      <div class="admin-metrics" id="adminMetrics"></div>
+    </div>
+
+    <div class="admin-panel-view" data-admin-view="sales">
+      <div class="admin-toolbar">
+        <button type="button" class="btn btn-primary btn-sm" id="adminAddSaleBtn">+ Adicionar venda manual</button>
+        <button type="button" class="btn btn-outline btn-sm" data-admin-refresh>Atualizar dados</button>
+        <button type="button" class="btn btn-outline btn-sm" id="adminSeedBtn">Carregar dados de exemplo</button>
+        <button type="button" class="btn btn-outline btn-sm" id="adminClearBtn" style="border-color:rgba(255,138,128,.4);color:var(--danger)">Apagar todos os dados</button>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Pedido</th><th>Produto</th><th>Tam.</th><th>Cliente</th><th>Valor (R$)</th><th>Custo (R$)</th><th>Lucro (R$)</th><th>Status</th><th>Rastreio</th><th>Origem</th><th></th></tr></thead>
+          <tbody id="adminSalesBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="admin-panel-view" data-admin-view="customers">
+      <div class="admin-toolbar">
+        <button type="button" class="btn btn-outline btn-sm" data-admin-refresh>Atualizar dados</button>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Nome</th><th>Telefone</th><th>Cidade</th><th>Pedido</th><th>Data</th></tr></thead>
+          <tbody id="adminCustomersBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="admin-panel-view" data-admin-view="products">
+      <p style="color:var(--gray);font-size:12.5px;margin-bottom:16px">Alterações aqui atualizam a loja na hora e ficam salvas para a próxima vez que alguém visitar o site.</p>
+      <div class="admin-toolbar">
+        <button type="button" class="btn btn-primary btn-sm" id="adminAddProductBtn">+ Adicionar produto</button>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Nome</th><th>Categoria</th><th>Liga</th><th>Time</th><th>Tipo</th><th>Preço</th><th>Ativo</th><th></th></tr></thead>
+          <tbody id="adminProductsBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="admin-panel-view" data-admin-view="teams">
+      <p style="color:var(--gray);font-size:12.5px;margin-bottom:16px">Ligas e times aparecem na seção "Times e seleções" do site, nessa mesma ordem.</p>
+      <div class="admin-toolbar">
+        <select id="adminTeamsCategory" class="filter-select">
+          <option value="futebol">Futebol</option>
+          <option value="nba">NBA</option>
+        </select>
+        <button type="button" class="btn btn-primary btn-sm" id="adminAddLeagueBtn">+ Nova liga</button>
+      </div>
+      <div id="adminLeaguesList"></div>
+    </div>
+
+    <div class="admin-panel-view" data-admin-view="faq">
+      <div class="admin-toolbar">
+        <button type="button" class="btn btn-primary btn-sm" id="adminAddFaqBtn">+ Nova pergunta</button>
+      </div>
+      <div id="adminFaqList"></div>
+    </div>
+
+    <div class="admin-panel-view" data-admin-view="discounts">
+      <p style="color:var(--gray);font-size:12.5px;margin-bottom:16px">"A partir de" = quantidade mínima de peças no carrinho para o desconto valer.</p>
+      <div class="admin-toolbar">
+        <button type="button" class="btn btn-primary btn-sm" id="adminAddDiscountBtn">+ Novo desconto</button>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>A partir de (peças)</th><th>Desconto (%)</th><th></th></tr></thead>
+          <tbody id="adminDiscountsBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="admin-panel-view" data-admin-view="appearance">
+      <p style="color:var(--gray);font-size:13.5px;max-width:56ch;margin-bottom:20px">Cole o link de uma imagem já hospedada (Google Drive com compartilhamento público, Imgur, ou a própria hospedagem da loja) para substituir o ícone de diamante padrão pela logo real da Point Supply, no site inteiro.</p>
+      <div class="form-grid" style="max-width:420px">
+        <label class="form-field">URL da logo/ícone<input type="text" id="adminLogoUrlInput" placeholder="https://..."></label>
+        <div style="display:flex;align-items:center;gap:14px">
+          <span style="font-size:12px;color:var(--gray)">Pré-visualização:</span>
+          <img id="adminLogoPreview" src="" alt="" style="height:40px;width:auto;display:none;background:var(--black);padding:6px">
+        </div>
+        <button type="button" class="btn btn-primary" id="adminSaveLogoBtn">Salvar logo</button>
+        <button type="button" class="btn btn-outline btn-sm" id="adminResetLogoBtn">Usar ícone padrão (diamante)</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal — adicionar venda manual -->
+<div class="modal" id="adminSaleModal">
+  <div class="modal-backdrop" data-close-modal="adminSaleModal"></div>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="adminSaleTitle">
+    <button class="icon-btn modal-close" data-close-modal="adminSaleModal" aria-label="Fechar">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+    </button>
+    <h3 class="modal-title" id="adminSaleTitle">Adicionar venda manual</h3>
+    <form id="adminSaleForm" class="form-grid">
+      <label class="form-field">Produto*<input type="text" name="product" required></label>
+      <label class="form-field">Tamanho
+        <select name="size"><option>P</option><option>M</option><option>G</option><option>GG</option><option>—</option></select>
+      </label>
+      <label class="form-field">Cliente (nome)<input type="text" name="customerName"></label>
+      <label class="form-field">Cliente (telefone)<input type="text" name="customerPhone"></label>
+      <label class="form-field">Valor da venda (R$)<input type="number" name="saleValue" min="0" step="0.01" value="0"></label>
+      <label class="form-field">Custo do produto (R$)<input type="number" name="costValue" min="0" step="0.01" value="0"></label>
+      <label class="form-field">Status
+        <select name="status"></select>
+      </label>
+      <label class="form-field">Código do pedido (opcional, p/ rastreio)<input type="text" name="orderId"></label>
+      <label class="form-field">Código de rastreio (opcional)<input type="text" name="trackingCode"></label>
+      <button type="submit" class="btn btn-primary btn-block">Adicionar venda</button>
+    </form>
+  </div>
+</div>
+
+<!-- Modal — adicionar/editar produto -->
+<div class="modal" id="adminProductModal">
+  <div class="modal-backdrop" data-close-modal="adminProductModal"></div>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="adminProductTitle">
+    <button class="icon-btn modal-close" data-close-modal="adminProductModal" aria-label="Fechar">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+    </button>
+    <h3 class="modal-title" id="adminProductTitle">Adicionar produto</h3>
+    <form id="adminProductForm" class="form-grid">
+      <input type="hidden" name="id">
+      <label class="form-field">Nome*<input type="text" name="name" required></label>
+      <label class="form-field">Categoria
+        <select name="category"><option value="futebol">Futebol</option><option value="nba">NBA</option></select>
+      </label>
+      <label class="form-field">Liga<input type="text" name="liga" placeholder="Ex: Brasileirão"></label>
+      <label class="form-field">Time<input type="text" name="time" placeholder="Ex: Flamengo"></label>
+      <label class="form-field">Tipo<select name="tipo"></select></label>
+      <label class="form-field">Preço (texto livre — ex: "Sob consulta" ou "R$ 199,90")<input type="text" name="price" value="Sob consulta"></label>
+      <label class="form-field">Preço original (opcional, mostra riscado)<input type="text" name="originalPrice" placeholder="Ex: R$ 250,00"></label>
+      <label class="form-field">Parcelamento (texto)<input type="text" name="installment" value="Consulte parcelamento"></label>
+      <label class="form-field">Tamanhos (separados por vírgula)<input type="text" name="sizes" value="P,M,G,GG"></label>
+      <label class="form-field" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" name="isOffer" style="width:auto"> Marcar como oferta</label>
+      <label class="form-field" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" name="prontaEntrega" style="width:auto"> Pronta entrega</label>
+      <label class="form-field" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" name="ativo" checked style="width:auto"> Produto ativo (visível na loja)</label>
+      <button type="submit" class="btn btn-primary btn-block">Salvar produto</button>
+    </form>
+  </div>
+</div>
+
+<!-- Modal — adicionar/editar pergunta do FAQ -->
+<div class="modal" id="adminFaqModal">
+  <div class="modal-backdrop" data-close-modal="adminFaqModal"></div>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="adminFaqTitle">
+    <button class="icon-btn modal-close" data-close-modal="adminFaqModal" aria-label="Fechar">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+    </button>
+    <h3 class="modal-title" id="adminFaqTitle">Nova pergunta</h3>
+    <form id="adminFaqForm" class="form-grid">
+      <input type="hidden" name="index" value="-1">
+      <label class="form-field">Pergunta*<input type="text" name="q" required></label>
+      <label class="form-field">Resposta*<textarea name="a" required rows="4" style="background:var(--black);border:1px solid rgba(247,247,244,.18);color:var(--off);padding:11px 12px;font-family:var(--font-body);font-size:14px;border-radius:2px;resize:vertical"></textarea></label>
+      <button type="submit" class="btn btn-primary btn-block">Salvar pergunta</button>
+    </form>
+  </div>
+</div>
+
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============================================================
+     CONFIG — PLACEHOLDERS a revisar com o dono da loja
+     ============================================================ */
+  var WHATSAPP_NUMBER = "5571992442091"; // atualizado conforme informado
+  var INSTAGRAM_URL = "https://instagram.com/_pointsupply";
+
+  // PLACEHOLDER — cole aqui a URL do seu Web App do Google Apps Script
+  // (arquivo "apps-script-backend.js" enviado junto, com o passo a passo).
+  // Sem essa URL configurada, carrinho e WhatsApp funcionam normalmente,
+  // mas cadastro de cliente, rastreio e painel administrativo ficam inativos.
+  var APPS_SCRIPT_URL = "COLE_AQUI_A_URL_DO_SEU_WEB_APP";
+
+  var STATUS_STAGES = ["Pedido recebido", "Em preparação", "Enviado", "Entregue"];
+
+  // PLACEHOLDER — ajustar percentuais e regras reais com o dono da loja
+  // (também editável em Painel administrativo → Descontos)
+  var PROGRESSIVE_DISCOUNTS = [
+    { minQty: 2, percent: 10 },
+    { minQty: 3, percent: 15 },
+    { minQty: 4, percent: 20 }
+  ];
+
+  // Editável em Painel administrativo → FAQ
+  var FAQ_ITEMS = [
+    { q:"Quais produtos vocês vendem?", a:"Trabalhamos com artigos esportivos, incluindo camisas, regatas, retrôs, shorts e kits relacionados ao futebol, basquete e outras modalidades — organizados por liga e por time." },
+    { q:"Como posso consultar a disponibilidade?", a:"Entre em contato pelo WhatsApp e informe o produto e o tamanho que procura." },
+    { q:"Como saber qual tamanho escolher?", a:"Consulte a tabela de medidas disponível em cada produto. Caso tenha dúvidas, fale conosco pelo WhatsApp." },
+    { q:"Posso tirar dúvidas antes de comprar?", a:"Sim. Nossa equipe está disponível para ajudar antes da compra." },
+    { q:"Existem descontos para quem compra mais de uma peça?", a:"Sim, trabalhamos com descontos progressivos por quantidade de peças. Os percentuais aparecem no carrinho e são confirmados no WhatsApp." },
+    { q:"Como acompanho meu pedido?", a:"Após a confirmação da compra você recebe um código de pedido, que pode ser consultado na seção \"Rastreie seu pedido\" ou diretamente pelo WhatsApp." },
+    { q:"Vocês enviam para outras cidades?", a:"As opções de envio disponíveis serão apresentadas durante a compra." },
+    { q:"Quais são as formas de pagamento?", a:"As formas de pagamento disponíveis serão apresentadas durante o processo de compra." },
+    { q:"Ainda tenho dúvidas?", a:"Fale com nossa equipe pelo WhatsApp." }
+  ];
+
+  // Editável em Painel administrativo → Aparência. Vazio = usa o ícone de
+  // diamante padrão em SVG. Preenchido = usa essa imagem no lugar dele.
+  var LOGO_URL = "";
+
+  // PLACEHOLDER — medidas de referência em cm, confirmar antes de publicar
+  var SIZE_CHART = [
+    { size: "P",  largura: 48, comprimento: 68, manga: 20 },
+    { size: "M",  largura: 51, comprimento: 70, manga: 21 },
+    { size: "G",  largura: 54, comprimento: 72, manga: 22 },
+    { size: "GG", largura: 57, comprimento: 74, manga: 23 }
+  ];
+
+  // Times organizados por liga — nomes reais usados só como categorias de
+  // navegação (igual a qualquer catálogo de camisas), sem implicar
+  // parceria oficial com nenhum clube. Editável em Painel administrativo →
+  // Times e Ligas.
+  var TEAM_GROUPS = {
+    futebol: [
+      { liga:"Seleções Mundiais", teams:["Brasil","Argentina","Alemanha","França","Espanha","Portugal","Inglaterra","Itália","Bélgica","Japão","México","Chile"] },
+      { liga:"Brasileirão", teams:["Flamengo","Palmeiras","Corinthians","São Paulo","Fluminense","Botafogo","Grêmio","Internacional","Atlético-MG","Santos","Vasco","Cruzeiro"] },
+      { liga:"Premier League", teams:["Arsenal","Chelsea","Liverpool","Manchester City","Manchester United","Tottenham","Newcastle"] },
+      { liga:"La Liga", teams:["Real Madrid","Barcelona","Atlético de Madrid"] },
+      { liga:"Serie A", teams:["Juventus","AC Milan","Inter de Milão","Napoli","Roma"] },
+      { liga:"Bundesliga", teams:["Bayern de Munique","Borussia Dortmund"] },
+      { liga:"Ligue 1", teams:["PSG","Lyon"] },
+      { liga:"Conmebol", teams:["River Plate","Boca Juniors","Colo-Colo"] },
+      { liga:"Outros Times", teams:["Ajax","Benfica","Porto","Sporting CP"] }
+    ],
+    nba: [
+      { liga:"NBA", teams:["Los Angeles Lakers","Golden State Warriors","Chicago Bulls","Boston Celtics","Miami Heat","Brooklyn Nets"] }
+    ]
+  };
+  var TIPOS = ["Camisa", "Regata", "Retrô", "Shorts", "Kit"];
+
+  // PLACEHOLDER — catálogo real de produtos e preços da Point Supply.
+  // "originalPrice" é opcional: se preenchido, mostra preço "de/por"
+  // riscado (ex.: originalPrice:"R$ 250,00", price:"R$ 199,90"). Deixado
+  // de fora aqui porque nenhum preço real foi informado ainda.
+  var PRODUCTS = [
+    { id:"p1", name:"Camisa Futebol Titular",       category:"futebol", liga:"Brasileirão",       time:"Flamengo",     tipo:"Camisa", isOffer:false, price:"Sob consulta", installment:"Consulte parcelamento", sizes:["P","M","G","GG"], ativo:true },
+    { id:"p2", name:"Camisa Futebol Retrô Clássica", category:"futebol", liga:"Conmebol",          time:"River Plate",  tipo:"Retrô",  isOffer:false, price:"Sob consulta", installment:"Consulte parcelamento", sizes:["P","M","G","GG"], ativo:true },
+    { id:"p3", name:"Regata Futebol Treino",         category:"futebol", liga:"Brasileirão",       time:"Palmeiras",    tipo:"Regata", isOffer:true,  price:"Sob consulta", installment:"Consulte parcelamento", sizes:["P","M","G","GG"], ativo:true },
+    { id:"p4", name:"Kit Futebol Completo",          category:"futebol", liga:"Premier League",    time:"Arsenal",      tipo:"Kit",    isOffer:false, price:"Sob consulta", installment:"Consulte parcelamento", sizes:["P","M","G","GG"], ativo:true },
+    { id:"p5", name:"Camisa NBA Association",        category:"nba",     liga:"NBA",                time:"Los Angeles Lakers", tipo:"Camisa", isOffer:false, price:"Sob consulta", installment:"Consulte parcelamento", sizes:["P","M","G","GG"], ativo:true },
+    { id:"p6", name:"Regata NBA City Edition",        category:"nba",     liga:"NBA",                time:"Golden State Warriors", tipo:"Regata", isOffer:false, price:"Sob consulta", installment:"Consulte parcelamento", sizes:["P","M","G","GG"], ativo:true },
+    { id:"p7", name:"Camisa NBA Retrô",               category:"nba",     liga:"NBA",                time:"Chicago Bulls", tipo:"Retrô",  isOffer:true,  price:"Sob consulta", installment:"Consulte parcelamento", sizes:["P","M","G","GG"], ativo:true },
+    { id:"p8", name:"Shorts Esportivo Multiuso",      category:"futebol", liga:"—",                  time:"—",      tipo:"Shorts", isOffer:true,  price:"Sob consulta", installment:"Consulte parcelamento", sizes:["P","M","G","GG"], ativo:true }
+  ];
+
+  /* ============================================================
+     HELPERS
+     ============================================================ */
+  function waLink(message){
+    return "https://wa.me/" + WHATSAPP_NUMBER + "?text=" + encodeURIComponent(message);
+  }
+  function formatBRL(n){
+    var num = Number(n) || 0;
+    return "R$ " + num.toFixed(2).replace(".", ",");
+  }
+  function generateOrderId(){
+    var t = Date.now().toString(36).toUpperCase().slice(-5);
+    var r = Math.random().toString(36).toUpperCase().slice(2,4);
+    return "PS" + t + r;
+  }
+  function escapeHtml(str){
+    return String(str == null ? "" : str).replace(/[&<>"']/g, function(c){
+      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+    });
+  }
+
+  // Backend — todas as leituras/gravações de vendas e clientes passam por
+  // um Google Apps Script (Web App) publicado na conta Google do dono da
+  // loja. A senha do painel é verificada DENTRO do Apps Script (nunca fica
+  // neste arquivo), e as leituras sensíveis (getSales/getCustomers) exigem
+  // essa senha a cada chamada. Ver apps-script-backend.js para o código do
+  // backend e o passo a passo de publicação.
+  function hasBackend(){ return APPS_SCRIPT_URL && APPS_SCRIPT_URL.indexOf("COLE_AQUI") === -1; }
+
+  async function callBackend(action, params){
+    if(!hasBackend()) return { ok:false, error:"backend-not-configured" };
+    try{
+      var body = new URLSearchParams(Object.assign({ action:action }, params || {}));
+      var res = await fetch(APPS_SCRIPT_URL, { method:"POST", body:body });
+      if(!res.ok) return { ok:false, error:"http-" + res.status };
+      return await res.json();
+    }catch(e){
+      return { ok:false, error:"network" };
+    }
+  }
+
+  /* ============================================================
+     HEADER — estado ao rolar
+     ============================================================ */
+  var header = document.getElementById("siteHeader");
+  function onScroll(){ header.classList.toggle("is-scrolled", window.scrollY > 12); }
+  document.addEventListener("scroll", onScroll, { passive:true });
+  onScroll();
+
+  /* ============================================================
+     LINKS GENÉRICOS DE WHATSAPP
+     ============================================================ */
+  var genericMsg = "Olá! Gostaria de falar com a equipe da Point Supply.";
+  function refreshGenericWaLinks(){
+    document.querySelectorAll(".js-wa-generic").forEach(function(el){
+      el.setAttribute("href", waLink(genericMsg));
+    });
+  }
+  refreshGenericWaLinks();
+
+  document.querySelectorAll(".js-instagram-link").forEach(function(el){
+    el.setAttribute("href", INSTAGRAM_URL);
+  });
+
+  /* ============================================================
+     MENU MOBILE
+     ============================================================ */
+  var menuToggle = document.getElementById("menuToggle");
+  var mobileDrawer = document.getElementById("mobileDrawer");
+  function openDrawer(){ mobileDrawer.classList.add("is-open"); menuToggle.setAttribute("aria-expanded","true"); document.body.style.overflow="hidden"; }
+  function closeDrawer(){ mobileDrawer.classList.remove("is-open"); menuToggle.setAttribute("aria-expanded","false"); document.body.style.overflow=""; }
+  menuToggle.addEventListener("click", openDrawer);
+  mobileDrawer.querySelectorAll("[data-close-drawer]").forEach(function(el){ el.addEventListener("click", closeDrawer); });
+
+  /* ============================================================
+     BUSCA
+     ============================================================ */
+  var searchToggle = document.getElementById("searchToggle");
+  var searchFlyout = document.getElementById("searchFlyout");
+  var searchInput = document.getElementById("searchInput");
+  searchToggle.addEventListener("click", function(){
+    var isOpen = searchFlyout.classList.toggle("is-open");
+    searchToggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    if(isOpen){ setTimeout(function(){ searchInput.focus(); }, 250); }
+  });
+  searchInput.addEventListener("input", function(){ applyFilters(); });
+  searchInput.addEventListener("keydown", function(e){
+    if(e.key === "Enter"){ document.getElementById("produtos").scrollIntoView({ behavior:"smooth", block:"start" }); }
+  });
+
+  /* ============================================================
+     MODAL GENÉRICO (medidas / checkout / políticas / login admin / venda manual)
+     ============================================================ */
+  function openModal(id){
+    var m = document.getElementById(id);
+    if(!m) return;
+    m.classList.add("is-open");
+    document.body.style.overflow = "hidden";
+  }
+  function closeModal(id){
+    var m = document.getElementById(id);
+    if(!m) return;
+    m.classList.remove("is-open");
+    document.body.style.overflow = "";
+  }
+  document.querySelectorAll("[data-open-modal]").forEach(function(trigger){
+    trigger.addEventListener("click", function(){
+      var id = trigger.getAttribute("data-open-modal");
+      if(id === "policyModal"){ fillPolicyModal(trigger.getAttribute("data-policy")); }
+      openModal(id);
+    });
+  });
+  document.querySelectorAll("[data-close-modal]").forEach(function(el){
+    el.addEventListener("click", function(){ closeModal(el.getAttribute("data-close-modal")); });
+  });
+
+  var POLICY_TITLES = {
+    privacidade: "Política de Privacidade",
+    termos: "Termos de Uso",
+    trocas: "Trocas e Devoluções",
+    entrega: "Entrega"
+  };
+  function fillPolicyModal(key){
+    document.getElementById("policyTitle").textContent = POLICY_TITLES[key] || "Em breve";
+  }
+
+  /* ============================================================
+     PRODUTOS — render, filtros (categoria + time + tipo), busca
+     ============================================================ */
+  var grid = document.getElementById("productGrid");
+  var noResults = document.getElementById("noResults");
+  var filterTipo = document.getElementById("filterTipo");
+  var currentFilter = "todos";
+  var currentTeam = "todos";
+
+  function categoryLabel(cat){
+    if(cat === "futebol") return "Futebol";
+    if(cat === "nba") return "NBA";
+    return "Camisas";
+  }
+
+  function productMessage(name, size){
+    if(size){
+      return "Olá! Tenho interesse no produto " + name + ", tamanho " + size + ". Gostaria de confirmar a disponibilidade.";
+    }
+    return "Olá! Tenho interesse no produto " + name + ". Gostaria de saber quais tamanhos estão disponíveis.";
+  }
+
+  function optionsHtml(list, allLabel){
+    var html = '<option value="todos">' + allLabel + '</option>';
+    list.forEach(function(v){ if(v && v !== "—"){ html += '<option value="' + escapeHtml(v) + '">' + escapeHtml(v) + '</option>'; } });
+    return html;
+  }
+
+  function updateRefineSelects(){
+    filterTipo.innerHTML = optionsHtml(TIPOS, "Todos os tipos");
+  }
+
+  /* ---------- Times e ligas (navegação estilo "escolha seu time") ---------- */
+  function slugify(str){
+    return String(str).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  }
+  function initials(name){
+    var words = String(name).split(" ").filter(Boolean);
+    if(words.length === 1) return words[0].slice(0, 2).toUpperCase();
+    return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+  }
+  function findTeam(slug){
+    var cats = ["futebol", "nba"];
+    for(var c = 0; c < cats.length; c++){
+      var groups = TEAM_GROUPS[cats[c]];
+      for(var g = 0; g < groups.length; g++){
+        for(var t = 0; t < groups[g].teams.length; t++){
+          if(slugify(groups[g].teams[t]) === slug){
+            return { team: groups[g].teams[t], liga: groups[g].liga, category: cats[c] };
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  function renderLeagueRows(){
+    var container = document.getElementById("leagueRows");
+    var cats = (currentFilter === "futebol" || currentFilter === "nba") ? [currentFilter] : ["futebol", "nba"];
+    container.innerHTML = "";
+    cats.forEach(function(cat){
+      TEAM_GROUPS[cat].forEach(function(group){
+        var row = document.createElement("div");
+        row.className = "league-row";
+        var chipsHtml = group.teams.map(function(team){
+          var active = currentTeam === team ? " is-active" : "";
+          return '<button type="button" class="team-chip' + active + '" data-team="' + escapeHtml(team) + '" data-liga="' + escapeHtml(group.liga) + '" data-category="' + cat + '"><span class="team-badge">' + initials(team) + '</span>' + escapeHtml(team) + '</button>';
+        }).join("");
+        row.innerHTML = '<h3 class="league-row-title">' + escapeHtml(group.liga) + '</h3><div class="team-scroll">' + chipsHtml + '</div>';
+        container.appendChild(row);
+      });
+    });
+    container.querySelectorAll(".team-chip").forEach(function(chip){
+      chip.addEventListener("click", function(){
+        selectTeam(chip.dataset.team, chip.dataset.liga, chip.dataset.category);
+      });
+    });
+  }
+
+  function setCategoryPill(category){
+    currentFilter = category;
+    document.querySelectorAll(".filter-btn").forEach(function(b){
+      var active = b.dataset.filter === category;
+      b.classList.toggle("is-active", active);
+      b.setAttribute("aria-selected", active ? "true" : "false");
+    });
+  }
+
+  function showTeamHeader(team){
+    var header = document.getElementById("teamHeader");
+    header.hidden = false;
+    document.getElementById("teamHeaderBadge").textContent = initials(team);
+    document.getElementById("teamHeaderName").textContent = team;
+    updateTeamHeaderCount();
+  }
+
+  function updateTeamHeaderCount(){
+    if(currentTeam === "todos") return;
+    var count = grid.querySelectorAll(".product-card:not([hidden])").length;
+    document.getElementById("teamHeaderCount").textContent = count + (count === 1 ? " disponível" : " disponíveis");
+  }
+
+  // Em ambientes com origem restrita (ex.: pré-visualização em iframe),
+  // pushState/replaceState podem lançar erro — isso nunca deve travar a
+  // navegação do site, então protegemos com try/catch.
+  function safeUpdateUrl(url, usePush){
+    try{
+      if(usePush){ window.history.pushState({}, "", url); }
+      else{ window.history.replaceState({}, "", url); }
+    }catch(e){ /* URL não pôde ser atualizada neste ambiente — sem problema, o filtro já foi aplicado. */ }
+  }
+
+  function selectTeam(team, liga, category, skipHistory){
+    currentTeam = team;
+    if(currentFilter !== category && currentFilter !== "ofertas"){ setCategoryPill(category); }
+    renderLeagueRows();
+    applyFilters();
+    showTeamHeader(team);
+    if(!skipHistory){
+      var url = new URL(window.location.href);
+      url.searchParams.set("time", slugify(team));
+      safeUpdateUrl(url, true);
+    }
+    document.getElementById("produtos").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function clearTeam(skipHistory){
+    currentTeam = "todos";
+    renderLeagueRows();
+    applyFilters();
+    document.getElementById("teamHeader").hidden = true;
+    if(!skipHistory){
+      var url = new URL(window.location.href);
+      url.searchParams.delete("time");
+      safeUpdateUrl(url, false);
+    }
+  }
+
+  document.getElementById("teamHeaderBack").addEventListener("click", function(){ clearTeam(); });
+
+  function applyFromUrl(){
+    var params = new URLSearchParams(window.location.search);
+    var slug = params.get("time");
+    if(slug){
+      var found = findTeam(slug);
+      if(found){ selectTeam(found.team, found.liga, found.category, true); return; }
+    }
+    clearTeam(true);
+  }
+  window.addEventListener("popstate", applyFromUrl);
+
+  function renderProducts(){
+    grid.innerHTML = "";
+    PRODUCTS.filter(function(p){ return p.ativo !== false; }).forEach(function(p){
+      var card = document.createElement("article");
+      card.className = "product-card";
+      card.dataset.category = p.category;
+      card.dataset.liga = p.liga;
+      card.dataset.time = p.time;
+      card.dataset.tipo = p.tipo;
+      card.dataset.offer = p.isOffer ? "1" : "0";
+      card.dataset.name = p.name.toLowerCase();
+
+      var tagHtml = p.isOffer ? '<span class="product-tag product-tag--offer">Oferta</span>' : "";
+      var prontaHtml = p.prontaEntrega ? '<span class="product-tag product-tag--pronta">🔥 Pronta entrega</span>' : "";
+      var sizeChips = p.sizes.map(function(s){ return '<button type="button" class="size-chip" data-size="' + s + '">' + s + '</button>'; }).join("");
+      var metaBits = [categoryLabel(p.category), p.tipo];
+      if(p.liga && p.liga !== "—") metaBits.push(p.liga);
+      if(p.time && p.time !== "—") metaBits.push(p.time);
+      var priceHtml = p.originalPrice
+        ? '<span class="price-original">' + escapeHtml(p.originalPrice) + '</span><span class="price-current">' + escapeHtml(p.price) + '</span>'
+        : '<span class="product-price">' + escapeHtml(p.price) + '</span>';
+
+      card.innerHTML =
+        '<div class="product-media ghost-panel">' + tagHtml + prontaHtml + '</div>' +
+        '<div class="product-body">' +
+          '<span class="product-meta-row">' + metaBits.map(escapeHtml).join(" · ") + '</span>' +
+          '<h3 class="product-name">' + escapeHtml(p.name) + '</h3>' +
+          '<div class="product-price-row">' + priceHtml + '</div>' +
+          '<span class="product-installment">' + escapeHtml(p.installment) + '</span>' +
+          '<div class="product-sizes">' + sizeChips + '</div>' +
+          '<p class="size-helper">Não sabe seu tamanho? <button type="button" class="size-chart-link" data-open-modal="sizeChartModal">Ver tabela de medidas</button></p>' +
+          '<span class="product-avail">Disponibilidade a confirmar</span>' +
+          '<div class="product-actions">' +
+            '<a href="#" class="btn btn-primary js-buy-now" data-id="' + p.id + '">Comprar agora</a>' +
+            '<a href="#" class="btn btn-whatsapp js-wa-product" data-id="' + p.id + '" target="_blank" rel="noopener">WhatsApp</a>' +
+          '</div>' +
+        '</div>';
+
+      grid.appendChild(card);
+    });
+
+    grid.querySelectorAll(".size-chip").forEach(function(chip){
+      chip.addEventListener("click", function(){
+        var siblings = chip.parentElement.querySelectorAll(".size-chip");
+        var already = chip.classList.contains("is-selected");
+        siblings.forEach(function(s){ s.classList.remove("is-selected"); });
+        if(!already){ chip.classList.add("is-selected"); }
+        updateProductWaLink(chip.closest(".product-card"));
+      });
+    });
+
+    grid.querySelectorAll(".js-wa-product").forEach(function(btn){ updateProductWaLink(btn.closest(".product-card")); });
+
+    grid.querySelectorAll(".js-buy-now").forEach(function(btn){
+      btn.addEventListener("click", function(e){
+        e.preventDefault();
+        var card = btn.closest(".product-card");
+        var id = btn.dataset.id;
+        var product = PRODUCTS.find(function(p){ return p.id === id; });
+        var selected = card.querySelector(".size-chip.is-selected");
+        addToCart(product, selected ? selected.dataset.size : null);
+        openCart();
+      });
+    });
+
+    document.querySelectorAll("[data-open-modal='sizeChartModal']").forEach(function(trigger){
+      trigger.addEventListener("click", function(){ openModal("sizeChartModal"); });
+    });
+  }
+
+  function updateProductWaLink(card){
+    var btn = card.querySelector(".js-wa-product");
+    var id = btn.dataset.id;
+    var product = PRODUCTS.find(function(p){ return p.id === id; });
+    var selected = card.querySelector(".size-chip.is-selected");
+    btn.setAttribute("href", waLink(productMessage(product.name, selected ? selected.dataset.size : null)));
+  }
+
+  function applyFilters(){
+    var query = searchInput.value.trim().toLowerCase();
+    var tipo = filterTipo.value;
+    var visibleCount = 0;
+    grid.querySelectorAll(".product-card").forEach(function(card){
+      var matchesCategory = currentFilter === "todos" ? true :
+        currentFilter === "ofertas" ? card.dataset.offer === "1" :
+        card.dataset.category === currentFilter;
+      var matchesTeam = currentTeam === "todos" || card.dataset.time === currentTeam;
+      var matchesTipo = tipo === "todos" || card.dataset.tipo === tipo;
+      var matchesQuery = !query || card.dataset.name.indexOf(query) !== -1;
+      var show = matchesCategory && matchesTeam && matchesTipo && matchesQuery;
+      card.hidden = !show;
+      if(show) visibleCount++;
+    });
+    noResults.classList.toggle("is-visible", visibleCount === 0);
+    updateTeamHeaderCount();
+  }
+
+  document.getElementById("filterRow").addEventListener("click", function(e){
+    var btn = e.target.closest(".filter-btn");
+    if(!btn) return;
+    setCategoryPill(btn.dataset.filter);
+    clearTeam(true);
+  });
+
+  document.querySelectorAll("[data-filter-link]").forEach(function(link){
+    link.addEventListener("click", function(){
+      setCategoryPill(link.dataset.filterLink);
+      clearTeam(true);
+    });
+  });
+
+  filterTipo.addEventListener("change", applyFilters);
+  document.getElementById("filterClear").addEventListener("click", function(){
+    searchInput.value = "";
+    filterTipo.value = "todos";
+    clearTeam();
+  });
+
+  updateRefineSelects();
+  renderProducts();
+  renderLeagueRows();
+  applyFilters();
+  applyFromUrl();
+  renderFaq();
+
+  /* Banner de descontos progressivos (texto gerado a partir da config) */
+  function renderDiscountBanner(){
+    var parts = PROGRESSIVE_DISCOUNTS.map(function(t){ return "leve " + t.minQty + "+ peças e ganhe " + t.percent + "% off"; });
+    document.getElementById("discountBanner").innerHTML = "<strong>Descontos progressivos:</strong> " + parts.join(" · ") + ".";
+  }
+  renderDiscountBanner();
+
+  /* Tabela de medidas */
+  (function renderSizeTable(){
+    var tbody = document.getElementById("sizeTableBody");
+    tbody.innerHTML = SIZE_CHART.map(function(r){
+      return "<tr><td>" + r.size + "</td><td>" + r.largura + " cm</td><td>" + r.comprimento + " cm</td><td>" + r.manga + " cm</td></tr>";
+    }).join("");
+  })();
+
+  /* ============================================================
+     CARRINHO (estado em memória — sem localStorage)
+     ============================================================ */
+  var cart = [];
+  var cartDrawer = document.getElementById("cartDrawer");
+  var cartItemsEl = document.getElementById("cartItems");
+  var cartEmptyEl = document.getElementById("cartEmpty");
+  var cartBadge = document.getElementById("cartBadge");
+  var cartDiscountNote = document.getElementById("cartDiscountNote");
+
+  function getDiscountForQty(qty){
+    var applicable = PROGRESSIVE_DISCOUNTS.filter(function(t){ return qty >= t.minQty; });
+    if(!applicable.length) return null;
+    return applicable.reduce(function(a,b){ return b.percent > a.percent ? b : a; });
+  }
+
+  function addToCart(product, size){
+    cart.push({ name: product.name, size: size });
+    renderCart();
+  }
+  function removeFromCart(index){ cart.splice(index, 1); renderCart(); }
+
+  function renderCart(){
+    cartItemsEl.innerHTML = "";
+    cartEmptyEl.style.display = cart.length ? "none" : "block";
+    cartBadge.hidden = cart.length === 0;
+    cartBadge.textContent = cart.length;
+
+    cart.forEach(function(item, index){
+      var row = document.createElement("div");
+      row.style.cssText = "display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid rgba(247,247,244,.1);padding-bottom:14px";
+      row.innerHTML =
+        '<div><div style="font-weight:700;font-size:14.5px">' + escapeHtml(item.name) + '</div>' +
+        '<div style="font-size:12.5px;color:var(--gray);margin-top:4px">' + (item.size ? "Tamanho " + escapeHtml(item.size) : "Tamanho a confirmar") + '</div></div>' +
+        '<button type="button" aria-label="Remover item" style="background:none;border:none;color:var(--gray);font-size:18px;line-height:1">&times;</button>';
+      row.querySelector("button").addEventListener("click", function(){ removeFromCart(index); });
+      cartItemsEl.appendChild(row);
+    });
+
+    var discount = getDiscountForQty(cart.length);
+    if(cart.length === 0){
+      cartDiscountNote.textContent = "";
+    } else if(discount){
+      cartDiscountNote.textContent = "Desconto progressivo aplicado: " + discount.percent + "% (" + cart.length + " peças).";
+    } else {
+      var next = PROGRESSIVE_DISCOUNTS.slice().sort(function(a,b){ return a.minQty - b.minQty; })[0];
+      if(next){ cartDiscountNote.textContent = "Adicione mais " + (next.minQty - cart.length) + " peça(s) e ganhe " + next.percent + "% de desconto."; }
+    }
+  }
+
+  function openCart(){ cartDrawer.classList.add("is-open"); document.body.style.overflow="hidden"; }
+  function closeCart(){ cartDrawer.classList.remove("is-open"); document.body.style.overflow=""; }
+  document.getElementById("cartToggle").addEventListener("click", openCart);
+  cartDrawer.querySelectorAll("[data-close-cart]").forEach(function(el){ el.addEventListener("click", closeCart); });
+  renderCart();
+
+  /* ============================================================
+     CHECKOUT — cadastro do cliente + geração de pedido
+     ============================================================ */
+  var checkoutForm = document.getElementById("checkoutForm");
+  var checkoutFormWrap = document.getElementById("checkoutFormWrap");
+  var checkoutSuccess = document.getElementById("checkoutSuccess");
+
+  document.getElementById("cartCheckoutBtn").addEventListener("click", function(){
+    if(cart.length === 0){ openCart(); return; }
+    checkoutFormWrap.hidden = false;
+    checkoutSuccess.hidden = true;
+    checkoutForm.reset();
+    openModal("checkoutModal");
+  });
+
+  function buildOrderMessage(orderId, items, discount){
+    var msg = "Olá! Gostaria de finalizar meu pedido " + orderId + ":\n";
+    items.forEach(function(item){
+      msg += "- " + item.name + (item.size ? " (tamanho " + item.size + ")" : " (tamanho a confirmar)") + "\n";
+    });
+    if(discount){ msg += "Desconto progressivo aplicado: " + discount.percent + "% (" + items.length + " peças)\n"; }
+    msg += "Aguardo confirmação de disponibilidade e valores. Obrigado!";
+    return msg;
+  }
+
+  checkoutForm.addEventListener("submit", async function(e){
+    e.preventDefault();
+    var name = checkoutForm.name.value.trim();
+    var phone = checkoutForm.phone.value.trim();
+    var city = checkoutForm.city.value.trim();
+    if(!name || !phone || cart.length === 0) return;
+
+    var submitBtn = checkoutForm.querySelector("button[type=submit]");
+    submitBtn.disabled = true; submitBtn.textContent = "Gerando pedido...";
+
+    var orderId = generateOrderId();
+    var discount = getDiscountForQty(cart.length);
+    var dateIso = new Date().toISOString();
+    var itemsSnapshot = cart.slice();
+
+    var saleResults = await Promise.all(itemsSnapshot.map(function(item){
+      return callBackend("addSale", {
+        id: orderId + "-" + Math.random().toString(36).slice(2,6),
+        orderId: orderId,
+        date: dateIso,
+        product: item.name,
+        size: item.size || "—",
+        customerName: name,
+        customerPhone: phone,
+        saleValue: 0,
+        costValue: 0,
+        discountPercent: discount ? discount.percent : 0,
+        status: STATUS_STAGES[0],
+        trackingCode: "",
+        source: "automático"
+      });
+    }));
+    var savedSales = saleResults.every(function(r){ return r.ok; });
+
+    var custResult = await callBackend("addCustomer", { name:name, phone:phone, city: city || "—", orderId:orderId, date:dateIso });
+    var savedCustomers = custResult.ok;
+
+    var message = buildOrderMessage(orderId, itemsSnapshot, discount);
+    var link = waLink(message);
+
+    checkoutFormWrap.hidden = true;
+    checkoutSuccess.hidden = false;
+    var warn = (savedSales && savedCustomers) ? "" :
+      '<p class="form-note" style="margin-top:10px">Não foi possível registrar seus dados agora, mas seu pedido já pode ser enviado pelo WhatsApp.</p>';
+    checkoutSuccess.innerHTML =
+      '<p style="color:var(--gray);font-size:13px">Seu código de pedido:</p>' +
+      '<div class="order-id">' + orderId + '</div>' +
+      '<p style="color:var(--gray);font-size:12.5px">Guarde este código para acompanhar seu pedido na seção "Rastreie seu pedido".</p>' +
+      warn +
+      '<div class="checkout-success-actions">' +
+        '<a href="' + link + '" target="_blank" rel="noopener" class="btn btn-whatsapp">Abrir WhatsApp</a>' +
+        '<button type="button" class="btn btn-outline" data-close-modal="checkoutModal">Fechar</button>' +
+      '</div>';
+    checkoutSuccess.querySelectorAll("[data-close-modal]").forEach(function(el){
+      el.addEventListener("click", function(){ closeModal(el.getAttribute("data-close-modal")); });
+    });
+
+    window.open(link, "_blank");
+
+    cart = [];
+    renderCart();
+    submitBtn.disabled = false; submitBtn.textContent = "Gerar pedido e continuar no WhatsApp";
+  });
+
+  /* ============================================================
+     RASTREIO DE PEDIDO
+     ============================================================ */
+  var trackingInput = document.getElementById("trackingInput");
+  var trackingBtn = document.getElementById("trackingBtn");
+  var trackingResult = document.getElementById("trackingResult");
+
+  async function handleTrackingLookup(){
+    var code = trackingInput.value.trim().toUpperCase();
+    if(!code) return;
+    if(!hasBackend()){
+      trackingResult.hidden = false;
+      trackingResult.innerHTML = '<div class="tracking-not-found">O rastreamento ainda não foi configurado pela loja. Fale com a gente pelo WhatsApp.<br><a href="' + waLink("Olá! Gostaria de saber o status do pedido " + code + ".") + '" target="_blank" rel="noopener" class="btn btn-whatsapp">Falar no WhatsApp</a></div>';
+      return;
+    }
+    trackingBtn.disabled = true; trackingBtn.textContent = "Consultando...";
+    var res = await callBackend("trackOrder", { orderId: code });
+    renderTrackingResult(code, (res.ok && res.rows) ? res.rows : []);
+    trackingBtn.disabled = false; trackingBtn.textContent = "Consultar";
+  }
+
+  function renderTrackingResult(code, entries){
+    trackingResult.hidden = false;
+    if(!entries.length){
+      trackingResult.className = "tracking-result";
+      trackingResult.innerHTML =
+        '<div class="tracking-not-found">Não encontramos o pedido <strong>' + escapeHtml(code) + '</strong>. Confira o código ou fale direto com a gente.' +
+        '<br><a href="' + waLink("Olá! Gostaria de saber o status do pedido " + code + ".") + '" target="_blank" rel="noopener" class="btn btn-whatsapp">Falar no WhatsApp</a></div>';
+      return;
+    }
+    var status = entries[0].status || STATUS_STAGES[0];
+    var stageIndex = STATUS_STAGES.indexOf(status);
+    if(stageIndex === -1) stageIndex = 0;
+    var trackingCode = entries.map(function(e2){ return e2.trackingCode; }).find(function(t){ return t; });
+
+    var itemsHtml = entries.map(function(e2){ return escapeHtml(e2.product) + " (tamanho " + escapeHtml(e2.size) + ")"; }).join(", ");
+    var stepsHtml = STATUS_STAGES.map(function(s, i){
+      return '<div class="tracking-step' + (i <= stageIndex ? " is-done" : "") + '">' + escapeHtml(s) + '</div>';
+    }).join("");
+
+    trackingResult.innerHTML =
+      '<div class="tracking-result-title">Pedido ' + escapeHtml(code) + '</div>' +
+      '<div class="tracking-items">' + itemsHtml + '</div>' +
+      '<div class="tracking-steps">' + stepsHtml + '</div>' +
+      (trackingCode ? '<div class="tracking-code">Código de rastreio: ' + escapeHtml(trackingCode) + '</div>' : "");
+  }
+
+  trackingBtn.addEventListener("click", handleTrackingLookup);
+  trackingInput.addEventListener("keydown", function(e){ if(e.key === "Enter") handleTrackingLookup(); });
+
+  /* ============================================================
+     FAQ — renderizada a partir de FAQ_ITEMS (editável no painel)
+     ============================================================ */
+  function renderFaq(){
+    var list = document.getElementById("faqList");
+    list.innerHTML = FAQ_ITEMS.map(function(item){
+      return '<div class="faq-item">' +
+        '<button class="faq-q" aria-expanded="false">' + escapeHtml(item.q) +
+        '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"></path></svg></button>' +
+        '<div class="faq-a"><div class="faq-a-inner">' + escapeHtml(item.a) + '</div></div>' +
+      '</div>';
+    }).join("");
+
+    list.querySelectorAll(".faq-item").forEach(function(item){
+      var q = item.querySelector(".faq-q");
+      var a = item.querySelector(".faq-a");
+      q.addEventListener("click", function(){
+        var isOpen = item.classList.contains("is-open");
+        list.querySelectorAll(".faq-item.is-open").forEach(function(openItem){
+          if(openItem !== item){
+            openItem.classList.remove("is-open");
+            openItem.querySelector(".faq-q").setAttribute("aria-expanded","false");
+            openItem.querySelector(".faq-a").style.maxHeight = null;
+          }
+        });
+        item.classList.toggle("is-open", !isOpen);
+        q.setAttribute("aria-expanded", (!isOpen).toString());
+        a.style.maxHeight = !isOpen ? a.scrollHeight + "px" : null;
+      });
+    });
+  }
+
+  /* ============================================================
+     INSTAGRAM (placeholder)
+     ============================================================ */
+  var instaGrid = document.getElementById("instaGrid");
+  for(var i = 0; i < 6; i++){
+    var tile = document.createElement("a");
+    tile.className = "insta-tile ghost-panel";
+    tile.href = INSTAGRAM_URL;
+    tile.target = "_blank";
+    tile.rel = "noopener";
+    tile.setAttribute("aria-label", "Ver publicação no Instagram da Point Supply");
+    tile.innerHTML = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="4"></rect><circle cx="12" cy="12" r="4"></circle><circle cx="17.5" cy="6.5" r="1"></circle></svg>';
+    instaGrid.appendChild(tile);
+  }
+
+  /* ============================================================
+     SCROLL REVEAL
+     ============================================================ */
+  var revealEls = document.querySelectorAll(".reveal");
+  if("IntersectionObserver" in window){
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if(entry.isIntersecting){ entry.target.classList.add("is-visible"); io.unobserve(entry.target); }
+      });
+    }, { threshold:.12 });
+    revealEls.forEach(function(el){ io.observe(el); });
+  } else {
+    revealEls.forEach(function(el){ el.classList.add("is-visible"); });
+  }
+
+  /* ============================================================
+     ESC fecha painéis/modais abertos
+     ============================================================ */
+  document.addEventListener("keydown", function(e){
+    if(e.key !== "Escape") return;
+    closeDrawer();
+    closeCart();
+    document.querySelectorAll(".modal.is-open").forEach(function(m){ closeModal(m.id); });
+    if(searchFlyout.classList.contains("is-open")){
+      searchFlyout.classList.remove("is-open");
+      searchToggle.setAttribute("aria-expanded","false");
+    }
+  });
+
+  /* ============================================================
+     PAINEL ADMINISTRATIVO
+     A senha é verificada dentro do Google Apps Script (nunca fica neste
+     arquivo). Ela é guardada só em memória durante a sessão do navegador
+     (nunca em localStorage) e enviada a cada leitura/gravação sensível.
+     ============================================================ */
+  var storefrontRoot = document.getElementById("storefrontRoot");
+  var adminPanel = document.getElementById("adminPanel");
+  var adminSales = [];
+  var adminCustomers = [];
+  var adminPassword = "";
+
+  function showAdmin(){
+    storefrontRoot.style.display = "none";
+    adminPanel.hidden = false;
+    document.body.style.overflow = "";
+    window.scrollTo(0,0);
+    document.getElementById("adminBackendMissingWarning").hidden = hasBackend();
+  }
+  function hideAdmin(){
+    adminPanel.hidden = true;
+    storefrontRoot.style.display = "";
+    adminPassword = "";
+  }
+
+  document.getElementById("adminTrigger").addEventListener("click", function(){
+    document.getElementById("adminLoginForm").reset();
+    document.getElementById("adminLoginError").hidden = true;
+    openModal("adminLoginModal");
+  });
+
+  document.getElementById("adminLoginForm").addEventListener("submit", async function(e){
+    e.preventDefault();
+    var pass = e.target.password.value;
+    var errorEl = document.getElementById("adminLoginError");
+    errorEl.hidden = true;
+
+    if(!hasBackend()){
+      errorEl.textContent = "O painel ainda não foi conectado ao backend (Google Apps Script). Veja o arquivo apps-script-backend.js.";
+      errorEl.hidden = false;
+      return;
+    }
+
+    var submitBtn = e.target.querySelector("button[type=submit]");
+    submitBtn.disabled = true; submitBtn.textContent = "Verificando...";
+    var res = await callBackend("adminLogin", { password: pass });
+    submitBtn.disabled = false; submitBtn.textContent = "Entrar";
+
+    if(res.ok){
+      adminPassword = pass;
+      closeModal("adminLoginModal");
+      showAdmin();
+      loadAdminData();
+    } else {
+      errorEl.textContent = "Senha incorreta.";
+      errorEl.hidden = false;
+    }
+  });
+
+  document.getElementById("adminExitBtn").addEventListener("click", hideAdmin);
+
+  document.querySelectorAll(".admin-tab").forEach(function(tab){
+    tab.addEventListener("click", function(){
+      var target = tab.dataset.adminTab;
+      document.querySelectorAll(".admin-tab").forEach(function(t){
+        var active = t === tab;
+        t.classList.toggle("is-active", active);
+        t.setAttribute("aria-selected", active ? "true" : "false");
+      });
+      document.querySelectorAll(".admin-panel-view").forEach(function(v){
+        v.classList.toggle("is-active", v.dataset.adminView === target);
+      });
+    });
+  });
+
+  document.querySelectorAll("[data-admin-refresh]").forEach(function(btn){
+    btn.addEventListener("click", loadAdminData);
+  });
+
+  async function loadAdminData(){
+    var salesRes = await callBackend("getSales", { password: adminPassword });
+    var custRes = await callBackend("getCustomers", { password: adminPassword });
+    if(!salesRes.ok || !custRes.ok){
+      hideAdmin();
+      alert("Não foi possível carregar os dados. A sessão pode ter expirado — entre novamente.");
+      return;
+    }
+    adminSales = salesRes.rows || [];
+    adminCustomers = custRes.rows || [];
+    renderAdminMetrics();
+    renderAdminSalesTable();
+    renderAdminCustomersTable();
+    renderAdminProducts();
+    renderAdminLeagues();
+    renderAdminFaq();
+    renderAdminDiscounts();
+    document.getElementById("adminLogoUrlInput").value = LOGO_URL;
+    if(LOGO_URL){
+      var preview = document.getElementById("adminLogoPreview");
+      preview.src = LOGO_URL;
+      preview.style.display = "inline-block";
+    }
+  }
+
+  /* Dados de exemplo para testar o painel (marcados com source:"exemplo",
+     removíveis a qualquer momento com "Apagar todos os dados"). */
+  async function seedSampleData(){
+    if(!hasBackend()){ alert("Conecte o backend (Google Apps Script) antes de carregar dados de exemplo."); return; }
+    var btn = document.getElementById("adminSeedBtn");
+    btn.disabled = true; btn.textContent = "Carregando...";
+
+    var now = Date.now();
+    var demo = [
+      { orderId:"PSDEMO1", product:"Camisa Futebol Titular",  size:"M",  customerName:"Cliente Teste 1", customerPhone:"(71) 90000-0001", saleValue:180, costValue:95,  status:"Entregue",       trackingCode:"BR123456789" },
+      { orderId:"PSDEMO1", product:"Regata Futebol Treino",    size:"G",  customerName:"Cliente Teste 1", customerPhone:"(71) 90000-0001", saleValue:90,  costValue:45,  status:"Entregue",       trackingCode:"BR123456789" },
+      { orderId:"PSDEMO2", product:"Camisa NBA Association",   size:"GG", customerName:"Cliente Teste 2", customerPhone:"(71) 90000-0002", saleValue:220, costValue:120, status:"Enviado",        trackingCode:"BR987654321" },
+      { orderId:"PSDEMO3", product:"Camisa Futebol Titular",  size:"P",  customerName:"Cliente Teste 3", customerPhone:"(71) 90000-0003", saleValue:180, costValue:95,  status:"Em preparação",  trackingCode:"" },
+      { orderId:"PSDEMO4", product:"Kit Futebol Completo",     size:"M",  customerName:"Cliente Teste 4", customerPhone:"(71) 90000-0004", saleValue:260, costValue:150, status:"Pedido recebido",trackingCode:"" },
+      { orderId:"",        product:"Shorts Esportivo Multiuso",size:"G",  customerName:"Cliente Teste 5", customerPhone:"(71) 90000-0005", saleValue:70,  costValue:30,  status:"Entregue",       trackingCode:"" }
+    ];
+    await Promise.all(demo.map(function(o, i){
+      return callBackend("addSale", {
+        id:"exemplo-" + i + "-" + now, orderId:o.orderId, date:new Date(now - i*86400000).toISOString(),
+        product:o.product, size:o.size, customerName:o.customerName, customerPhone:o.customerPhone,
+        saleValue:o.saleValue, costValue:o.costValue, discountPercent:0, status:o.status,
+        trackingCode:o.trackingCode, source:"exemplo"
+      });
+    }));
+
+    var custCalls = [];
+    for(var i = 1; i <= 5; i++){
+      custCalls.push(callBackend("addCustomer", { name:"Cliente Teste " + i, phone:"(71) 90000-000" + i, city:"Salvador", orderId: i <= 4 ? "PSDEMO" + i : "—", date:new Date(now - i*86400000).toISOString() }));
+    }
+    await Promise.all(custCalls);
+
+    await loadAdminData();
+    btn.disabled = false; btn.textContent = "Carregar dados de exemplo";
+  }
+
+  async function clearAllAdminData(){
+    var ok = window.confirm("Isso vai apagar TODOS os dados de vendas e clientes salvos (reais e de exemplo). Essa ação não pode ser desfeita. Deseja continuar?");
+    if(!ok) return;
+    var res = await callBackend("clearAll", { password: adminPassword });
+    if(!res.ok){ alert("Não foi possível apagar os dados agora. Tente novamente."); return; }
+    await loadAdminData();
+  }
+
+  document.getElementById("adminSeedBtn").addEventListener("click", seedSampleData);
+  document.getElementById("adminClearBtn").addEventListener("click", clearAllAdminData);
+
+  function mostFrequent(arr, key){
+    var counts = {};
+    arr.forEach(function(item){
+      var v = item[key];
+      if(!v || v === "—") return;
+      counts[v] = (counts[v] || 0) + 1;
+    });
+    var best = null, bestCount = 0;
+    Object.keys(counts).forEach(function(k){
+      if(counts[k] > bestCount){ best = k; bestCount = counts[k]; }
+    });
+    return best;
+  }
+
+  function renderAdminMetrics(){
+    var lucroTotal = adminSales.reduce(function(sum, s){
+      var v = Number(s.saleValue) || 0, c = Number(s.costValue) || 0;
+      return sum + (v - c);
+    }, 0);
+    var metrics = [
+      { label:"Total de vendas", value: String(adminSales.length) },
+      { label:"Total de clientes", value: String(adminCustomers.length) },
+      { label:"Produto mais vendido", value: mostFrequent(adminSales, "product") || "—" },
+      { label:"Tamanho mais vendido", value: mostFrequent(adminSales, "size") || "—" },
+      { label:"Lucro total estimado", value: formatBRL(lucroTotal) }
+    ];
+    document.getElementById("adminMetrics").innerHTML = metrics.map(function(m){
+      return '<div class="admin-metric-card"><div class="admin-metric-value">' + escapeHtml(m.value) + '</div><div class="admin-metric-label">' + escapeHtml(m.label) + '</div></div>';
+    }).join("");
+  }
+
+  function statusOptionsHtml(selected){
+    return STATUS_STAGES.map(function(s){
+      return '<option value="' + s + '"' + (s === selected ? " selected" : "") + '>' + s + '</option>';
+    }).join("");
+  }
+
+  function renderAdminSalesTable(){
+    var tbody = document.getElementById("adminSalesBody");
+    if(!adminSales.length){
+      tbody.innerHTML = '<tr><td colspan="11" class="admin-empty">Nenhuma venda registrada ainda.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = "";
+    adminSales.forEach(function(sale){
+      var tr = document.createElement("tr");
+      var profit = (Number(sale.saleValue) || 0) - (Number(sale.costValue) || 0);
+      tr.innerHTML =
+        "<td>" + escapeHtml(sale.orderId || "—") + "</td>" +
+        "<td>" + escapeHtml(sale.product) + "</td>" +
+        "<td>" + escapeHtml(sale.size || "—") + "</td>" +
+        "<td>" + escapeHtml(sale.customerName || "—") + "</td>" +
+        '<td><input type="number" step="0.01" min="0" data-field="saleValue" value="' + (Number(sale.saleValue) || 0) + '"></td>' +
+        '<td><input type="number" step="0.01" min="0" data-field="costValue" value="' + (Number(sale.costValue) || 0) + '"></td>' +
+        "<td>" + formatBRL(profit) + "</td>" +
+        '<td><select data-field="status">' + statusOptionsHtml(sale.status) + '</select></td>' +
+        '<td><input type="text" data-field="trackingCode" value="' + escapeHtml(sale.trackingCode || "") + '"></td>' +
+        "<td>" + escapeHtml(sale.source || "manual") + "</td>" +
+        '<td><button type="button" class="admin-row-delete" aria-label="Excluir venda">&times;</button></td>';
+
+      tr.querySelectorAll("[data-field]").forEach(function(input){
+        input.addEventListener("change", async function(){
+          var field = input.dataset.field;
+          sale[field] = input.value;
+          await callBackend("updateSale", { id: sale.id, field: field, value: input.value, password: adminPassword });
+          if(field === "saleValue" || field === "costValue"){
+            var profitCell = tr.children[6];
+            profitCell.textContent = formatBRL((Number(sale.saleValue) || 0) - (Number(sale.costValue) || 0));
+            renderAdminMetrics();
+          }
+        });
+      });
+      tr.querySelector(".admin-row-delete").addEventListener("click", async function(){
+        var delBtn = tr.querySelector(".admin-row-delete");
+        delBtn.disabled = true;
+        var res = await callBackend("deleteSale", { id: sale.id, password: adminPassword });
+        if(res.ok){
+          adminSales = adminSales.filter(function(s){ return s !== sale; });
+          renderAdminSalesTable();
+          renderAdminMetrics();
+        } else {
+          delBtn.disabled = false;
+        }
+      });
+
+      tbody.appendChild(tr);
+    });
+  }
+
+  function renderAdminCustomersTable(){
+    var tbody = document.getElementById("adminCustomersBody");
+    if(!adminCustomers.length){
+      tbody.innerHTML = '<tr><td colspan="5" class="admin-empty">Nenhum cliente registrado ainda.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = adminCustomers.map(function(c){
+      var dateFmt = c.date ? new Date(c.date).toLocaleDateString("pt-BR") : "—";
+      return "<tr><td>" + escapeHtml(c.name) + "</td><td>" + escapeHtml(c.phone) + "</td><td>" + escapeHtml(c.city || "—") + "</td><td>" + escapeHtml(c.orderId || "—") + "</td><td>" + dateFmt + "</td></tr>";
+    }).join("");
+  }
+
+  /* Adicionar venda manual */
+  var adminSaleForm = document.getElementById("adminSaleForm");
+  (function fillManualStatusSelect(){
+    adminSaleForm.status.innerHTML = statusOptionsHtml(STATUS_STAGES[0]);
+  })();
+
+  document.getElementById("adminAddSaleBtn").addEventListener("click", function(){
+    adminSaleForm.reset();
+    adminSaleForm.status.innerHTML = statusOptionsHtml(STATUS_STAGES[0]);
+    openModal("adminSaleModal");
+  });
+
+  adminSaleForm.addEventListener("submit", async function(e){
+    e.preventDefault();
+    var f = adminSaleForm;
+    var record = {
+      id: "manual-" + Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+      orderId: f.orderId.value.trim() || "",
+      date: new Date().toISOString(),
+      product: f.product.value.trim(),
+      size: f.size.value,
+      customerName: f.customerName.value.trim() || "—",
+      customerPhone: f.customerPhone.value.trim() || "—",
+      saleValue: Number(f.saleValue.value) || 0,
+      costValue: Number(f.costValue.value) || 0,
+      discountPercent: 0,
+      status: f.status.value,
+      trackingCode: f.trackingCode.value.trim(),
+      source: "manual"
+    };
+    if(!record.product) return;
+    var submitBtn = f.querySelector("button[type=submit]");
+    submitBtn.disabled = true; submitBtn.textContent = "Adicionando...";
+    var res = await callBackend("addSale", record);
+    submitBtn.disabled = false; submitBtn.textContent = "Adicionar venda";
+    if(res.ok){
+      await loadAdminData();
+      closeModal("adminSaleModal");
+    } else {
+      alert("Não foi possível adicionar a venda agora. Tente novamente.");
+    }
+  });
+
+  /* ============================================================
+     GESTÃO DE CONTEÚDO DO SITE (Produtos, Times e Ligas, FAQ,
+     Descontos, Aparência) — tudo salvo em um único bloco de
+     configuração no backend (ver saveConfig/getConfig no
+     apps-script-backend.js).
+     ============================================================ */
+  async function saveSiteConfig(){
+    var payload = {
+      products: PRODUCTS,
+      teamGroups: TEAM_GROUPS,
+      faq: FAQ_ITEMS,
+      discounts: PROGRESSIVE_DISCOUNTS,
+      logoUrl: LOGO_URL
+    };
+    var res = await callBackend("saveConfig", { config: JSON.stringify(payload), password: adminPassword });
+    return res.ok;
+  }
+
+  /* ---------- Produtos ---------- */
+  var adminProductForm = document.getElementById("adminProductForm");
+  (function fillProductTipoSelect(){
+    adminProductForm.tipo.innerHTML = TIPOS.map(function(t){ return '<option value="' + t + '">' + t + '</option>'; }).join("");
+  })();
+
+  function renderAdminProducts(){
+    var tbody = document.getElementById("adminProductsBody");
+    if(!PRODUCTS.length){ tbody.innerHTML = '<tr><td colspan="8" class="admin-empty">Nenhum produto cadastrado.</td></tr>'; return; }
+    tbody.innerHTML = PRODUCTS.map(function(p){
+      return "<tr>" +
+        "<td>" + escapeHtml(p.name) + "</td>" +
+        "<td>" + escapeHtml(categoryLabel(p.category)) + "</td>" +
+        "<td>" + escapeHtml(p.liga || "—") + "</td>" +
+        "<td>" + escapeHtml(p.time || "—") + "</td>" +
+        "<td>" + escapeHtml(p.tipo) + "</td>" +
+        "<td>" + escapeHtml(p.price) + "</td>" +
+        "<td>" + (p.ativo !== false ? "Sim" : "Não") + "</td>" +
+        '<td style="white-space:nowrap"><button type="button" class="btn btn-outline btn-sm admin-product-edit" data-id="' + p.id + '">Editar</button> <button type="button" class="admin-row-delete admin-product-delete" data-id="' + p.id + '" aria-label="Excluir produto">&times;</button></td>' +
+      "</tr>";
+    }).join("");
+
+    tbody.querySelectorAll(".admin-product-edit").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        openProductForm(PRODUCTS.find(function(p){ return p.id === btn.dataset.id; }));
+      });
+    });
+    tbody.querySelectorAll(".admin-product-delete").forEach(function(btn){
+      btn.addEventListener("click", async function(){
+        if(!window.confirm("Remover este produto da loja?")) return;
+        PRODUCTS = PRODUCTS.filter(function(p){ return p.id !== btn.dataset.id; });
+        renderProducts();
+        renderAdminProducts();
+        await saveSiteConfig();
+      });
+    });
+  }
+
+  function openProductForm(product){
+    var form = adminProductForm;
+    form.reset();
+    document.getElementById("adminProductTitle").textContent = product ? "Editar produto" : "Adicionar produto";
+    if(product){
+      form.id.value = product.id;
+      form.name.value = product.name;
+      form.category.value = product.category;
+      form.liga.value = product.liga && product.liga !== "—" ? product.liga : "";
+      form.time.value = product.time && product.time !== "—" ? product.time : "";
+      form.tipo.value = product.tipo;
+      form.price.value = product.price;
+      form.originalPrice.value = product.originalPrice || "";
+      form.installment.value = product.installment || "";
+      form.sizes.value = (product.sizes || []).join(",");
+      form.isOffer.checked = !!product.isOffer;
+      form.prontaEntrega.checked = !!product.prontaEntrega;
+      form.ativo.checked = product.ativo !== false;
+    } else {
+      form.id.value = "";
+      form.ativo.checked = true;
+    }
+    openModal("adminProductModal");
+  }
+
+  document.getElementById("adminAddProductBtn").addEventListener("click", function(){ openProductForm(null); });
+
+  adminProductForm.addEventListener("submit", async function(e){
+    e.preventDefault();
+    var f = adminProductForm;
+    var sizes = f.sizes.value.split(",").map(function(s){ return s.trim(); }).filter(Boolean);
+    var data = {
+      id: f.id.value || ("p" + Date.now().toString(36)),
+      name: f.name.value.trim(),
+      category: f.category.value,
+      liga: f.liga.value.trim() || "—",
+      time: f.time.value.trim() || "—",
+      tipo: f.tipo.value,
+      price: f.price.value.trim() || "Sob consulta",
+      installment: f.installment.value.trim() || "Consulte parcelamento",
+      sizes: sizes.length ? sizes : ["P","M","G","GG"],
+      isOffer: f.isOffer.checked,
+      prontaEntrega: f.prontaEntrega.checked,
+      ativo: f.ativo.checked
+    };
+    if(f.originalPrice.value.trim()) data.originalPrice = f.originalPrice.value.trim();
+    if(!data.name) return;
+
+    var existingIndex = PRODUCTS.findIndex(function(p){ return p.id === data.id; });
+    if(existingIndex > -1){ PRODUCTS[existingIndex] = data; } else { PRODUCTS.push(data); }
+
+    renderProducts();
+    renderAdminProducts();
+    closeModal("adminProductModal");
+    var ok = await saveSiteConfig();
+    if(!ok){ alert("Produto salvo na página, mas não sincronizou com o backend agora. Tente novamente."); }
+  });
+
+  /* ---------- Times e Ligas ---------- */
+  var adminTeamsCategory = document.getElementById("adminTeamsCategory");
+
+  function renderAdminLeagues(){
+    var cat = adminTeamsCategory.value;
+    var container = document.getElementById("adminLeaguesList");
+    container.innerHTML = "";
+    TEAM_GROUPS[cat].forEach(function(group, gi){
+      var box = document.createElement("div");
+      box.style.cssText = "background:var(--graphite);border:1px solid rgba(247,247,244,.08);padding:16px 18px;margin-bottom:14px";
+      var teamsHtml = group.teams.map(function(team, ti){
+        return '<span class="team-chip" style="cursor:default">' +
+          '<span class="team-badge">' + initials(team) + '</span>' + escapeHtml(team) +
+          ' <button type="button" data-gi="' + gi + '" data-ti="' + ti + '" class="admin-team-remove" style="background:none;border:none;color:var(--gray);margin-left:2px;font-size:14px;cursor:pointer" aria-label="Remover time">&times;</button>' +
+        '</span>';
+      }).join("");
+      box.innerHTML =
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">' +
+          '<strong class="font-display" style="font-size:15px">' + escapeHtml(group.liga) + '</strong>' +
+          '<button type="button" class="admin-row-delete admin-league-remove" data-gi="' + gi + '" aria-label="Remover liga">&times;</button>' +
+        '</div>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">' + (teamsHtml || '<span style="color:var(--gray);font-size:12.5px">Nenhum time nesta liga ainda.</span>') + '</div>' +
+        '<div style="display:flex;gap:8px">' +
+          '<input type="text" placeholder="Nome do time" class="admin-new-team-input" data-gi="' + gi + '" style="flex:1;background:var(--black);border:1px solid rgba(247,247,244,.15);color:var(--off);padding:9px 12px;font-size:13px;border-radius:2px">' +
+          '<button type="button" class="btn btn-outline btn-sm admin-add-team-btn" data-gi="' + gi + '">Adicionar</button>' +
+        '</div>';
+      container.appendChild(box);
+    });
+
+    container.querySelectorAll(".admin-team-remove").forEach(function(btn){
+      btn.addEventListener("click", async function(){
+        var gi = Number(btn.dataset.gi), ti = Number(btn.dataset.ti);
+        TEAM_GROUPS[cat][gi].teams.splice(ti, 1);
+        renderAdminLeagues();
+        renderLeagueRows();
+        applyFilters();
+        await saveSiteConfig();
+      });
+    });
+    container.querySelectorAll(".admin-league-remove").forEach(function(btn){
+      btn.addEventListener("click", async function(){
+        if(!window.confirm("Remover esta liga e todos os seus times?")) return;
+        TEAM_GROUPS[cat].splice(Number(btn.dataset.gi), 1);
+        renderAdminLeagues();
+        renderLeagueRows();
+        applyFilters();
+        await saveSiteConfig();
+      });
+    });
+    container.querySelectorAll(".admin-add-team-btn").forEach(function(btn){
+      btn.addEventListener("click", async function(){
+        var gi = Number(btn.dataset.gi);
+        var input = container.querySelector('.admin-new-team-input[data-gi="' + gi + '"]');
+        var name = input.value.trim();
+        if(!name) return;
+        TEAM_GROUPS[cat][gi].teams.push(name);
+        renderAdminLeagues();
+        renderLeagueRows();
+        applyFilters();
+        await saveSiteConfig();
+      });
+    });
+  }
+
+  adminTeamsCategory.addEventListener("change", renderAdminLeagues);
+  document.getElementById("adminAddLeagueBtn").addEventListener("click", async function(){
+    var name = window.prompt("Nome da nova liga (ex: Eredivisie):");
+    if(!name || !name.trim()) return;
+    TEAM_GROUPS[adminTeamsCategory.value].push({ liga: name.trim(), teams: [] });
+    renderAdminLeagues();
+    renderLeagueRows();
+    applyFilters();
+    await saveSiteConfig();
+  });
+
+  /* ---------- FAQ ---------- */
+  var adminFaqForm = document.getElementById("adminFaqForm");
+
+  function renderAdminFaq(){
+    var container = document.getElementById("adminFaqList");
+    if(!FAQ_ITEMS.length){ container.innerHTML = '<p class="admin-empty">Nenhuma pergunta cadastrada.</p>'; return; }
+    container.innerHTML = FAQ_ITEMS.map(function(item, i){
+      return '<div style="background:var(--graphite);border:1px solid rgba(247,247,244,.08);padding:14px 18px;margin-bottom:10px;display:flex;justify-content:space-between;gap:14px;align-items:flex-start">' +
+        '<div><div style="font-weight:700;font-size:14px">' + escapeHtml(item.q) + '</div><div style="color:var(--gray);font-size:13px;margin-top:6px">' + escapeHtml(item.a) + '</div></div>' +
+        '<div style="display:flex;gap:8px;flex-shrink:0"><button type="button" class="btn btn-outline btn-sm admin-faq-edit" data-i="' + i + '">Editar</button><button type="button" class="admin-row-delete admin-faq-delete" data-i="' + i + '" aria-label="Excluir pergunta">&times;</button></div>' +
+      '</div>';
+    }).join("");
+
+    container.querySelectorAll(".admin-faq-edit").forEach(function(btn){
+      btn.addEventListener("click", function(){ openFaqForm(Number(btn.dataset.i)); });
+    });
+    container.querySelectorAll(".admin-faq-delete").forEach(function(btn){
+      btn.addEventListener("click", async function(){
+        if(!window.confirm("Remover esta pergunta do FAQ?")) return;
+        FAQ_ITEMS.splice(Number(btn.dataset.i), 1);
+        renderFaq();
+        renderAdminFaq();
+        await saveSiteConfig();
+      });
+    });
+  }
+
+  function openFaqForm(index){
+    var form = adminFaqForm;
+    form.reset();
+    var isEdit = index !== undefined && index !== -1;
+    document.getElementById("adminFaqTitle").textContent = isEdit ? "Editar pergunta" : "Nova pergunta";
+    form.index.value = isEdit ? index : -1;
+    if(isEdit){ form.q.value = FAQ_ITEMS[index].q; form.a.value = FAQ_ITEMS[index].a; }
+    openModal("adminFaqModal");
+  }
+
+  document.getElementById("adminAddFaqBtn").addEventListener("click", function(){ openFaqForm(-1); });
+
+  adminFaqForm.addEventListener("submit", async function(e){
+    e.preventDefault();
+    var f = adminFaqForm;
+    var q = f.q.value.trim(), a = f.a.value.trim();
+    if(!q || !a) return;
+    var index = Number(f.index.value);
+    if(index > -1){ FAQ_ITEMS[index] = { q:q, a:a }; } else { FAQ_ITEMS.push({ q:q, a:a }); }
+    renderFaq();
+    renderAdminFaq();
+    closeModal("adminFaqModal");
+    var ok = await saveSiteConfig();
+    if(!ok){ alert("Pergunta salva na página, mas não sincronizou com o backend agora. Tente novamente."); }
+  });
+
+  /* ---------- Descontos progressivos ---------- */
+  function renderAdminDiscounts(){
+    var tbody = document.getElementById("adminDiscountsBody");
+    if(!PROGRESSIVE_DISCOUNTS.length){ tbody.innerHTML = '<tr><td colspan="3" class="admin-empty">Nenhum desconto configurado.</td></tr>'; return; }
+    tbody.innerHTML = PROGRESSIVE_DISCOUNTS.map(function(t, i){
+      return "<tr>" +
+        '<td><input type="number" min="2" data-i="' + i + '" data-field="minQty" value="' + t.minQty + '"></td>' +
+        '<td><input type="number" min="1" max="100" data-i="' + i + '" data-field="percent" value="' + t.percent + '"></td>' +
+        '<td><button type="button" class="admin-row-delete admin-discount-delete" data-i="' + i + '" aria-label="Remover desconto">&times;</button></td>' +
+      "</tr>";
+    }).join("");
+
+    tbody.querySelectorAll("input[data-field]").forEach(function(input){
+      input.addEventListener("change", async function(){
+        var i = Number(input.dataset.i);
+        PROGRESSIVE_DISCOUNTS[i][input.dataset.field] = Number(input.value) || 0;
+        renderDiscountBanner();
+        await saveSiteConfig();
+      });
+    });
+    tbody.querySelectorAll(".admin-discount-delete").forEach(function(btn){
+      btn.addEventListener("click", async function(){
+        PROGRESSIVE_DISCOUNTS.splice(Number(btn.dataset.i), 1);
+        renderAdminDiscounts();
+        renderDiscountBanner();
+        await saveSiteConfig();
+      });
+    });
+  }
+
+  document.getElementById("adminAddDiscountBtn").addEventListener("click", async function(){
+    PROGRESSIVE_DISCOUNTS.push({ minQty: 2, percent: 10 });
+    renderAdminDiscounts();
+    renderDiscountBanner();
+    await saveSiteConfig();
+  });
+
+  /* ---------- Aparência (logo/ícone) ---------- */
+  var adminLogoUrlInput = document.getElementById("adminLogoUrlInput");
+  var adminLogoPreview = document.getElementById("adminLogoPreview");
+
+  adminLogoUrlInput.addEventListener("input", function(){
+    var val = adminLogoUrlInput.value.trim();
+    if(val){ adminLogoPreview.src = val; adminLogoPreview.style.display = "inline-block"; }
+    else{ adminLogoPreview.style.display = "none"; }
+  });
+
+  document.getElementById("adminSaveLogoBtn").addEventListener("click", async function(){
+    LOGO_URL = adminLogoUrlInput.value.trim();
+    if(LOGO_URL){ applyLogo(); }
+    var ok = await saveSiteConfig();
+    alert(ok ? "Logo atualizada! Se ainda não mudou no site, role a página — o cabeçalho e o rodapé já usam a nova imagem." : "Salvo na página, mas não sincronizou com o backend agora. Tente novamente.");
+  });
+
+  document.getElementById("adminResetLogoBtn").addEventListener("click", async function(){
+    LOGO_URL = "";
+    adminLogoUrlInput.value = "";
+    adminLogoPreview.style.display = "none";
+    var ok = await saveSiteConfig();
+    if(ok){ alert("Ícone padrão restaurado. A página vai recarregar para aplicar."); location.reload(); }
+    else{ alert("Não foi possível salvar agora. Tente novamente."); }
+  });
+
+  /* ============================================================
+     LOGO/ÍCONE PERSONALIZADO (Painel administrativo → Aparência)
+     ============================================================ */
+  function applyLogo(){
+    if(!LOGO_URL) return;
+    document.querySelectorAll(".logo-mark").forEach(function(el){
+      if(el.tagName === "IMG") { el.src = LOGO_URL; return; }
+      var img = document.createElement("img");
+      img.src = LOGO_URL;
+      img.alt = "Point Supply";
+      img.className = el.className;
+      el.replaceWith(img);
+    });
+    var favicon = document.querySelector('link[rel="icon"]');
+    if(favicon){ favicon.setAttribute("href", LOGO_URL); }
+  }
+
+  /* ============================================================
+     CARREGA CONTEÚDO SALVO NO PAINEL (produtos, times, FAQ, descontos,
+     logo) por cima dos padrões acima, se já houver algo salvo.
+     ============================================================ */
+  (async function loadSiteConfig(){
+    if(!hasBackend()) return;
+    var res = await callBackend("getConfig", {});
+    if(!res.ok || !res.config) return;
+    var cfg = res.config;
+    if(cfg.products){ PRODUCTS = cfg.products; }
+    if(cfg.teamGroups){ TEAM_GROUPS = cfg.teamGroups; }
+    if(cfg.faq){ FAQ_ITEMS = cfg.faq; }
+    if(cfg.discounts){ PROGRESSIVE_DISCOUNTS = cfg.discounts; }
+    if(cfg.logoUrl){ LOGO_URL = cfg.logoUrl; applyLogo(); }
+
+    renderProducts();
+    renderLeagueRows();
+    applyFilters();
+    applyFromUrl();
+    renderFaq();
+    renderDiscountBanner();
+  })();
+
+})();
+</script>
+</body>
+</html>
