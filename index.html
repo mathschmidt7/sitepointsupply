@@ -114,7 +114,7 @@ p{ margin:0; }
 .btn-sm{ padding:11px 18px; font-size:13px; }
 .btn[disabled]{ opacity:.6; cursor:not-allowed; }
 
-.icon{ width:18px; height:18px; flex-shrink:0; }
+.icon{ width:18px; height:18px; flex-shrink:0; object-fit:contain; }
 
 /* ---------- Marca d'água diamante (peças de mídia placeholder) ---------- */
 .ghost-panel{
@@ -405,10 +405,11 @@ p{ margin:0; }
 .team-badge{
   display:flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:50%;
   background:rgba(247,247,244,.1); color:var(--off); font-size:10.5px; font-weight:800; flex-shrink:0;
-  font-family:var(--font-display);
+  font-family:var(--font-display); object-fit:cover;
 }
 .team-chip.is-active .team-badge{ background:var(--black); color:var(--off); }
 .team-badge--lg{ width:48px; height:48px; font-size:15px; background:var(--graphite); border:1px solid rgba(247,247,244,.15); }
+.league-row-logo{ width:22px; height:22px; border-radius:50%; object-fit:cover; margin-right:8px; vertical-align:middle; display:inline-block; }
 
 .team-header{ display:flex; flex-direction:column; gap:14px; margin-bottom:22px; }
 .team-header-back{ align-self:flex-start; background:none; border:none; color:var(--gray); font-size:13px; font-weight:600; }
@@ -499,7 +500,7 @@ p{ margin:0; }
   position:relative; text-align:center; padding:100px 24px; overflow:hidden;
   background:radial-gradient(80% 100% at 50% 100%, rgba(247,247,244,.05), transparent 65%), var(--black);
 }
-.wa-icon-big{ width:56px; height:56px; color:var(--wa); margin:0 auto 26px; }
+.wa-icon-big{ width:56px; height:56px; margin:0 auto 26px; object-fit:contain; }
 .wa-section h2{ font-size:clamp(26px,5vw,44px); max-width:16ch; margin:0 auto; }
 .wa-section p{ max-width:52ch; margin:18px auto 0; color:var(--gray); font-size:16px; line-height:1.7; }
 .wa-section .btn{ margin-top:34px; }
@@ -571,7 +572,7 @@ p{ margin:0; }
   animation:pulse-wa 2.6s ease-in-out 1;
 }
 .wa-float-icon{ width:58px; height:58px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-.wa-float-icon svg{ width:28px; height:28px; }
+.wa-float-icon svg, .wa-float-icon img{ width:28px; height:28px; object-fit:contain; }
 .wa-float-label{ max-width:0; overflow:hidden; white-space:nowrap; font-size:14px; font-weight:700; transition:max-width .35s var(--ease), margin .35s var(--ease); }
 .wa-float:hover .wa-float-label{ max-width:220px; margin-left:2px; }
 @keyframes pulse-wa{ 0%{ transform:scale(1); } 8%{ transform:scale(1.08); } 16%{ transform:scale(1); } }
@@ -678,7 +679,7 @@ p{ margin:0; }
         <span class="cart-badge" id="cartBadge" hidden>0</span>
       </button>
       <a class="header-wa-btn js-wa-generic" id="headerWaBtn" href="#" target="_blank" rel="noopener">
-        <svg class="icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 5C10.2 5 5.5 9.6 5.5 15.3c0 2.9 1.2 5.6 3.3 7.5L7.3 27l4.6-1.5c1.3.5 2.7.8 4.1.8 5.8 0 10.5-4.6 10.5-10.3S21.8 5 16 5Z"></path><path d="M11.8 13.6c-.2 1.7.5 3.5 1.9 4.9 1.4 1.4 3.2 2.1 4.9 1.9"></path></svg>
+        <img class="icon" src="whatsapp-icon.png" alt="WhatsApp" onerror="this.style.display='none'">
         Falar no WhatsApp
       </a>
       <button class="icon-btn menu-toggle" id="menuToggle" aria-label="Abrir menu" aria-expanded="false" aria-controls="mobileDrawer">
@@ -736,7 +737,7 @@ p{ margin:0; }
     <div class="hero-ctas">
       <a href="#produtos" class="btn btn-primary">Ver produtos</a>
       <a href="#" class="btn btn-whatsapp js-wa-generic" target="_blank" rel="noopener">
-        <svg class="icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 5C10.2 5 5.5 9.6 5.5 15.3c0 2.9 1.2 5.6 3.3 7.5L7.3 27l4.6-1.5c1.3.5 2.7.8 4.1.8 5.8 0 10.5-4.6 10.5-10.3S21.8 5 16 5Z"></path><path d="M11.8 13.6c-.2 1.7.5 3.5 1.9 4.9 1.4 1.4 3.2 2.1 4.9 1.9"></path></svg>
+        <img class="icon" src="whatsapp-icon.png" alt="WhatsApp" onerror="this.style.display='none'">
         Falar no WhatsApp
       </a>
     </div>
@@ -968,7 +969,7 @@ p{ margin:0; }
      SEÇÃO WHATSAPP
      ============================================================ -->
 <section class="wa-section reveal" id="contato">
-  <svg class="wa-icon-big" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 5C10.2 5 5.5 9.6 5.5 15.3c0 2.9 1.2 5.6 3.3 7.5L7.3 27l4.6-1.5c1.3.5 2.7.8 4.1.8 5.8 0 10.5-4.6 10.5-10.3S21.8 5 16 5Z"></path><path d="M11.8 13.6c-.2 1.7.5 3.5 1.9 4.9 1.4 1.4 3.2 2.1 4.9 1.9"></path></svg>
+  <img class="wa-icon-big" src="whatsapp-icon.png" alt="WhatsApp" onerror="this.style.display='none'">
   <h2>Ficou com alguma dúvida?</h2>
   <p>Não encontrou seu tamanho? Quer saber mais sobre um produto? Precisa de ajuda para escolher? Nossa equipe está pronta para te atender pelo WhatsApp.</p>
   <a href="#" class="btn btn-whatsapp js-wa-generic" target="_blank" rel="noopener">Falar com a Point Supply</a>
@@ -992,7 +993,7 @@ p{ margin:0; }
 <section class="section section--tight reveal">
   <div class="container">
     <p class="eyebrow" style="justify-content:center;display:flex">Instagram</p>
-    <h2 class="section-title section-title--center">@POINTSUPPLY</h2>
+    <h2 class="section-title section-title--center">@POINTSUPPLY_</h2>
     <p class="section-text" style="text-align:center;margin-left:auto;margin-right:auto">Esporte, estilo e novidades.</p>
   </div>
   <div class="container">
@@ -1067,7 +1068,7 @@ p{ margin:0; }
      ============================================================ -->
 <a href="#" class="wa-float js-wa-generic" id="waFloat" target="_blank" rel="noopener" aria-label="Falar com a Point Supply no WhatsApp">
   <span class="wa-float-icon">
-    <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 5C10.2 5 5.5 9.6 5.5 15.3c0 2.9 1.2 5.6 3.3 7.5L7.3 27l4.6-1.5c1.3.5 2.7.8 4.1.8 5.8 0 10.5-4.6 10.5-10.3S21.8 5 16 5Z"></path><path d="M11.8 13.6c-.2 1.7.5 3.5 1.9 4.9 1.4 1.4 3.2 2.1 4.9 1.9"></path></svg>
+    <img src="whatsapp-icon.png" alt="WhatsApp" onerror="this.style.display='none'">
   </span>
   <span class="wa-float-label">Falar com a Point Supply</span>
 </a>
@@ -1258,6 +1259,7 @@ p{ margin:0; }
         <button type="button" class="btn btn-primary btn-sm" id="adminAddLeagueBtn">+ Nova liga</button>
       </div>
       <div id="adminLeaguesList"></div>
+      <input type="file" id="teamLogoFileInput" accept="image/*" style="display:none">
     </div>
 
     <div class="admin-panel-view" data-admin-view="faq">
@@ -1281,9 +1283,13 @@ p{ margin:0; }
     </div>
 
     <div class="admin-panel-view" data-admin-view="appearance">
-      <p style="color:var(--gray);font-size:13.5px;max-width:56ch;margin-bottom:20px">Cole o link de uma imagem já hospedada (Google Drive com compartilhamento público, Imgur, ou a própria hospedagem da loja) para substituir o ícone de diamante padrão pela logo real da Point Supply, no site inteiro.</p>
+      <p style="color:var(--gray);font-size:13.5px;max-width:56ch;margin-bottom:20px">Envie um arquivo do seu computador, ou cole o link de uma imagem já hospedada, para substituir o ícone de diamante padrão pela logo real da Point Supply, no site inteiro.</p>
       <div class="form-grid" style="max-width:420px">
-        <label class="form-field">URL da logo/ícone<input type="text" id="adminLogoUrlInput" placeholder="https://..."></label>
+        <label class="form-field">Enviar arquivo do computador
+          <input type="file" id="adminLogoFileInput" accept="image/*">
+          <span id="adminLogoUploadStatus" style="font-size:11.5px;color:var(--gray)"></span>
+        </label>
+        <label class="form-field">Ou cole a URL de uma imagem<input type="text" id="adminLogoUrlInput" placeholder="https://..."></label>
         <div style="display:flex;align-items:center;gap:14px">
           <span style="font-size:12px;color:var(--gray)">Pré-visualização:</span>
           <img id="adminLogoPreview" src="" alt="" style="height:40px;width:auto;display:none;background:var(--black);padding:6px">
@@ -1332,6 +1338,12 @@ p{ margin:0; }
     <h3 class="modal-title" id="adminProductTitle">Adicionar produto</h3>
     <form id="adminProductForm" class="form-grid">
       <input type="hidden" name="id">
+      <input type="hidden" name="imageUrl">
+      <label class="form-field">Foto do produto
+        <input type="file" name="imageFile" accept="image/*">
+        <span id="adminProductUploadStatus" style="font-size:11.5px;color:var(--gray)"></span>
+      </label>
+      <img id="adminProductImagePreview" src="" alt="" style="display:none;width:100%;max-height:160px;object-fit:cover;background:var(--black)">
       <label class="form-field">Nome*<input type="text" name="name" required></label>
       <label class="form-field">Categoria
         <select name="category"><option value="futebol">Futebol</option><option value="nba">NBA</option></select>
@@ -1377,13 +1389,13 @@ p{ margin:0; }
      CONFIG — PLACEHOLDERS a revisar com o dono da loja
      ============================================================ */
   var WHATSAPP_NUMBER = "5571992442091"; // atualizado conforme informado
-  var INSTAGRAM_URL = "https://instagram.com/_pointsupply";
+  var INSTAGRAM_URL = "https://instagram.com/pointsupply_";
 
   // PLACEHOLDER — cole aqui a URL do seu Web App do Google Apps Script
   // (arquivo "apps-script-backend.js" enviado junto, com o passo a passo).
   // Sem essa URL configurada, carrinho e WhatsApp funcionam normalmente,
   // mas cadastro de cliente, rastreio e painel administrativo ficam inativos.
-  var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzF_wEnLrbXx_Xcpdlaszy_pK_DGczGM9C3YWwXWv07php3ibsxIk2fO-IJUpaaRXmg/exec";
+  var APPS_SCRIPT_URL = "COLE_AQUI_A_URL_DO_SEU_WEB_APP";
 
   // PLACEHOLDER (opcional) — permite entrar no painel com a Conta Google
   // em vez de usuário/senha. Ver seção "LOGIN COM GOOGLE" no final do
@@ -1416,6 +1428,12 @@ p{ margin:0; }
   // Editável em Painel administrativo → Aparência. Vazio = usa o ícone de
   // diamante padrão em SVG. Preenchido = usa essa imagem no lugar dele.
   var LOGO_URL = "";
+
+  // Editável em Painel administrativo → Times e Ligas. Chave = nome exato
+  // do time/liga, valor = URL da imagem enviada. Vazio = usa as iniciais
+  // do nome como selo.
+  var TEAM_LOGOS = {};
+  var LEAGUE_LOGOS = {};
 
   // PLACEHOLDER — medidas de referência em cm, confirmar antes de publicar
   var SIZE_CHART = [
@@ -1501,6 +1519,27 @@ p{ margin:0; }
     }catch(e){
       return { ok:false, error:"network" };
     }
+  }
+
+  // Lê um arquivo escolhido no computador e envia pro backend (que guarda
+  // no Google Drive do dono da loja e devolve uma URL pública da imagem).
+  var MAX_UPLOAD_MB = 4;
+  function readFileAsBase64(file){
+    return new Promise(function(resolve, reject){
+      var reader = new FileReader();
+      reader.onload = function(){ resolve(String(reader.result).split(",")[1] || ""); };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+  async function uploadImageFile(file){
+    if(!file) return { ok:false, error:"Nenhum arquivo selecionado" };
+    if(!file.type || file.type.indexOf("image/") !== 0) return { ok:false, error:"Escolha um arquivo de imagem (JPG, PNG, WEBP...)." };
+    if(file.size > MAX_UPLOAD_MB * 1024 * 1024) return { ok:false, error:"Imagem muito grande — escolha um arquivo de até " + MAX_UPLOAD_MB + "MB." };
+    var base64 = await readFileAsBase64(file);
+    var res = await callBackend("uploadImage", Object.assign({ data: base64, filename: file.name, mimeType: file.type }, authParams()));
+    if(!res.ok){ return { ok:false, error: res.error === "network" ? "Falha de conexão ao enviar a imagem." : (res.error || "Não foi possível enviar a imagem.") }; }
+    return { ok:true, url: res.url };
   }
 
   /* ============================================================
@@ -1644,6 +1683,11 @@ p{ margin:0; }
     return null;
   }
 
+  function teamBadgeHtml(team){
+    var logo = TEAM_LOGOS[team];
+    return logo ? '<img class="team-badge" src="' + escapeHtml(logo) + '" alt="">' : '<span class="team-badge">' + initials(team) + '</span>';
+  }
+
   function renderLeagueRows(){
     var container = document.getElementById("leagueRows");
     var cats = (currentFilter === "futebol" || currentFilter === "nba") ? [currentFilter] : ["futebol", "nba"];
@@ -1654,9 +1698,11 @@ p{ margin:0; }
         row.className = "league-row";
         var chipsHtml = group.teams.map(function(team){
           var active = currentTeam === team ? " is-active" : "";
-          return '<button type="button" class="team-chip' + active + '" data-team="' + escapeHtml(team) + '" data-liga="' + escapeHtml(group.liga) + '" data-category="' + cat + '"><span class="team-badge">' + initials(team) + '</span>' + escapeHtml(team) + '</button>';
+          return '<button type="button" class="team-chip' + active + '" data-team="' + escapeHtml(team) + '" data-liga="' + escapeHtml(group.liga) + '" data-category="' + cat + '">' + teamBadgeHtml(team) + escapeHtml(team) + '</button>';
         }).join("");
-        row.innerHTML = '<h3 class="league-row-title">' + escapeHtml(group.liga) + '</h3><div class="team-scroll">' + chipsHtml + '</div>';
+        var leagueLogo = LEAGUE_LOGOS[group.liga];
+        var leagueLogoHtml = leagueLogo ? '<img class="league-row-logo" src="' + escapeHtml(leagueLogo) + '" alt="">' : "";
+        row.innerHTML = '<h3 class="league-row-title">' + leagueLogoHtml + escapeHtml(group.liga) + '</h3><div class="team-scroll">' + chipsHtml + '</div>';
         container.appendChild(row);
       });
     });
@@ -1679,7 +1725,10 @@ p{ margin:0; }
   function showTeamHeader(team){
     var header = document.getElementById("teamHeader");
     header.hidden = false;
-    document.getElementById("teamHeaderBadge").textContent = initials(team);
+    var badge = document.getElementById("teamHeaderBadge");
+    var logo = TEAM_LOGOS[team];
+    if(logo){ badge.innerHTML = '<img src="' + escapeHtml(logo) + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">'; }
+    else{ badge.textContent = initials(team); }
     document.getElementById("teamHeaderName").textContent = team;
     updateTeamHeaderCount();
   }
@@ -1762,7 +1811,7 @@ p{ margin:0; }
         : '<span class="product-price">' + escapeHtml(p.price) + '</span>';
 
       card.innerHTML =
-        '<div class="product-media ghost-panel">' + tagHtml + prontaHtml + '</div>' +
+        '<div class="product-media' + (p.imageUrl ? '' : ' ghost-panel') + '"' + (p.imageUrl ? ' style="background-image:url(\'' + escapeHtml(p.imageUrl) + '\');background-size:cover;background-position:center"' : '') + '>' + tagHtml + prontaHtml + '</div>' +
         '<div class="product-body">' +
           '<span class="product-meta-row">' + metaBits.map(escapeHtml).join(" · ") + '</span>' +
           '<h3 class="product-name">' + escapeHtml(p.name) + '</h3>' +
@@ -2506,7 +2555,9 @@ p{ margin:0; }
       teamGroups: TEAM_GROUPS,
       faq: FAQ_ITEMS,
       discounts: PROGRESSIVE_DISCOUNTS,
-      logoUrl: LOGO_URL
+      logoUrl: LOGO_URL,
+      teamLogos: TEAM_LOGOS,
+      leagueLogos: LEAGUE_LOGOS
     };
     var res = await callBackend("saveConfig", Object.assign({ config: JSON.stringify(payload) }, authParams()));
     return res.ok;
@@ -2550,12 +2601,17 @@ p{ margin:0; }
     });
   }
 
+  var adminProductPreview = document.getElementById("adminProductImagePreview");
+  var adminProductUploadStatus = document.getElementById("adminProductUploadStatus");
+
   function openProductForm(product){
     var form = adminProductForm;
     form.reset();
     document.getElementById("adminProductTitle").textContent = product ? "Editar produto" : "Adicionar produto";
+    adminProductUploadStatus.textContent = "";
     if(product){
       form.id.value = product.id;
+      form.imageUrl.value = product.imageUrl || "";
       form.name.value = product.name;
       form.category.value = product.category;
       form.liga.value = product.liga && product.liga !== "—" ? product.liga : "";
@@ -2568,14 +2624,33 @@ p{ margin:0; }
       form.isOffer.checked = !!product.isOffer;
       form.prontaEntrega.checked = !!product.prontaEntrega;
       form.ativo.checked = product.ativo !== false;
+      if(product.imageUrl){ adminProductPreview.src = product.imageUrl; adminProductPreview.style.display = "block"; }
+      else{ adminProductPreview.style.display = "none"; }
     } else {
       form.id.value = "";
+      form.imageUrl.value = "";
       form.ativo.checked = true;
+      adminProductPreview.style.display = "none";
     }
     openModal("adminProductModal");
   }
 
   document.getElementById("adminAddProductBtn").addEventListener("click", function(){ openProductForm(null); });
+
+  adminProductForm.imageFile.addEventListener("change", async function(){
+    var file = adminProductForm.imageFile.files[0];
+    if(!file) return;
+    adminProductUploadStatus.textContent = "Enviando imagem...";
+    var res = await uploadImageFile(file);
+    if(res.ok){
+      adminProductForm.imageUrl.value = res.url;
+      adminProductPreview.src = res.url;
+      adminProductPreview.style.display = "block";
+      adminProductUploadStatus.textContent = "Imagem enviada!";
+    } else {
+      adminProductUploadStatus.textContent = res.error;
+    }
+  });
 
   adminProductForm.addEventListener("submit", async function(e){
     e.preventDefault();
@@ -2595,6 +2670,7 @@ p{ margin:0; }
       prontaEntrega: f.prontaEntrega.checked,
       ativo: f.ativo.checked
     };
+    if(f.imageUrl.value.trim()) data.imageUrl = f.imageUrl.value.trim();
     if(f.originalPrice.value.trim()) data.originalPrice = f.originalPrice.value.trim();
     if(!data.name) return;
 
@@ -2611,6 +2687,23 @@ p{ margin:0; }
   /* ---------- Times e Ligas ---------- */
   var adminTeamsCategory = document.getElementById("adminTeamsCategory");
 
+  var teamLogoFileInput = document.getElementById("teamLogoFileInput");
+  var pendingLogoTarget = null; // { kind:"team", team } ou { kind:"league", league }
+
+  teamLogoFileInput.addEventListener("change", async function(){
+    var file = teamLogoFileInput.files[0];
+    teamLogoFileInput.value = "";
+    if(!file || !pendingLogoTarget) return;
+    var res = await uploadImageFile(file);
+    if(!res.ok){ alert(res.error); return; }
+    if(pendingLogoTarget.kind === "team"){ TEAM_LOGOS[pendingLogoTarget.team] = res.url; }
+    else{ LEAGUE_LOGOS[pendingLogoTarget.league] = res.url; }
+    pendingLogoTarget = null;
+    renderAdminLeagues();
+    renderLeagueRows();
+    await saveSiteConfig();
+  });
+
   function renderAdminLeagues(){
     var cat = adminTeamsCategory.value;
     var container = document.getElementById("adminLeaguesList");
@@ -2620,13 +2713,18 @@ p{ margin:0; }
       box.style.cssText = "background:var(--graphite);border:1px solid rgba(247,247,244,.08);padding:16px 18px;margin-bottom:14px";
       var teamsHtml = group.teams.map(function(team, ti){
         return '<span class="team-chip" style="cursor:default">' +
-          '<span class="team-badge">' + initials(team) + '</span>' + escapeHtml(team) +
+          teamBadgeHtml(team) + escapeHtml(team) +
+          ' <button type="button" data-team="' + escapeHtml(team) + '" class="admin-team-logo" style="background:none;border:none;color:var(--gray);font-size:13px;cursor:pointer" aria-label="Enviar logo do time" title="Enviar logo">📷</button>' +
           ' <button type="button" data-gi="' + gi + '" data-ti="' + ti + '" class="admin-team-remove" style="background:none;border:none;color:var(--gray);margin-left:2px;font-size:14px;cursor:pointer" aria-label="Remover time">&times;</button>' +
         '</span>';
       }).join("");
       box.innerHTML =
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">' +
-          '<strong class="font-display" style="font-size:15px">' + escapeHtml(group.liga) + '</strong>' +
+          '<span style="display:flex;align-items:center;gap:8px">' +
+            (LEAGUE_LOGOS[group.liga] ? '<img src="' + escapeHtml(LEAGUE_LOGOS[group.liga]) + '" alt="" style="width:22px;height:22px;border-radius:50%;object-fit:cover">' : '') +
+            '<strong class="font-display" style="font-size:15px">' + escapeHtml(group.liga) + '</strong>' +
+            '<button type="button" data-liga="' + escapeHtml(group.liga) + '" class="admin-league-logo" style="background:none;border:none;color:var(--gray);font-size:13px;cursor:pointer" aria-label="Enviar logo da liga" title="Enviar logo da liga">📷</button>' +
+          '</span>' +
           '<button type="button" class="admin-row-delete admin-league-remove" data-gi="' + gi + '" aria-label="Remover liga">&times;</button>' +
         '</div>' +
         '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">' + (teamsHtml || '<span style="color:var(--gray);font-size:12.5px">Nenhum time nesta liga ainda.</span>') + '</div>' +
@@ -2637,6 +2735,18 @@ p{ margin:0; }
       container.appendChild(box);
     });
 
+    container.querySelectorAll(".admin-team-logo").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        pendingLogoTarget = { kind:"team", team: btn.dataset.team };
+        teamLogoFileInput.click();
+      });
+    });
+    container.querySelectorAll(".admin-league-logo").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        pendingLogoTarget = { kind:"league", league: btn.dataset.liga };
+        teamLogoFileInput.click();
+      });
+    });
     container.querySelectorAll(".admin-team-remove").forEach(function(btn){
       btn.addEventListener("click", async function(){
         var gi = Number(btn.dataset.gi), ti = Number(btn.dataset.ti);
@@ -2776,11 +2886,28 @@ p{ margin:0; }
   /* ---------- Aparência (logo/ícone) ---------- */
   var adminLogoUrlInput = document.getElementById("adminLogoUrlInput");
   var adminLogoPreview = document.getElementById("adminLogoPreview");
+  var adminLogoFileInput = document.getElementById("adminLogoFileInput");
+  var adminLogoUploadStatus = document.getElementById("adminLogoUploadStatus");
 
   adminLogoUrlInput.addEventListener("input", function(){
     var val = adminLogoUrlInput.value.trim();
     if(val){ adminLogoPreview.src = val; adminLogoPreview.style.display = "inline-block"; }
     else{ adminLogoPreview.style.display = "none"; }
+  });
+
+  adminLogoFileInput.addEventListener("change", async function(){
+    var file = adminLogoFileInput.files[0];
+    if(!file) return;
+    adminLogoUploadStatus.textContent = "Enviando imagem...";
+    var res = await uploadImageFile(file);
+    if(res.ok){
+      adminLogoUrlInput.value = res.url;
+      adminLogoPreview.src = res.url;
+      adminLogoPreview.style.display = "inline-block";
+      adminLogoUploadStatus.textContent = "Imagem enviada — clique em \"Salvar logo\" para aplicar.";
+    } else {
+      adminLogoUploadStatus.textContent = res.error;
+    }
   });
 
   document.getElementById("adminSaveLogoBtn").addEventListener("click", async function(){
@@ -2830,6 +2957,8 @@ p{ margin:0; }
     if(cfg.faq){ FAQ_ITEMS = cfg.faq; }
     if(cfg.discounts){ PROGRESSIVE_DISCOUNTS = cfg.discounts; }
     if(cfg.logoUrl){ LOGO_URL = cfg.logoUrl; applyLogo(); }
+    if(cfg.teamLogos){ TEAM_LOGOS = cfg.teamLogos; }
+    if(cfg.leagueLogos){ LEAGUE_LOGOS = cfg.leagueLogos; }
 
     renderProducts();
     renderLeagueRows();
@@ -2843,3 +2972,4 @@ p{ margin:0; }
 </script>
 </body>
 </html>
+corrige icone whatsapp de vez
