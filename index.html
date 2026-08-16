@@ -1,4 +1,4 @@
-f<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1129,7 +1129,8 @@ p{ margin:0; }
     </div>
     <div id="cartItems" style="display:flex;flex-direction:column;gap:16px;overflow-y:auto"></div>
     <p id="cartEmpty" style="color:var(--gray);font-size:14px">Seu carrinho está vazio. Adicione produtos para consultar disponibilidade e finalizar pelo WhatsApp.</p>
-    <div id="cartDiscountNote" style="font-size:12.5px;color:var(--gray);margin-top:14px"></div>
+    <div id="cartTotal" style="font-size:16px;font-weight:700;margin-top:16px"></div>
+    <div id="cartDiscountNote" style="font-size:12.5px;color:var(--gray);margin-top:8px"></div>
     <div class="mobile-drawer-footer">
       <button type="button" class="btn btn-whatsapp btn-block" id="cartCheckoutBtn">Finalizar pedido</button>
     </div>
@@ -1172,7 +1173,6 @@ p{ margin:0; }
       <form id="checkoutForm" class="form-grid">
         <label class="form-field">Nome*<input type="text" name="name" required autocomplete="name"></label>
         <label class="form-field">WhatsApp / Telefone*<input type="tel" name="phone" required placeholder="(71) 9xxxx-xxxx" autocomplete="tel"></label>
-        <label class="form-field">Cidade (opcional)<input type="text" name="city" autocomplete="address-level2"></label>
         <p class="form-note">Seus dados serão usados apenas para processar este pedido e para contato pelo WhatsApp.</p>
         <button type="submit" class="btn btn-whatsapp btn-block">Gerar pedido e continuar no WhatsApp</button>
       </form>
@@ -1251,6 +1251,8 @@ p{ margin:0; }
   <div class="admin-content">
     <div class="admin-panel-view is-active" data-admin-view="overview">
       <div class="admin-metrics" id="adminMetrics"></div>
+      <h4 style="margin:32px 0 14px;font-size:15px">Top 10 produtos mais vendidos</h4>
+      <div id="adminTopProducts"></div>
     </div>
 
     <div class="admin-panel-view" data-admin-view="sales">
@@ -1262,7 +1264,7 @@ p{ margin:0; }
       </div>
       <div class="admin-table-wrap">
         <table class="admin-table">
-          <thead><tr><th>Pedido</th><th>Produto</th><th>Tam.</th><th>Cliente</th><th>Valor (R$)</th><th>Custo (R$)</th><th>Lucro (R$)</th><th>Status</th><th>Rastreio</th><th>Origem</th><th></th></tr></thead>
+          <thead><tr><th>Pedido</th><th>Produto</th><th>Tam.</th><th>Cliente</th><th>Valor (R$)</th><th>Custo (R$)</th><th>Lucro (R$)</th><th>Status envio</th><th>Status pedido</th><th>Rastreio</th><th>Origem</th><th></th></tr></thead>
           <tbody id="adminSalesBody"></tbody>
         </table>
       </div>
@@ -1274,7 +1276,7 @@ p{ margin:0; }
       </div>
       <div class="admin-table-wrap">
         <table class="admin-table">
-          <thead><tr><th>Nome</th><th>Telefone</th><th>Cidade</th><th>Pedido</th><th>Data</th></tr></thead>
+          <thead><tr><th>Nome</th><th>Telefone</th><th>VIP</th><th>Faturamento total</th><th>Última compra</th><th>Pedidos</th></tr></thead>
           <tbody id="adminCustomersBody"></tbody>
         </table>
       </div>
@@ -1373,14 +1375,18 @@ p{ margin:0; }
     <form id="adminSaleForm" class="form-grid">
       <label class="form-field">Produto*<input type="text" name="product" required></label>
       <label class="form-field">Tamanho
-        <select name="size"><option>P</option><option>M</option><option>G</option><option>GG</option><option>—</option></select>
+        <select name="size"><option>P</option><option>M</option><option>G</option><option>GG</option><option>2XL</option><option>3XL</option><option>4XL</option><option>—</option></select>
       </label>
+      <label class="form-field">Time (opcional)<input type="text" name="time"></label>
       <label class="form-field">Cliente (nome)<input type="text" name="customerName"></label>
       <label class="form-field">Cliente (telefone)<input type="text" name="customerPhone"></label>
       <label class="form-field">Valor da venda (R$)<input type="number" name="saleValue" min="0" step="0.01" value="0"></label>
       <label class="form-field">Custo do produto (R$)<input type="number" name="costValue" min="0" step="0.01" value="0"></label>
-      <label class="form-field">Status
+      <label class="form-field">Status do envio
         <select name="status"></select>
+      </label>
+      <label class="form-field">Status do pedido
+        <select name="orderStatus"></select>
       </label>
       <label class="form-field">Código do pedido (opcional, p/ rastreio)<input type="text" name="orderId"></label>
       <label class="form-field">Código de rastreio (opcional)<input type="text" name="trackingCode"></label>
@@ -1464,6 +1470,7 @@ p{ margin:0; }
   var GOOGLE_CLIENT_ID = "COLE_AQUI_SEU_GOOGLE_CLIENT_ID";
 
   var STATUS_STAGES = ["Pedido recebido", "Em preparação", "Enviado", "Entregue"];
+  var ORDER_STATUS_STAGES = ["Pendente", "Concluído", "Cancelado"];
 
   // PLACEHOLDER — ajustar percentuais e regras reais com o dono da loja
   // (também editável em Painel administrativo → Descontos)
@@ -2879,11 +2886,12 @@ p{ margin:0; }
     return "Camisas";
   }
 
-  function productMessage(name, size){
+  function productMessage(name, size, price){
+    var priceText = (price && price !== "Sob consulta") ? " (" + price + ")" : "";
     if(size){
-      return "Olá! Tenho interesse no produto " + name + ", tamanho " + size + ". Gostaria de confirmar a disponibilidade.";
+      return "Olá! Tenho interesse no produto " + name + priceText + ", tamanho " + size + ". Gostaria de confirmar a disponibilidade.";
     }
-    return "Olá! Tenho interesse no produto " + name + ". Gostaria de saber quais tamanhos estão disponíveis.";
+    return "Olá! Tenho interesse no produto " + name + priceText + ". Gostaria de saber quais tamanhos estão disponíveis.";
   }
 
   function optionsHtml(list, allLabel){
@@ -3133,7 +3141,7 @@ p{ margin:0; }
     var id = btn.dataset.id;
     var product = PRODUCTS.find(function(p){ return p.id === id; });
     var selected = card.querySelector(".size-chip.is-selected");
-    btn.setAttribute("href", waLink(productMessage(product.name, selected ? selected.dataset.size : null)));
+    btn.setAttribute("href", waLink(productMessage(product.name, selected ? selected.dataset.size : null, product.price)));
   }
 
   function applyFilters(){
@@ -3275,7 +3283,7 @@ p{ margin:0; }
   }
 
   function addToCart(product, size){
-    cart.push({ name: product.name, size: size, imageUrl: product.imageUrl });
+    cart.push({ name: product.name, size: size, imageUrl: product.imageUrl, time: product.time, price: product.price });
     renderCart();
   }
   function removeFromCart(index){ cart.splice(index, 1); renderCart(); }
@@ -3295,11 +3303,24 @@ p{ margin:0; }
       row.innerHTML =
         '<div style="display:flex;align-items:center;gap:10px;min-width:0">' + thumbHtml +
         '<div style="min-width:0"><div style="font-weight:700;font-size:14.5px">' + escapeHtml(item.name) + '</div>' +
-        '<div style="font-size:12.5px;color:var(--gray);margin-top:4px">' + (item.size ? "Tamanho " + escapeHtml(item.size) : "Tamanho a confirmar") + '</div></div></div>' +
+        '<div style="font-size:12.5px;color:var(--gray);margin-top:4px">' + (item.size ? "Tamanho " + escapeHtml(item.size) : "Tamanho a confirmar") + '</div>' +
+        '<div style="font-size:12.5px;color:var(--off);margin-top:2px">' + escapeHtml(item.price || "Sob consulta") + '</div></div></div>' +
         '<button type="button" aria-label="Remover item" style="background:none;border:none;color:var(--gray);font-size:18px;line-height:1;flex-shrink:0">&times;</button>';
       row.querySelector("button").addEventListener("click", function(){ removeFromCart(index); });
       cartItemsEl.appendChild(row);
     });
+
+    var totalValue = cart.reduce(function(sum, item){
+      var v = priceSortValue(item.price);
+      return sum + (isFinite(v) ? v : 0);
+    }, 0);
+    var hasUnpriced = cart.some(function(item){ return !isFinite(priceSortValue(item.price)); });
+    var totalEl = document.getElementById("cartTotal");
+    if(totalEl){
+      totalEl.textContent = cart.length
+        ? "Total: " + formatBRL(totalValue) + (hasUnpriced ? " + itens sob consulta" : "")
+        : "";
+    }
 
     var discount = getDiscountForQty(cart.length);
     if(cart.length === 0){
@@ -3339,10 +3360,17 @@ p{ margin:0; }
 
   function buildOrderMessage(orderId, items, discount){
     var msg = "Olá! Gostaria de finalizar meu pedido " + orderId + ":\n";
+    var total = 0;
+    var hasUnpriced = false;
     items.forEach(function(item){
-      msg += "- " + item.name + (item.size ? " (tamanho " + item.size + ")" : " (tamanho a confirmar)") + "\n";
+      var v = priceSortValue(item.price);
+      var priceText;
+      if(isFinite(v)){ total += v; priceText = " - " + formatBRL(v); }
+      else { hasUnpriced = true; priceText = " - Sob consulta"; }
+      msg += "- " + item.name + (item.size ? " (tamanho " + item.size + ")" : " (tamanho a confirmar)") + priceText + "\n";
     });
     if(discount){ msg += "Desconto progressivo aplicado: " + discount.percent + "% (" + items.length + " peças)\n"; }
+    msg += "Total: " + formatBRL(total) + (hasUnpriced ? " + itens sob consulta" : "") + "\n";
     msg += "Aguardo confirmação de disponibilidade e valores. Obrigado!";
     return msg;
   }
@@ -3351,7 +3379,6 @@ p{ margin:0; }
     e.preventDefault();
     var name = checkoutForm.name.value.trim();
     var phone = checkoutForm.phone.value.trim();
-    var city = checkoutForm.city.value.trim();
     if(!name || !phone || cart.length === 0) return;
 
     var submitBtn = checkoutForm.querySelector("button[type=submit]");
@@ -3369,19 +3396,21 @@ p{ margin:0; }
         date: dateIso,
         product: item.name,
         size: item.size || "—",
+        time: item.time || "—",
         customerName: name,
         customerPhone: phone,
-        saleValue: 0,
+        saleValue: isFinite(priceSortValue(item.price)) ? priceSortValue(item.price) : 0,
         costValue: 0,
         discountPercent: discount ? discount.percent : 0,
         status: STATUS_STAGES[0],
+        orderStatus: ORDER_STATUS_STAGES[0],
         trackingCode: "",
         source: "automático"
       });
     }));
     var savedSales = saleResults.every(function(r){ return r.ok; });
 
-    var custResult = await callBackend("addCustomer", { name:name, phone:phone, city: city || "—", orderId:orderId, date:dateIso });
+    var custResult = await callBackend("addCustomer", { name:name, phone:phone, orderId:orderId, date:dateIso, vip:false });
     var savedCustomers = custResult.ok;
 
     var message = buildOrderMessage(orderId, itemsSnapshot, discount);
@@ -3701,17 +3730,17 @@ p{ margin:0; }
 
     var now = Date.now();
     var demo = [
-      { orderId:"PSDEMO1", product:"Camisa Futebol Titular",  size:"M",  customerName:"Cliente Teste 1", customerPhone:"(71) 90000-0001", saleValue:180, costValue:95,  status:"Entregue",       trackingCode:"BR123456789" },
-      { orderId:"PSDEMO1", product:"Regata Futebol Treino",    size:"G",  customerName:"Cliente Teste 1", customerPhone:"(71) 90000-0001", saleValue:90,  costValue:45,  status:"Entregue",       trackingCode:"BR123456789" },
-      { orderId:"PSDEMO2", product:"Camisa NBA Association",   size:"GG", customerName:"Cliente Teste 2", customerPhone:"(71) 90000-0002", saleValue:220, costValue:120, status:"Enviado",        trackingCode:"BR987654321" },
-      { orderId:"PSDEMO3", product:"Camisa Futebol Titular",  size:"P",  customerName:"Cliente Teste 3", customerPhone:"(71) 90000-0003", saleValue:180, costValue:95,  status:"Em preparação",  trackingCode:"" },
-      { orderId:"PSDEMO4", product:"Kit Futebol Completo",     size:"M",  customerName:"Cliente Teste 4", customerPhone:"(71) 90000-0004", saleValue:260, costValue:150, status:"Pedido recebido",trackingCode:"" },
-      { orderId:"",        product:"Shorts Esportivo Multiuso",size:"G",  customerName:"Cliente Teste 5", customerPhone:"(71) 90000-0005", saleValue:70,  costValue:30,  status:"Entregue",       trackingCode:"" }
+      { orderId:"PSDEMO1", product:"Camisa Futebol Titular",  size:"M",  time:"Flamengo",  customerName:"Cliente Teste 1", customerPhone:"(71) 90000-0001", saleValue:180, costValue:95,  status:"Entregue",       trackingCode:"BR123456789" },
+      { orderId:"PSDEMO1", product:"Regata Futebol Treino",    size:"G",  time:"Flamengo",  customerName:"Cliente Teste 1", customerPhone:"(71) 90000-0001", saleValue:90,  costValue:45,  status:"Entregue",       trackingCode:"BR123456789" },
+      { orderId:"PSDEMO2", product:"Camisa NBA Association",   size:"GG", time:"Los Angeles Lakers", customerName:"Cliente Teste 2", customerPhone:"(71) 90000-0002", saleValue:220, costValue:120, status:"Enviado",        trackingCode:"BR987654321" },
+      { orderId:"PSDEMO3", product:"Camisa Futebol Titular",  size:"P",  time:"Flamengo",  customerName:"Cliente Teste 3", customerPhone:"(71) 90000-0003", saleValue:180, costValue:95,  status:"Em preparação",  trackingCode:"" },
+      { orderId:"PSDEMO4", product:"Kit Futebol Completo",     size:"M",  time:"Palmeiras", customerName:"Cliente Teste 4", customerPhone:"(71) 90000-0004", saleValue:260, costValue:150, status:"Pedido recebido",trackingCode:"" },
+      { orderId:"",        product:"Shorts Esportivo Multiuso",size:"G",  time:"Palmeiras", customerName:"Cliente Teste 5", customerPhone:"(71) 90000-0005", saleValue:70,  costValue:30,  status:"Entregue",       trackingCode:"" }
     ];
     await Promise.all(demo.map(function(o, i){
       return callBackend("addSale", {
         id:"exemplo-" + i + "-" + now, orderId:o.orderId, date:new Date(now - i*86400000).toISOString(),
-        product:o.product, size:o.size, customerName:o.customerName, customerPhone:o.customerPhone,
+        product:o.product, size:o.size, time:o.time, customerName:o.customerName, customerPhone:o.customerPhone,
         saleValue:o.saleValue, costValue:o.costValue, discountPercent:0, status:o.status,
         trackingCode:o.trackingCode, source:"exemplo"
       });
@@ -3719,7 +3748,7 @@ p{ margin:0; }
 
     var custCalls = [];
     for(var i = 1; i <= 5; i++){
-      custCalls.push(callBackend("addCustomer", { name:"Cliente Teste " + i, phone:"(71) 90000-000" + i, city:"Salvador", orderId: i <= 4 ? "PSDEMO" + i : "—", date:new Date(now - i*86400000).toISOString() }));
+      custCalls.push(callBackend("addCustomer", { name:"Cliente Teste " + i, phone:"(71) 90000-000" + i, orderId: i <= 4 ? "PSDEMO" + i : "—", date:new Date(now - i*86400000).toISOString(), vip:false }));
     }
     await Promise.all(custCalls);
 
@@ -3752,21 +3781,74 @@ p{ margin:0; }
     return best;
   }
 
+  function concludedSales(){
+    return adminSales.filter(function(s){ return (s.orderStatus || "Pendente") === "Concluído"; });
+  }
+
   function renderAdminMetrics(){
-    var lucroTotal = adminSales.reduce(function(sum, s){
+    var concluded = concludedSales();
+    var faturamentoTotal = concluded.reduce(function(sum, s){ return sum + (Number(s.saleValue) || 0); }, 0);
+    var lucroTotal = concluded.reduce(function(sum, s){
       var v = Number(s.saleValue) || 0, c = Number(s.costValue) || 0;
       return sum + (v - c);
     }, 0);
     var metrics = [
       { label:"Total de vendas", value: String(adminSales.length) },
+      { label:"Vendas concluídas", value: String(concluded.length) },
       { label:"Total de clientes", value: String(adminCustomers.length) },
-      { label:"Produto mais vendido", value: mostFrequent(adminSales, "product") || "—" },
-      { label:"Tamanho mais vendido", value: mostFrequent(adminSales, "size") || "—" },
+      { label:"Faturamento (concluídas)", value: formatBRL(faturamentoTotal) },
       { label:"Lucro total estimado", value: formatBRL(lucroTotal) }
     ];
     document.getElementById("adminMetrics").innerHTML = metrics.map(function(m){
       return '<div class="admin-metric-card"><div class="admin-metric-value">' + escapeHtml(m.value) + '</div><div class="admin-metric-label">' + escapeHtml(m.label) + '</div></div>';
     }).join("");
+    renderTopProducts();
+  }
+
+  function renderTopProducts(){
+    var wrap = document.getElementById("adminTopProducts");
+    if(!wrap) return;
+    var concluded = concludedSales();
+    if(!concluded.length){
+      wrap.innerHTML = '<p style="color:var(--gray);font-size:12.5px">Nenhuma venda concluída ainda — o ranking aparece aqui assim que houver.</p>';
+      return;
+    }
+
+    var byProduct = {};
+    var byTeam = {};
+    var bySize = {};
+    concluded.forEach(function(s){
+      var v = Number(s.saleValue) || 0;
+      var key = s.product || "—";
+      if(!byProduct[key]) byProduct[key] = { name: key, qty: 0, revenue: 0 };
+      byProduct[key].qty++; byProduct[key].revenue += v;
+
+      if(s.time && s.time !== "—"){
+        byTeam[s.time] = (byTeam[s.time] || 0) + 1;
+      }
+      if(s.size && s.size !== "—"){
+        bySize[s.size] = (bySize[s.size] || 0) + 1;
+      }
+    });
+
+    var topProducts = Object.values(byProduct).sort(function(a,b){ return b.qty - a.qty; }).slice(0, 10);
+    var topTeam = Object.keys(byTeam).sort(function(a,b){ return byTeam[b] - byTeam[a]; })[0];
+    var topSize = Object.keys(bySize).sort(function(a,b){ return bySize[b] - bySize[a]; })[0];
+
+    var summaryHtml =
+      '<div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:16px">' +
+        '<div class="admin-metric-card"><div class="admin-metric-value">' + escapeHtml(topTeam || "—") + '</div><div class="admin-metric-label">Time que mais vendeu</div></div>' +
+        '<div class="admin-metric-card"><div class="admin-metric-value">' + escapeHtml(topSize || "—") + '</div><div class="admin-metric-label">Tamanho que mais vendeu</div></div>' +
+        '<div class="admin-metric-card"><div class="admin-metric-value">' + escapeHtml(topProducts[0] ? topProducts[0].name : "—") + '</div><div class="admin-metric-label">Produto mais vendido</div></div>' +
+      '</div>';
+
+    var rowsHtml = topProducts.map(function(p, i){
+      return '<tr><td>' + (i + 1) + '</td><td>' + escapeHtml(p.name) + '</td><td>' + p.qty + '</td><td>' + formatBRL(p.revenue) + '</td></tr>';
+    }).join('');
+
+    wrap.innerHTML = summaryHtml +
+      '<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>#</th><th>Produto</th><th>Qtd. vendida</th><th>Valor vendido</th></tr></thead><tbody>' + rowsHtml + '</tbody></table></div>';
+
   }
 
   function statusOptionsHtml(selected){
@@ -3775,10 +3857,16 @@ p{ margin:0; }
     }).join("");
   }
 
+  function orderStatusOptionsHtml(selected){
+    return ORDER_STATUS_STAGES.map(function(s){
+      return '<option value="' + s + '"' + (s === selected ? " selected" : "") + '>' + s + '</option>';
+    }).join("");
+  }
+
   function renderAdminSalesTable(){
     var tbody = document.getElementById("adminSalesBody");
     if(!adminSales.length){
-      tbody.innerHTML = '<tr><td colspan="11" class="admin-empty">Nenhuma venda registrada ainda.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="12" class="admin-empty">Nenhuma venda registrada ainda.</td></tr>';
       return;
     }
     tbody.innerHTML = "";
@@ -3794,6 +3882,7 @@ p{ margin:0; }
         '<td><input type="number" step="0.01" min="0" data-field="costValue" value="' + (Number(sale.costValue) || 0) + '"></td>' +
         "<td>" + formatBRL(profit) + "</td>" +
         '<td><select data-field="status">' + statusOptionsHtml(sale.status) + '</select></td>' +
+        '<td><select data-field="orderStatus">' + orderStatusOptionsHtml(sale.orderStatus || "Pendente") + '</select></td>' +
         '<td><input type="text" data-field="trackingCode" value="' + escapeHtml(sale.trackingCode || "") + '"></td>' +
         "<td>" + escapeHtml(sale.source || "manual") + "</td>" +
         '<td><button type="button" class="admin-row-delete" aria-label="Excluir venda">&times;</button></td>';
@@ -3806,8 +3895,9 @@ p{ margin:0; }
           if(field === "saleValue" || field === "costValue"){
             var profitCell = tr.children[6];
             profitCell.textContent = formatBRL((Number(sale.saleValue) || 0) - (Number(sale.costValue) || 0));
-            renderAdminMetrics();
           }
+          renderAdminMetrics();
+          if(field === "orderStatus"){ renderAdminCustomersTable(); }
         });
       });
       tr.querySelector(".admin-row-delete").addEventListener("click", async function(){
@@ -3818,6 +3908,7 @@ p{ margin:0; }
           adminSales = adminSales.filter(function(s){ return s !== sale; });
           renderAdminSalesTable();
           renderAdminMetrics();
+          renderAdminCustomersTable();
         } else {
           delBtn.disabled = false;
         }
@@ -3830,24 +3921,68 @@ p{ margin:0; }
   function renderAdminCustomersTable(){
     var tbody = document.getElementById("adminCustomersBody");
     if(!adminCustomers.length){
-      tbody.innerHTML = '<tr><td colspan="5" class="admin-empty">Nenhum cliente registrado ainda.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" class="admin-empty">Nenhum cliente registrado ainda.</td></tr>';
       return;
     }
-    tbody.innerHTML = adminCustomers.map(function(c){
-      var dateFmt = c.date ? new Date(c.date).toLocaleDateString("pt-BR") : "—";
-      return "<tr><td>" + escapeHtml(c.name) + "</td><td>" + escapeHtml(c.phone) + "</td><td>" + escapeHtml(c.city || "—") + "</td><td>" + escapeHtml(c.orderId || "—") + "</td><td>" + dateFmt + "</td></tr>";
-    }).join("");
+    // agrupa por telefone — a mesma pessoa pode ter uma linha por pedido
+    var byPhone = {};
+    adminCustomers.forEach(function(c){
+      var key = c.phone || "—";
+      if(!byPhone[key]){ byPhone[key] = { name: c.name, phone: c.phone, vip: c.vip === true || c.vip === "true" || c.vip === "TRUE", dates: [], orderCount: 0 }; }
+      if(c.date) byPhone[key].dates.push(c.date);
+      byPhone[key].orderCount++;
+      if((c.vip === true || c.vip === "true" || c.vip === "TRUE")) byPhone[key].vip = true;
+    });
+
+    var list = Object.keys(byPhone).map(function(phone){
+      var c = byPhone[phone];
+      var revenue = adminSales.reduce(function(sum, s){
+        if(s.customerPhone !== phone) return sum;
+        if((s.orderStatus || "Pendente") !== "Concluído") return sum;
+        return sum + (Number(s.saleValue) || 0);
+      }, 0);
+      var lastDate = c.dates.length ? new Date(Math.max.apply(null, c.dates.map(function(d){ return new Date(d).getTime(); }))) : null;
+      return { name: c.name, phone: phone, vip: c.vip, revenue: revenue, lastDate: lastDate, orderCount: c.orderCount };
+    });
+    list.sort(function(a, b){ return b.revenue - a.revenue; });
+
+    tbody.innerHTML = "";
+    list.forEach(function(c){
+      var tr = document.createElement("tr");
+      var lastFmt = c.lastDate ? c.lastDate.toLocaleDateString("pt-BR") : "—";
+      tr.innerHTML =
+        "<td>" + escapeHtml(c.name) + "</td>" +
+        "<td>" + escapeHtml(c.phone) + "</td>" +
+        '<td><input type="checkbox" data-vip-toggle' + (c.vip ? " checked" : "") + '></td>' +
+        "<td>" + formatBRL(c.revenue) + "</td>" +
+        "<td>" + lastFmt + "</td>" +
+        "<td>" + c.orderCount + "</td>";
+      tr.querySelector("[data-vip-toggle]").addEventListener("change", async function(e){
+        var checked = e.target.checked;
+        e.target.disabled = true;
+        var res = await callBackend("updateCustomer", Object.assign({ phone: c.phone, field: "vip", value: checked }, authParams()));
+        e.target.disabled = false;
+        if(res.ok){
+          adminCustomers.forEach(function(row){ if(row.phone === c.phone) row.vip = checked; });
+        } else {
+          e.target.checked = !checked;
+        }
+      });
+      tbody.appendChild(tr);
+    });
   }
 
   /* Adicionar venda manual */
   var adminSaleForm = document.getElementById("adminSaleForm");
   (function fillManualStatusSelect(){
     adminSaleForm.status.innerHTML = statusOptionsHtml(STATUS_STAGES[0]);
+    adminSaleForm.orderStatus.innerHTML = orderStatusOptionsHtml(ORDER_STATUS_STAGES[0]);
   })();
 
   document.getElementById("adminAddSaleBtn").addEventListener("click", function(){
     adminSaleForm.reset();
     adminSaleForm.status.innerHTML = statusOptionsHtml(STATUS_STAGES[0]);
+    adminSaleForm.orderStatus.innerHTML = orderStatusOptionsHtml(ORDER_STATUS_STAGES[0]);
     openModal("adminSaleModal");
   });
 
@@ -3860,12 +3995,14 @@ p{ margin:0; }
       date: new Date().toISOString(),
       product: f.product.value.trim(),
       size: f.size.value,
+      time: f.time.value.trim() || "—",
       customerName: f.customerName.value.trim() || "—",
       customerPhone: f.customerPhone.value.trim() || "—",
       saleValue: Number(f.saleValue.value) || 0,
       costValue: Number(f.costValue.value) || 0,
       discountPercent: 0,
       status: f.status.value,
+      orderStatus: f.orderStatus.value,
       trackingCode: f.trackingCode.value.trim(),
       source: "manual"
     };
