@@ -623,38 +623,72 @@ p{ margin:0; }
 }
 
 /* ============================================================
-   PAINEL ADMINISTRATIVO
+   PAINEL ADMINISTRATIVO — layout tipo dashboard, com menu lateral
    ============================================================ */
-.admin-topbar{
-  display:flex; align-items:center; gap:16px; flex-wrap:wrap;
-  position:fixed; top:0; left:0; right:0; background:rgba(10,10,10,.96);
-  backdrop-filter:blur(10px); padding:16px 24px; z-index:50; border-bottom:1px solid rgba(247,247,244,.08);
-}
-.admin-badge{ font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--gray); border:1px solid rgba(247,247,244,.2); padding:5px 10px; }
-.admin-topbar .btn{ margin-left:auto; }
-.admin-panel{ min-height:100vh; padding:110px 24px 60px; max-width:1180px; margin:0 auto; }
+.admin-panel{ min-height:100vh; }
 .admin-panel[hidden]{ display:none; }
-.admin-warning{ background:#241a06; border:1px solid #6b4b0a; color:#f2c766; font-size:12.5px; line-height:1.65; padding:16px 20px; margin-bottom:28px; }
-.admin-tabs{ display:flex; gap:6px; border-bottom:1px solid rgba(247,247,244,.1); margin-bottom:28px; overflow-x:auto; }
-.admin-tab{ background:none; border:none; color:var(--gray); padding:12px 18px; font-size:13.5px; font-weight:600; border-bottom:2px solid transparent; white-space:nowrap; }
-.admin-tab.is-active{ color:var(--off); border-color:var(--off); }
+.admin-shell{ display:flex; min-height:100vh; }
+
+.admin-sidebar{
+  width:240px; flex-shrink:0; background:#050505; border-right:1px solid rgba(247,247,244,.08);
+  display:flex; flex-direction:column; position:fixed; top:0; left:0; bottom:0; overflow-y:auto; z-index:50;
+}
+.admin-sidebar-brand{ padding:26px 22px 20px; border-bottom:1px solid rgba(247,247,244,.08); }
+.admin-sidebar-brand .logo-mark{ width:30px; height:25px; }
+.admin-sidebar-brand .logo-word{ font-size:15px; }
+.admin-badge{ font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--gray); margin-top:10px; display:block; }
+.admin-nav{ flex:1; padding:14px 12px; display:flex; flex-direction:column; gap:2px; }
+.admin-tab{
+  display:flex; align-items:center; gap:11px; background:none; border:none; border-radius:8px;
+  color:var(--gray); padding:10px 12px; font-size:13px; font-weight:600; text-align:left; white-space:nowrap;
+  transition:background .15s var(--ease), color .15s var(--ease);
+}
+.admin-tab svg{ width:17px; height:17px; flex-shrink:0; opacity:.85; }
+.admin-tab:hover{ background:rgba(247,247,244,.05); color:var(--off); }
+.admin-tab.is-active{ background:var(--off); color:var(--black); }
+.admin-tab.is-active svg{ opacity:1; }
+.admin-sidebar-footer{ padding:14px; border-top:1px solid rgba(247,247,244,.08); }
+
+.admin-main{ flex:1; min-width:0; margin-left:240px; padding:32px 36px 60px; max-width:1240px; }
+.admin-warning{ background:#241a06; border:1px solid #6b4b0a; color:#f2c766; font-size:12.5px; line-height:1.65; padding:16px 20px; margin-bottom:22px; border-radius:8px; }
 .admin-panel-view{ display:none; }
 .admin-panel-view.is-active{ display:block; }
+.admin-view-title{ font-family:var(--font-display); font-size:22px; text-transform:uppercase; margin:0 0 22px; }
+
 .admin-metrics{ display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; }
-.admin-metric-card{ background:var(--graphite); border:1px solid rgba(247,247,244,.08); padding:20px; }
+.admin-metric-card{ background:var(--graphite); border:1px solid rgba(247,247,244,.08); border-top:2px solid var(--off); padding:20px; border-radius:8px; }
 .admin-metric-value{ font-family:var(--font-display); font-size:26px; text-transform:uppercase; }
 .admin-metric-label{ font-size:12px; color:var(--gray); margin-top:6px; }
 .admin-toolbar{ display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap; }
-.admin-table-wrap{ overflow-x:auto; border:1px solid rgba(247,247,244,.08); }
+.admin-table-wrap{ overflow-x:auto; border:1px solid rgba(247,247,244,.08); border-radius:8px; }
 .admin-table{ width:100%; border-collapse:collapse; font-size:12.5px; min-width:860px; }
-.admin-table th, .admin-table td{ padding:10px 12px; border-bottom:1px solid rgba(247,247,244,.08); text-align:left; white-space:nowrap; }
+.admin-table th, .admin-table td{ padding:12px 14px; border-bottom:1px solid rgba(247,247,244,.08); text-align:left; white-space:nowrap; }
 .admin-table th{ color:var(--gray); text-transform:uppercase; font-size:10.5px; letter-spacing:.05em; background:var(--graphite); position:sticky; top:0; }
-.admin-table input, .admin-table select{ background:var(--black); border:1px solid rgba(247,247,244,.15); color:var(--off); font-size:12px; padding:6px 7px; width:100%; min-width:76px; border-radius:2px; }
+.admin-table tbody tr{ transition:background .12s var(--ease); }
+.admin-table tbody tr:hover{ background:rgba(247,247,244,.03); }
+.admin-table tbody tr:last-child td{ border-bottom:none; }
+.admin-table input, .admin-table select{ background:var(--black); border:1px solid rgba(247,247,244,.15); color:var(--off); font-size:12px; padding:6px 7px; width:100%; min-width:76px; border-radius:4px; }
 .admin-row-delete{ background:none; border:none; color:var(--gray); font-size:17px; line-height:1; }
 .admin-row-delete:hover{ color:var(--danger); }
 .admin-empty{ color:var(--gray); font-size:13.5px; padding:24px 4px; }
 .admin-trigger{ font-size:11.5px; color:var(--gray); text-decoration:underline; background:none; border:none; }
 .admin-trigger:hover{ color:var(--off); }
+
+@media (max-width:900px){
+  .admin-sidebar{ width:100%; height:auto; position:relative; flex-direction:column; overflow:visible; }
+  .admin-sidebar-brand{ display:flex; align-items:center; border-bottom:1px solid rgba(247,247,244,.08); padding:12px 16px; }
+  .admin-sidebar-brand .admin-badge{ display:none; }
+  .admin-sidebar-brand .logo-mark{ width:26px; height:22px; }
+  .admin-sidebar-brand .logo-word{ font-size:13px; }
+  .admin-nav{ flex-direction:row; flex:none; padding:8px 10px; overflow-x:auto; gap:4px; border-bottom:1px solid rgba(247,247,244,.08); -webkit-overflow-scrolling:touch; }
+  .admin-tab{ flex-direction:column; gap:4px; padding:8px 12px; flex-shrink:0; }
+  .admin-tab span{ display:block; font-size:10px; }
+  .admin-tab svg{ width:19px; height:19px; }
+  .admin-sidebar-footer{ border-top:none; padding:8px 16px; }
+  .admin-sidebar-footer .btn{ width:auto; }
+  .admin-shell{ flex-direction:column; }
+  .admin-main{ margin-left:0; padding:24px 18px 50px; }
+}
 </style>
 </head>
 <body>
@@ -1224,12 +1258,28 @@ p{ margin:0; }
      PAINEL ADMINISTRATIVO (fora do storefront — oculto por padrão)
      ============================================================ -->
 <div class="admin-panel" id="adminPanel" hidden>
-  <div class="admin-topbar">
-    <span class="logo"><svg class="logo-mark" viewBox="0 0 120 100" width="120" height="100" aria-hidden="true"><use href="#icon-diamond-solid"></use></svg><span class="logo-word">POINT<span>SUPPLY</span></span></span>
-    <span class="admin-badge">Painel administrativo</span>
-    <button type="button" class="btn btn-outline btn-sm" id="adminExitBtn">Voltar à loja</button>
-  </div>
+  <div class="admin-shell">
+    <aside class="admin-sidebar">
+      <div class="admin-sidebar-brand">
+        <span class="logo"><svg class="logo-mark" viewBox="0 0 120 100" width="120" height="100" aria-hidden="true"><use href="#icon-diamond-solid"></use></svg><span class="logo-word">POINT<span>SUPPLY</span></span></span>
+        <span class="admin-badge">Painel administrativo</span>
+      </div>
+      <nav class="admin-nav" role="tablist">
+        <button class="admin-tab is-active" data-admin-tab="overview" role="tab" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"></rect><rect x="14" y="3" width="7" height="5" rx="1"></rect><rect x="14" y="12" width="7" height="9" rx="1"></rect><rect x="3" y="16" width="7" height="5" rx="1"></rect></svg><span>Visão geral</span></button>
+        <button class="admin-tab" data-admin-tab="sales" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 6l2 13h14l2-13M8 10v4M12 10v4M16 10v4"></path></svg><span>Vendas</span></button>
+        <button class="admin-tab" data-admin-tab="customers" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.2"></circle><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 8.5c1.4.4 2.5 1.7 2.5 3.3M21 20c0-2.8-2-5.1-4.6-5.8"></path></svg><span>Clientes</span></button>
+        <button class="admin-tab" data-admin-tab="products" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3 6 7v13a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7l-3-4M6 7h12M9.5 11a2.5 2.5 0 0 0 5 0"></path></svg><span>Produtos</span></button>
+        <button class="admin-tab" data-admin-tab="teams" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.3"></circle><path d="M4 20c.4-3.6 3.6-6.4 8-6.4s7.6 2.8 8 6.4"></path></svg><span>Times e Ligas</span></button>
+        <button class="admin-tab" data-admin-tab="faq" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="M9.5 9.3a2.5 2.5 0 0 1 4.8.8c0 1.7-2.3 1.9-2.3 3.6"></path><circle cx="12" cy="16.8" r=".4" fill="currentColor" stroke="none"></circle></svg><span>FAQ</span></button>
+        <button class="admin-tab" data-admin-tab="discounts" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 19 19 5"></path><circle cx="7.5" cy="7.5" r="2.3"></circle><circle cx="16.5" cy="16.5" r="2.3"></circle></svg><span>Descontos</span></button>
+        <button class="admin-tab" data-admin-tab="appearance" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.6-.7 1.6-1.5 0-.4-.2-.7-.4-1-.2-.3-.4-.6-.4-1 0-.8.6-1.5 1.5-1.5H16a4.5 4.5 0 0 0 4.5-4.5C20.5 6.6 16.7 3 12 3Z"></path><circle cx="7.5" cy="11" r="1" fill="currentColor" stroke="none"></circle><circle cx="9.5" cy="7.3" r="1" fill="currentColor" stroke="none"></circle><circle cx="14.5" cy="7.3" r="1" fill="currentColor" stroke="none"></circle></svg><span>Aparência</span></button>
+      </nav>
+      <div class="admin-sidebar-footer">
+        <button type="button" class="btn btn-outline btn-sm" id="adminExitBtn" style="width:100%">Voltar à loja</button>
+      </div>
+    </aside>
 
+    <div class="admin-main">
   <div class="admin-warning">
     ⚠ <strong>Antes de usar com clientes reais:</strong> este painel só é protegido de verdade depois que você publicar o backend em <strong>apps-script-backend.js</strong> e colar a URL em <strong>APPS_SCRIPT_URL</strong> (veja o passo a passo enviado junto). A senha é conferida dentro do Google Apps Script, nunca fica neste arquivo. Ainda assim, é uma senha simples — sem múltiplos usuários, 2FA ou trilha de auditoria — adequada para uma loja pequena, não para dados sensíveis em larga escala. Você é responsável por tratar os dados de clientes conforme a LGPD.
   </div>
@@ -1237,25 +1287,16 @@ p{ margin:0; }
     ⚠ O backend (Google Apps Script) ainda não foi configurado — configure a URL em <strong>APPS_SCRIPT_URL</strong> para os dados funcionarem de verdade.
   </div>
 
-  <nav class="admin-tabs" role="tablist">
-    <button class="admin-tab is-active" data-admin-tab="overview" role="tab" aria-selected="true">Visão geral</button>
-    <button class="admin-tab" data-admin-tab="sales" role="tab" aria-selected="false">Vendas</button>
-    <button class="admin-tab" data-admin-tab="customers" role="tab" aria-selected="false">Clientes</button>
-    <button class="admin-tab" data-admin-tab="products" role="tab" aria-selected="false">Produtos</button>
-    <button class="admin-tab" data-admin-tab="teams" role="tab" aria-selected="false">Times e Ligas</button>
-    <button class="admin-tab" data-admin-tab="faq" role="tab" aria-selected="false">FAQ</button>
-    <button class="admin-tab" data-admin-tab="discounts" role="tab" aria-selected="false">Descontos</button>
-    <button class="admin-tab" data-admin-tab="appearance" role="tab" aria-selected="false">Aparência</button>
-  </nav>
-
   <div class="admin-content">
     <div class="admin-panel-view is-active" data-admin-view="overview">
+      <h2 class="admin-view-title">Visão geral</h2>
       <div class="admin-metrics" id="adminMetrics"></div>
       <h4 style="margin:32px 0 14px;font-size:15px">Top 10 produtos mais vendidos</h4>
       <div id="adminTopProducts"></div>
     </div>
 
     <div class="admin-panel-view" data-admin-view="sales">
+      <h2 class="admin-view-title">Vendas</h2>
       <div class="admin-toolbar">
         <button type="button" class="btn btn-primary btn-sm" id="adminAddSaleBtn">+ Adicionar venda manual</button>
         <button type="button" class="btn btn-outline btn-sm" data-admin-refresh>Atualizar dados</button>
@@ -1271,18 +1312,20 @@ p{ margin:0; }
     </div>
 
     <div class="admin-panel-view" data-admin-view="customers">
+      <h2 class="admin-view-title">Clientes</h2>
       <div class="admin-toolbar">
         <button type="button" class="btn btn-outline btn-sm" data-admin-refresh>Atualizar dados</button>
       </div>
       <div class="admin-table-wrap">
         <table class="admin-table">
-          <thead><tr><th>Nome</th><th>Telefone</th><th>VIP</th><th>Faturamento total</th><th>Última compra</th><th>Pedidos</th></tr></thead>
+          <thead><tr><th>Nome</th><th>Telefone</th><th>VIP</th><th>Faturamento total</th><th>Última compra</th><th>Pedidos</th><th></th></tr></thead>
           <tbody id="adminCustomersBody"></tbody>
         </table>
       </div>
     </div>
 
     <div class="admin-panel-view" data-admin-view="products">
+      <h2 class="admin-view-title">Produtos</h2>
       <p style="color:var(--gray);font-size:12.5px;margin-bottom:16px">Alterações aqui atualizam a loja na hora e ficam salvas para a próxima vez que alguém visitar o site.</p>
       <div class="admin-toolbar">
         <button type="button" class="btn btn-primary btn-sm" id="adminAddProductBtn">+ Adicionar produto</button>
@@ -1311,6 +1354,7 @@ p{ margin:0; }
     </div>
 
     <div class="admin-panel-view" data-admin-view="teams">
+      <h2 class="admin-view-title">Times e Ligas</h2>
       <p style="color:var(--gray);font-size:12.5px;margin-bottom:16px">Ligas e times aparecem na seção "Times e seleções" do site, nessa mesma ordem.</p>
       <div style="background:var(--graphite);border:1px solid rgba(247,247,244,.08);padding:14px 18px;margin-bottom:18px;display:flex;gap:22px;flex-wrap:wrap">
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="adminShowFutebol" style="width:auto" checked> Mostrar Futebol na loja</label>
@@ -1328,6 +1372,7 @@ p{ margin:0; }
     </div>
 
     <div class="admin-panel-view" data-admin-view="faq">
+      <h2 class="admin-view-title">FAQ</h2>
       <div class="admin-toolbar">
         <button type="button" class="btn btn-primary btn-sm" id="adminAddFaqBtn">+ Nova pergunta</button>
       </div>
@@ -1335,6 +1380,7 @@ p{ margin:0; }
     </div>
 
     <div class="admin-panel-view" data-admin-view="discounts">
+      <h2 class="admin-view-title">Descontos</h2>
       <p style="color:var(--gray);font-size:12.5px;margin-bottom:16px">"A partir de" = quantidade mínima de peças no carrinho para o desconto valer.</p>
       <div class="admin-toolbar">
         <button type="button" class="btn btn-primary btn-sm" id="adminAddDiscountBtn">+ Novo desconto</button>
@@ -1348,6 +1394,7 @@ p{ margin:0; }
     </div>
 
     <div class="admin-panel-view" data-admin-view="appearance">
+      <h2 class="admin-view-title">Aparência</h2>
       <p style="color:var(--gray);font-size:13.5px;max-width:56ch;margin-bottom:20px">Envie um arquivo do seu computador, ou cole o link de uma imagem já hospedada, para substituir o ícone de diamante padrão pela logo real da Point Supply, no site inteiro.</p>
       <div class="form-grid" style="max-width:420px">
         <label class="form-field">Enviar arquivo do computador
@@ -1362,6 +1409,8 @@ p{ margin:0; }
         <button type="button" class="btn btn-primary" id="adminSaveLogoBtn">Salvar logo</button>
         <button type="button" class="btn btn-outline btn-sm" id="adminResetLogoBtn">Usar ícone padrão (diamante)</button>
       </div>
+    </div>
+  </div>
     </div>
   </div>
 </div>
@@ -3596,6 +3645,7 @@ p{ margin:0; }
     adminPanel.hidden = true;
     storefrontRoot.style.display = "";
     adminAuth = null;
+    try{ sessionStorage.removeItem("psAdminAuth"); }catch(e){}
   }
 
   function hasGoogleAuth(){ return GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID.indexOf("COLE_AQUI") === -1; }
@@ -3604,6 +3654,7 @@ p{ margin:0; }
     var res = await callBackend("adminLogin", auth);
     if(res.ok){
       adminAuth = auth;
+      try{ sessionStorage.setItem("psAdminAuth", JSON.stringify(auth)); }catch(e){}
       closeModal("adminLoginModal");
       showAdmin();
       loadAdminData();
@@ -3678,6 +3729,22 @@ p{ margin:0; }
   });
 
   document.getElementById("adminExitBtn").addEventListener("click", hideAdmin);
+
+  // Mantém o login do painel entre atualizações de página (F5) na mesma aba —
+  // some sozinho se você fechar a aba/navegador, ou clicar em "Voltar à loja".
+  (async function restoreAdminSession(){
+    var saved = null;
+    try{ saved = JSON.parse(sessionStorage.getItem("psAdminAuth") || "null"); }catch(e){}
+    if(!saved || !hasBackend()) return;
+    var res = await callBackend("adminLogin", saved);
+    if(res.ok){
+      adminAuth = saved;
+      showAdmin();
+      loadAdminData();
+    } else {
+      try{ sessionStorage.removeItem("psAdminAuth"); }catch(e){}
+    }
+  })();
 
   document.querySelectorAll(".admin-tab").forEach(function(tab){
     tab.addEventListener("click", function(){
@@ -3940,7 +4007,7 @@ p{ margin:0; }
   function renderAdminCustomersTable(){
     var tbody = document.getElementById("adminCustomersBody");
     if(!adminCustomers.length){
-      tbody.innerHTML = '<tr><td colspan="6" class="admin-empty">Nenhum cliente registrado ainda.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" class="admin-empty">Nenhum cliente registrado ainda.</td></tr>';
       return;
     }
     // agrupa por telefone (normalizado, ignorando formatação) — a mesma
@@ -3975,21 +4042,55 @@ p{ margin:0; }
       var tr = document.createElement("tr");
       var lastFmt = c.lastDate ? c.lastDate.toLocaleDateString("pt-BR") : "—";
       tr.innerHTML =
-        "<td>" + escapeHtml(c.name) + "</td>" +
-        "<td>" + escapeHtml(c.phone) + "</td>" +
+        '<td><input type="text" data-field="name" value="' + escapeHtml(c.name) + '" style="width:140px"></td>' +
+        '<td><input type="text" data-field="phone" value="' + escapeHtml(c.phone) + '" style="width:130px"></td>' +
         '<td><input type="checkbox" data-vip-toggle' + (c.vip ? " checked" : "") + '></td>' +
         "<td>" + formatBRL(c.revenue) + "</td>" +
         "<td>" + lastFmt + "</td>" +
-        "<td>" + c.orderCount + "</td>";
+        "<td>" + c.orderCount + "</td>" +
+        '<td><button type="button" class="admin-row-delete admin-customer-delete" aria-label="Excluir cliente">&times;</button></td>';
+
+      tr.querySelectorAll("[data-field]").forEach(function(input){
+        input.addEventListener("change", async function(){
+          var field = input.dataset.field;
+          var value = input.value.trim();
+          if(!value){ input.value = field === "name" ? c.name : c.phone; return; }
+          var currentPhoneKey = c.phoneKey;
+          input.disabled = true;
+          var res = await callBackend("updateCustomer", Object.assign({ phone: c.phone, field: field, value: value }, authParams()));
+          input.disabled = false;
+          if(res.ok){
+            adminCustomers.forEach(function(row){ if(normalizePhone(row.phone) === currentPhoneKey) row[field] = value; });
+            renderAdminCustomersTable();
+          } else {
+            input.value = field === "name" ? c.name : c.phone;
+            window.alert("Não foi possível salvar essa alteração agora. Tente de novo.");
+          }
+        });
+      });
       tr.querySelector("[data-vip-toggle]").addEventListener("change", async function(e){
         var checked = e.target.checked;
         e.target.disabled = true;
         var res = await callBackend("updateCustomer", Object.assign({ phone: c.phone, field: "vip", value: checked }, authParams()));
         e.target.disabled = false;
         if(res.ok){
-          adminCustomers.forEach(function(row){ if(row.phone === c.phone) row.vip = checked; });
+          adminCustomers.forEach(function(row){ if(normalizePhone(row.phone) === c.phoneKey) row.vip = checked; });
         } else {
           e.target.checked = !checked;
+        }
+      });
+      tr.querySelector(".admin-customer-delete").addEventListener("click", async function(){
+        if(!window.confirm("Excluir este cliente (" + c.name + ")? O histórico de vendas dele não será apagado, só o contato.")) return;
+        var delBtn = tr.querySelector(".admin-customer-delete");
+        delBtn.disabled = true;
+        var res = await callBackend("deleteCustomer", Object.assign({ phone: c.phone }, authParams()));
+        if(res.ok){
+          adminCustomers = adminCustomers.filter(function(row){ return normalizePhone(row.phone) !== c.phoneKey; });
+          renderAdminCustomersTable();
+          renderAdminMetrics();
+        } else {
+          delBtn.disabled = false;
+          window.alert("Não foi possível excluir esse cliente agora. Tente de novo.");
         }
       });
       tbody.appendChild(tr);
