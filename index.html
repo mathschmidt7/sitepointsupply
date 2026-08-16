@@ -3914,6 +3914,7 @@ p{ margin:0; }
         openSaleEditForm(sale);
       });
       tr.querySelector(".admin-row-delete").addEventListener("click", async function(){
+        if(!window.confirm("Excluir esta venda? Essa ação não pode ser desfeita.")) return;
         var delBtn = tr.querySelector(".admin-row-delete");
         delBtn.disabled = true;
         var res = await callBackend("deleteSale", Object.assign({ id: sale.id }, authParams()));
@@ -3924,11 +3925,16 @@ p{ margin:0; }
           renderAdminCustomersTable();
         } else {
           delBtn.disabled = false;
+          window.alert("Não foi possível excluir essa venda agora (" + (res.error || "erro desconhecido") + "). Tente atualizar os dados e excluir de novo.");
         }
       });
 
       tbody.appendChild(tr);
     });
+  }
+
+  function normalizePhone(str){
+    return String(str || "").replace(/\D/g, "");
   }
 
   function renderAdminCustomersTable(){
@@ -3937,25 +3943,30 @@ p{ margin:0; }
       tbody.innerHTML = '<tr><td colspan="6" class="admin-empty">Nenhum cliente registrado ainda.</td></tr>';
       return;
     }
-    // agrupa por telefone — a mesma pessoa pode ter uma linha por pedido
+    // agrupa por telefone (normalizado, ignorando formatação) — a mesma
+    // pessoa pode ter uma linha por pedido
     var byPhone = {};
     adminCustomers.forEach(function(c){
-      var key = c.phone || "—";
-      if(!byPhone[key]){ byPhone[key] = { name: c.name, phone: c.phone, vip: c.vip === true || c.vip === "true" || c.vip === "TRUE", dates: [], orderCount: 0 }; }
-      if(c.date) byPhone[key].dates.push(c.date);
-      byPhone[key].orderCount++;
+      var key = normalizePhone(c.phone) || "—";
+      if(!byPhone[key]){ byPhone[key] = { name: c.name, phone: c.phone, vip: false }; }
       if((c.vip === true || c.vip === "true" || c.vip === "TRUE")) byPhone[key].vip = true;
     });
 
-    var list = Object.keys(byPhone).map(function(phone){
-      var c = byPhone[phone];
-      var revenue = adminSales.reduce(function(sum, s){
-        if(s.customerPhone !== phone) return sum;
+    var list = Object.keys(byPhone).map(function(phoneKey){
+      var c = byPhone[phoneKey];
+      // pedidos, faturamento e última compra vêm das vendas atuais —
+      // assim, excluir uma venda atualiza esses números automaticamente,
+      // sem precisar mexer num registro de cliente separado.
+      var matchingSales = adminSales.filter(function(s){ return normalizePhone(s.customerPhone) === phoneKey; });
+      var orderIds = {};
+      matchingSales.forEach(function(s){ orderIds[s.orderId || s.id] = true; });
+      var revenue = matchingSales.reduce(function(sum, s){
         if((s.orderStatus || "Pendente") !== "Concluído") return sum;
         return sum + (Number(s.saleValue) || 0);
       }, 0);
-      var lastDate = c.dates.length ? new Date(Math.max.apply(null, c.dates.map(function(d){ return new Date(d).getTime(); }))) : null;
-      return { name: c.name, phone: phone, vip: c.vip, revenue: revenue, lastDate: lastDate, orderCount: c.orderCount };
+      var dates = matchingSales.map(function(s){ return s.date; }).filter(Boolean);
+      var lastDate = dates.length ? new Date(Math.max.apply(null, dates.map(function(d){ return new Date(d).getTime(); }))) : null;
+      return { name: c.name, phone: c.phone, phoneKey: phoneKey, vip: c.vip, revenue: revenue, lastDate: lastDate, orderCount: Object.keys(orderIds).length };
     });
     list.sort(function(a, b){ return b.revenue - a.revenue; });
 
