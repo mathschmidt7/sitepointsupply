@@ -1292,6 +1292,7 @@ p{ margin:0; }
         <p style="color:var(--gray);font-size:12px;margin:0 0 14px">Define um preço padrão pra todos os produtos daquele tipo de uma vez. Depois, você ainda pode mudar o preço de um produto específico editando ele individualmente — isso não é sobrescrito.</p>
         <div id="bulkPriceRows"></div>
       </div>
+      <input type="text" id="adminProductsSearch" placeholder="Buscar por nome, liga ou time..." style="width:100%;max-width:400px;background:var(--black);border:1px solid rgba(247,247,244,.15);color:var(--off);padding:9px 12px;font-size:13px;margin-bottom:14px">
       <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:14px">
         <span style="font-size:12.5px;color:var(--gray)">Ordenar por:</span>
         <button type="button" class="btn btn-outline btn-sm admin-sort-btn" data-sort="category">Categoria</button>
@@ -1306,6 +1307,7 @@ p{ margin:0; }
           <tbody id="adminProductsBody"></tbody>
         </table>
       </div>
+      <div id="adminProductsPager" style="display:flex;align-items:center;justify-content:center;margin-top:16px"></div>
     </div>
 
     <div class="admin-panel-view" data-admin-view="teams">
@@ -3885,20 +3887,31 @@ p{ margin:0; }
         '<td><select data-field="orderStatus">' + orderStatusOptionsHtml(sale.orderStatus || "Pendente") + '</select></td>' +
         '<td><input type="text" data-field="trackingCode" value="' + escapeHtml(sale.trackingCode || "") + '"></td>' +
         "<td>" + escapeHtml(sale.source || "manual") + "</td>" +
-        '<td><button type="button" class="admin-row-delete" aria-label="Excluir venda">&times;</button></td>';
+        '<td style="white-space:nowrap"><button type="button" class="btn btn-outline btn-sm admin-sale-edit">Editar</button> <button type="button" class="admin-row-delete" aria-label="Excluir venda">&times;</button></td>';
 
       tr.querySelectorAll("[data-field]").forEach(function(input){
         input.addEventListener("change", async function(){
           var field = input.dataset.field;
+          var previous = sale[field];
           sale[field] = input.value;
-          await callBackend("updateSale", Object.assign({ id: sale.id, field: field, value: input.value }, authParams()));
           if(field === "saleValue" || field === "costValue"){
             var profitCell = tr.children[6];
             profitCell.textContent = formatBRL((Number(sale.saleValue) || 0) - (Number(sale.costValue) || 0));
           }
           renderAdminMetrics();
           if(field === "orderStatus"){ renderAdminCustomersTable(); }
+          var res = await callBackend("updateSale", Object.assign({ id: sale.id, field: field, value: input.value }, authParams()));
+          if(!res.ok){
+            sale[field] = previous;
+            input.value = previous;
+            renderAdminMetrics();
+            if(field === "orderStatus"){ renderAdminCustomersTable(); }
+            window.alert("Não foi possível salvar essa alteração agora (a mudança foi desfeita aqui). Confira sua conexão e se o backend está atualizado, e tente de novo.");
+          }
         });
+      });
+      tr.querySelector(".admin-sale-edit").addEventListener("click", function(){
+        openSaleEditForm(sale);
       });
       tr.querySelector(".admin-row-delete").addEventListener("click", async function(){
         var delBtn = tr.querySelector(".admin-row-delete");
@@ -3972,28 +3985,95 @@ p{ margin:0; }
     });
   }
 
-  /* Adicionar venda manual */
+  /* Adicionar/editar venda manual */
   var adminSaleForm = document.getElementById("adminSaleForm");
-  (function fillManualStatusSelect(){
+  var editingSaleId = null;
+
+  function resetSaleFormSelects(){
     adminSaleForm.status.innerHTML = statusOptionsHtml(STATUS_STAGES[0]);
     adminSaleForm.orderStatus.innerHTML = orderStatusOptionsHtml(ORDER_STATUS_STAGES[0]);
-  })();
+  }
+  resetSaleFormSelects();
 
   document.getElementById("adminAddSaleBtn").addEventListener("click", function(){
+    editingSaleId = null;
     adminSaleForm.reset();
-    adminSaleForm.status.innerHTML = statusOptionsHtml(STATUS_STAGES[0]);
-    adminSaleForm.orderStatus.innerHTML = orderStatusOptionsHtml(ORDER_STATUS_STAGES[0]);
+    resetSaleFormSelects();
+    document.getElementById("adminSaleTitle").textContent = "Adicionar venda manual";
+    adminSaleForm.querySelector("button[type=submit]").textContent = "Adicionar venda";
     openModal("adminSaleModal");
   });
+
+  function openSaleEditForm(sale){
+    editingSaleId = sale.id;
+    var f = adminSaleForm;
+    f.reset();
+    f.orderId.value = sale.orderId || "";
+    f.product.value = sale.product || "";
+    if(![].slice.call(f.size.options).some(function(o){ return o.value === sale.size; })){
+      var opt = document.createElement("option"); opt.value = sale.size; opt.textContent = sale.size;
+      f.size.appendChild(opt);
+    }
+    f.size.value = sale.size || "—";
+    f.time.value = sale.time && sale.time !== "—" ? sale.time : "";
+    f.customerName.value = sale.customerName && sale.customerName !== "—" ? sale.customerName : "";
+    f.customerPhone.value = sale.customerPhone && sale.customerPhone !== "—" ? sale.customerPhone : "";
+    f.saleValue.value = Number(sale.saleValue) || 0;
+    f.costValue.value = Number(sale.costValue) || 0;
+    f.status.innerHTML = statusOptionsHtml(sale.status || STATUS_STAGES[0]);
+    f.orderStatus.innerHTML = orderStatusOptionsHtml(sale.orderStatus || ORDER_STATUS_STAGES[0]);
+    f.trackingCode.value = sale.trackingCode || "";
+    document.getElementById("adminSaleTitle").textContent = "Editar venda";
+    f.querySelector("button[type=submit]").textContent = "Salvar alterações";
+    openModal("adminSaleModal");
+  }
 
   adminSaleForm.addEventListener("submit", async function(e){
     e.preventDefault();
     var f = adminSaleForm;
+    var product = f.product.value.trim();
+    if(!product) return;
+    var submitBtn = f.querySelector("button[type=submit]");
+
+    if(editingSaleId){
+      var sale = adminSales.find(function(s){ return s.id === editingSaleId; });
+      if(!sale) return;
+      var updates = {
+        orderId: f.orderId.value.trim(),
+        product: product,
+        size: f.size.value,
+        time: f.time.value.trim() || "—",
+        customerName: f.customerName.value.trim() || "—",
+        customerPhone: f.customerPhone.value.trim() || "—",
+        saleValue: Number(f.saleValue.value) || 0,
+        costValue: Number(f.costValue.value) || 0,
+        status: f.status.value,
+        orderStatus: f.orderStatus.value,
+        trackingCode: f.trackingCode.value.trim()
+      };
+      submitBtn.disabled = true; submitBtn.textContent = "Salvando...";
+      var allOk = true;
+      for(var field in updates){
+        var res = await callBackend("updateSale", Object.assign({ id: sale.id, field: field, value: updates[field] }, authParams()));
+        if(res.ok){ sale[field] = updates[field]; } else { allOk = false; }
+      }
+      submitBtn.disabled = false; submitBtn.textContent = "Salvar alterações";
+      if(allOk){
+        renderAdminSalesTable();
+        renderAdminMetrics();
+        renderAdminCustomersTable();
+        closeModal("adminSaleModal");
+      } else {
+        alert("Algumas alterações não foram salvas. Confira sua conexão e tente de novo.");
+      }
+      return;
+    }
+
     var record = {
       id: "manual-" + Date.now().toString(36) + Math.random().toString(36).slice(2,6),
       orderId: f.orderId.value.trim() || "",
       date: new Date().toISOString(),
-      product: f.product.value.trim(),
+      product: product,
       size: f.size.value,
       time: f.time.value.trim() || "—",
       customerName: f.customerName.value.trim() || "—",
@@ -4006,12 +4086,10 @@ p{ margin:0; }
       trackingCode: f.trackingCode.value.trim(),
       source: "manual"
     };
-    if(!record.product) return;
-    var submitBtn = f.querySelector("button[type=submit]");
     submitBtn.disabled = true; submitBtn.textContent = "Adicionando...";
-    var res = await callBackend("addSale", record);
+    var res2 = await callBackend("addSale", record);
     submitBtn.disabled = false; submitBtn.textContent = "Adicionar venda";
-    if(res.ok){
+    if(res2.ok){
       await loadAdminData();
       closeModal("adminSaleModal");
     } else {
@@ -4094,14 +4172,36 @@ p{ margin:0; }
       else { adminSortKey = key; adminSortDir = 1; }
       document.querySelectorAll(".admin-sort-btn").forEach(function(b){ b.classList.remove("is-active"); });
       btn.classList.add("is-active");
+      adminProductsPage = 1;
       renderAdminProducts();
     });
   });
 
+  var adminProductsSearchTimer = null;
+  document.getElementById("adminProductsSearch").addEventListener("input", function(){
+    clearTimeout(adminProductsSearchTimer);
+    adminProductsSearchTimer = setTimeout(function(){
+      adminProductsPage = 1;
+      renderAdminProducts();
+    }, 200);
+  });
+
+  var ADMIN_PRODUCTS_PAGE_SIZE = 50;
+  var adminProductsPage = 1;
+
   function renderAdminProducts(){
     var tbody = document.getElementById("adminProductsBody");
-    if(!PRODUCTS.length){ tbody.innerHTML = '<tr><td colspan="8" class="admin-empty">Nenhum produto cadastrado.</td></tr>'; return; }
+    if(!PRODUCTS.length){ tbody.innerHTML = '<tr><td colspan="8" class="admin-empty">Nenhum produto cadastrado.</td></tr>'; document.getElementById("adminProductsPager").innerHTML = ""; return; }
+    var query = (document.getElementById("adminProductsSearch") || {}).value || "";
+    query = query.trim().toLowerCase();
     var list = PRODUCTS.slice();
+    if(query){
+      list = list.filter(function(p){
+        return p.name.toLowerCase().indexOf(query) !== -1 ||
+          (p.liga || "").toLowerCase().indexOf(query) !== -1 ||
+          (p.time || "").toLowerCase().indexOf(query) !== -1;
+      });
+    }
     if(adminSortKey){
       list.sort(function(a, b){
         var av, bv;
@@ -4112,18 +4212,41 @@ p{ margin:0; }
         return adminSortDir * (av - bv);
       });
     }
-    tbody.innerHTML = list.map(function(p){
-      return "<tr>" +
-        "<td>" + escapeHtml(p.name) + "</td>" +
-        "<td>" + escapeHtml(categoryLabel(p.category)) + "</td>" +
-        "<td>" + escapeHtml(p.liga || "—") + "</td>" +
-        "<td>" + escapeHtml(p.time || "—") + "</td>" +
-        "<td>" + escapeHtml(p.tipo) + "</td>" +
-        "<td>" + escapeHtml(p.price) + "</td>" +
-        "<td>" + (p.ativo !== false ? "Sim" : "Não") + "</td>" +
-        '<td style="white-space:nowrap"><button type="button" class="btn btn-outline btn-sm admin-product-edit" data-id="' + p.id + '">Editar</button> <button type="button" class="admin-row-delete admin-product-delete" data-id="' + p.id + '" aria-label="Excluir produto">&times;</button></td>' +
-      "</tr>";
-    }).join("");
+
+    var totalPages = Math.max(1, Math.ceil(list.length / ADMIN_PRODUCTS_PAGE_SIZE));
+    if(adminProductsPage > totalPages) adminProductsPage = totalPages;
+    var start = (adminProductsPage - 1) * ADMIN_PRODUCTS_PAGE_SIZE;
+    var pageItems = list.slice(start, start + ADMIN_PRODUCTS_PAGE_SIZE);
+
+    if(!pageItems.length){
+      tbody.innerHTML = '<tr><td colspan="8" class="admin-empty">Nenhum produto encontrado.</td></tr>';
+    } else {
+      tbody.innerHTML = pageItems.map(function(p){
+        return "<tr>" +
+          "<td>" + escapeHtml(p.name) + "</td>" +
+          "<td>" + escapeHtml(categoryLabel(p.category)) + "</td>" +
+          "<td>" + escapeHtml(p.liga || "—") + "</td>" +
+          "<td>" + escapeHtml(p.time || "—") + "</td>" +
+          "<td>" + escapeHtml(p.tipo) + "</td>" +
+          "<td>" + escapeHtml(p.price) + "</td>" +
+          "<td>" + (p.ativo !== false ? "Sim" : "Não") + "</td>" +
+          '<td style="white-space:nowrap"><button type="button" class="btn btn-outline btn-sm admin-product-edit" data-id="' + p.id + '">Editar</button> <button type="button" class="admin-row-delete admin-product-delete" data-id="' + p.id + '" aria-label="Excluir produto">&times;</button></td>' +
+        "</tr>";
+      }).join("");
+    }
+
+    var pager = document.getElementById("adminProductsPager");
+    if(pager){
+      pager.innerHTML = list.length
+        ? ('<button type="button" class="btn btn-outline btn-sm" id="adminProdPrev"' + (adminProductsPage <= 1 ? " disabled" : "") + '>Anterior</button>' +
+           '<span style="font-size:12.5px;color:var(--gray);margin:0 10px">Página ' + adminProductsPage + ' de ' + totalPages + ' (' + list.length + ' produtos)</span>' +
+           '<button type="button" class="btn btn-outline btn-sm" id="adminProdNext"' + (adminProductsPage >= totalPages ? " disabled" : "") + '>Próxima</button>')
+        : "";
+      var prevBtn = document.getElementById("adminProdPrev");
+      var nextBtn = document.getElementById("adminProdNext");
+      if(prevBtn) prevBtn.addEventListener("click", function(){ adminProductsPage--; renderAdminProducts(); });
+      if(nextBtn) nextBtn.addEventListener("click", function(){ adminProductsPage++; renderAdminProducts(); });
+    }
 
     tbody.querySelectorAll(".admin-product-edit").forEach(function(btn){
       btn.addEventListener("click", function(){
