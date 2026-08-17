@@ -1,4 +1,4 @@
-git<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -2861,7 +2861,11 @@ p{ margin:0; }
     try{
       if(action === "adminLogin"){
         var loginRes = await sb.auth.signInWithPassword({ email: params.username, password: params.password });
-        if(loginRes.error) return { ok:false, error: loginRes.error.message };
+        if(loginRes.error){
+          var msg = loginRes.error.message || "";
+          var isNetworkFail = /load failed|failed to fetch|networkerror|network error|fetch/i.test(msg);
+          return { ok:false, error: isNetworkFail ? ("network (" + msg + ")") : msg };
+        }
         return { ok:true };
       }
 
