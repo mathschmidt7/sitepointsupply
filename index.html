@@ -669,6 +669,15 @@ p{ margin:0; }
 .admin-table tbody tr:last-child td{ border-bottom:none; }
 .admin-table input, .admin-table select{ background:var(--black); border:1px solid rgba(247,247,244,.15); color:var(--off); font-size:12px; padding:6px 7px; width:100%; min-width:76px; border-radius:4px; }
 .admin-row-delete{ background:none; border:none; color:var(--gray); font-size:17px; line-height:1; }
+.admin-vip-toggle{
+  border:1px solid rgba(247,247,244,.25); background:none; color:var(--gray); font-size:10.5px; font-weight:700;
+  letter-spacing:.05em; padding:6px 13px; border-radius:20px; transition:all .15s var(--ease); text-transform:uppercase;
+}
+.admin-vip-toggle:hover{ border-color:rgba(247,247,244,.5); color:var(--off); }
+.admin-vip-toggle[data-vip="true"]{ background:#caa64d; border-color:#caa64d; color:#171105; }
+.admin-vip-star{ color:#caa64d; }
+.admin-table tr.is-vip{ background:rgba(202,166,77,.06); border-left:2px solid #caa64d; }
+.admin-table tr.is-vip:hover{ background:rgba(202,166,77,.1); }
 .admin-row-delete:hover{ color:var(--danger); }
 .admin-empty{ color:var(--gray); font-size:13.5px; padding:24px 4px; }
 .admin-trigger{ font-size:11.5px; color:var(--gray); text-decoration:underline; background:none; border:none; }
@@ -1280,12 +1289,12 @@ p{ margin:0; }
     </aside>
 
     <div class="admin-main">
-  <div class="admin-warning">
-    ⚠ <strong>Antes de usar com clientes reais:</strong> este painel só é protegido de verdade depois que você publicar o backend em <strong>apps-script-backend.js</strong> e colar a URL em <strong>APPS_SCRIPT_URL</strong> (veja o passo a passo enviado junto). A senha é conferida dentro do Google Apps Script, nunca fica neste arquivo. Ainda assim, é uma senha simples — sem múltiplos usuários, 2FA ou trilha de auditoria — adequada para uma loja pequena, não para dados sensíveis em larga escala. Você é responsável por tratar os dados de clientes conforme a LGPD.
-  </div>
   <div class="admin-warning" id="adminBackendMissingWarning" style="border-color:#6b1a1a;background:#241010;color:#f28e8e" hidden>
-    ⚠ O backend (Google Apps Script) ainda não foi configurado — configure a URL em <strong>APPS_SCRIPT_URL</strong> para os dados funcionarem de verdade.
+    ⚠ O backend (Google Apps Script) ainda não foi configurado — configure a URL em <strong>APPS_SCRIPT_URL</strong> para os dados funcionarem de verdade (veja o passo a passo enviado junto).
   </div>
+  <p style="color:var(--gray);font-size:11.5px;line-height:1.6;max-width:70ch;margin:0 0 22px">
+    Lembrete: a senha deste painel é simples — sem múltiplos usuários, 2FA ou trilha de auditoria — adequada para uma loja pequena, não para dados sensíveis em larga escala. Você é responsável por tratar os dados de clientes conforme a LGPD.
+  </p>
 
   <div class="admin-content">
     <div class="admin-panel-view is-active" data-admin-view="overview">
@@ -3861,10 +3870,12 @@ p{ margin:0; }
       var v = Number(s.saleValue) || 0, c = Number(s.costValue) || 0;
       return sum + (v - c);
     }, 0);
+    var uniqueCustomers = {};
+    adminCustomers.forEach(function(c){ uniqueCustomers[normalizePhone(c.phone)] = true; });
     var metrics = [
       { label:"Total de vendas", value: String(adminSales.length) },
       { label:"Vendas concluídas", value: String(concluded.length) },
-      { label:"Total de clientes", value: String(adminCustomers.length) },
+      { label:"Total de clientes", value: String(Object.keys(uniqueCustomers).length) },
       { label:"Faturamento (concluídas)", value: formatBRL(faturamentoTotal) },
       { label:"Lucro total estimado", value: formatBRL(lucroTotal) }
     ];
@@ -4040,11 +4051,12 @@ p{ margin:0; }
     tbody.innerHTML = "";
     list.forEach(function(c){
       var tr = document.createElement("tr");
+      tr.classList.toggle("is-vip", c.vip);
       var lastFmt = c.lastDate ? c.lastDate.toLocaleDateString("pt-BR") : "—";
       tr.innerHTML =
-        '<td><input type="text" data-field="name" value="' + escapeHtml(c.name) + '" style="width:140px"></td>' +
+        '<td><input type="text" data-field="name" value="' + escapeHtml(c.name) + '" style="width:140px">' + (c.vip ? ' <span class="admin-vip-star" title="Cliente VIP">★</span>' : '') + '</td>' +
         '<td><input type="text" data-field="phone" value="' + escapeHtml(c.phone) + '" style="width:130px"></td>' +
-        '<td><input type="checkbox" data-vip-toggle' + (c.vip ? " checked" : "") + '></td>' +
+        '<td><button type="button" class="admin-vip-toggle" data-vip="' + (c.vip ? "true" : "false") + '" aria-pressed="' + (c.vip ? "true" : "false") + '">VIP</button></td>' +
         "<td>" + formatBRL(c.revenue) + "</td>" +
         "<td>" + lastFmt + "</td>" +
         "<td>" + c.orderCount + "</td>" +
@@ -4068,15 +4080,30 @@ p{ margin:0; }
           }
         });
       });
-      tr.querySelector("[data-vip-toggle]").addEventListener("change", async function(e){
-        var checked = e.target.checked;
-        e.target.disabled = true;
-        var res = await callBackend("updateCustomer", Object.assign({ phone: c.phone, field: "vip", value: checked }, authParams()));
-        e.target.disabled = false;
+      // Botão VIP: atualiza o próprio botão e a linha direto (sem re-renderizar
+      // a tabela toda), evitando que outra atualização em andamento "desfaça"
+      // visualmente essa alteração por engano.
+      tr.querySelector(".admin-vip-toggle").addEventListener("click", async function(e){
+        var btn = e.currentTarget;
+        var next = btn.dataset.vip !== "true";
+        btn.disabled = true;
+        var res = await callBackend("updateCustomer", Object.assign({ phone: c.phone, field: "vip", value: next }, authParams()));
+        btn.disabled = false;
         if(res.ok){
-          adminCustomers.forEach(function(row){ if(normalizePhone(row.phone) === c.phoneKey) row.vip = checked; });
+          c.vip = next;
+          btn.dataset.vip = next ? "true" : "false";
+          btn.setAttribute("aria-pressed", next ? "true" : "false");
+          tr.classList.toggle("is-vip", next);
+          var nameCell = tr.querySelector('[data-field="name"]').parentElement;
+          var star = nameCell.querySelector(".admin-vip-star");
+          if(next && !star){
+            nameCell.insertAdjacentHTML("beforeend", ' <span class="admin-vip-star" title="Cliente VIP">★</span>');
+          } else if(!next && star){
+            star.remove();
+          }
+          adminCustomers.forEach(function(row){ if(normalizePhone(row.phone) === c.phoneKey) row.vip = next; });
         } else {
-          e.target.checked = !checked;
+          window.alert("Não foi possível salvar essa alteração agora. Tente de novo.");
         }
       });
       tr.querySelector(".admin-customer-delete").addEventListener("click", async function(){
@@ -4488,70 +4515,96 @@ p{ margin:0; }
     TEAM_GROUPS[cat].forEach(function(group, gi){
       var box = document.createElement("div");
       box.style.cssText = "background:var(--graphite);border:1px solid rgba(247,247,244,.08);padding:16px 18px;margin-bottom:14px";
-      var teamsHtml = sortTeamsAlpha(group.teams).map(function(team){
-        var ti = group.teams.indexOf(team);
-        return '<span class="team-chip" style="cursor:default">' +
-          teamBadgeHtml(team) + escapeHtml(team) +
-          ' <button type="button" data-team="' + escapeHtml(team) + '" class="admin-team-logo" style="background:none;border:none;color:var(--gray);font-size:13px;cursor:pointer" aria-label="Enviar logo do time" title="Enviar logo">📷</button>' +
-          ' <button type="button" data-gi="' + gi + '" data-ti="' + ti + '" class="admin-team-remove" style="background:none;border:none;color:var(--gray);margin-left:2px;font-size:14px;cursor:pointer" aria-label="Remover time">&times;</button>' +
-        '</span>';
-      }).join("");
+      var teamCount = group.teams.length;
       box.innerHTML =
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">' +
+        '<div class="admin-league-header" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer">' +
           '<span style="display:flex;align-items:center;gap:8px">' +
             (LEAGUE_LOGOS[group.liga] ? '<img src="' + escapeHtml(LEAGUE_LOGOS[group.liga]) + '" alt="" style="width:22px;height:22px;border-radius:50%;object-fit:cover">' : '') +
             '<strong class="font-display" style="font-size:15px">' + escapeHtml(group.liga) + '</strong>' +
+            '<span style="color:var(--gray);font-size:12px">(' + teamCount + ' ' + (teamCount === 1 ? "time" : "times") + ')</span>' +
             '<button type="button" data-liga="' + escapeHtml(group.liga) + '" class="admin-league-logo" style="background:none;border:none;color:var(--gray);font-size:13px;cursor:pointer" aria-label="Enviar logo da liga" title="Enviar logo da liga">📷</button>' +
           '</span>' +
-          '<button type="button" class="admin-row-delete admin-league-remove" data-gi="' + gi + '" aria-label="Remover liga">&times;</button>' +
+          '<span style="display:flex;align-items:center;gap:10px">' +
+            '<button type="button" class="admin-row-delete admin-league-remove" data-gi="' + gi + '" aria-label="Remover liga">&times;</button>' +
+            '<svg class="admin-league-caret" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="transition:transform .15s var(--ease)"><path d="M6 9l6 6 6-6"></path></svg>' +
+          '</span>' +
         '</div>' +
-        '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">' + (teamsHtml || '<span style="color:var(--gray);font-size:12.5px">Nenhum time nesta liga ainda.</span>') + '</div>' +
-        '<div style="display:flex;gap:8px">' +
-          '<input type="text" placeholder="Nome do time" class="admin-new-team-input" data-gi="' + gi + '" style="flex:1;background:var(--black);border:1px solid rgba(247,247,244,.15);color:var(--off);padding:9px 12px;font-size:13px;border-radius:2px">' +
-          '<button type="button" class="btn btn-outline btn-sm admin-add-team-btn" data-gi="' + gi + '">Adicionar</button>' +
-        '</div>';
+        '<div class="admin-league-body" hidden style="margin-top:14px"></div>';
+
+      var body = box.querySelector(".admin-league-body");
+      var caret = box.querySelector(".admin-league-caret");
+      var expanded = false;
+
+      function renderBody(){
+        var teamsHtml = sortTeamsAlpha(group.teams).map(function(team){
+          var ti = group.teams.indexOf(team);
+          return '<span class="team-chip" style="cursor:default">' +
+            teamBadgeHtml(team) + escapeHtml(team) +
+            ' <button type="button" data-team="' + escapeHtml(team) + '" class="admin-team-logo" style="background:none;border:none;color:var(--gray);font-size:13px;cursor:pointer" aria-label="Enviar logo do time" title="Enviar logo">📷</button>' +
+            ' <button type="button" data-gi="' + gi + '" data-ti="' + ti + '" class="admin-team-remove" style="background:none;border:none;color:var(--gray);margin-left:2px;font-size:14px;cursor:pointer" aria-label="Remover time">&times;</button>' +
+          '</span>';
+        }).join("");
+        body.innerHTML =
+          '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">' + (teamsHtml || '<span style="color:var(--gray);font-size:12.5px">Nenhum time nesta liga ainda.</span>') + '</div>' +
+          '<div style="display:flex;gap:8px">' +
+            '<input type="text" placeholder="Nome do time" class="admin-new-team-input" data-gi="' + gi + '" style="flex:1;background:var(--black);border:1px solid rgba(247,247,244,.15);color:var(--off);padding:9px 12px;font-size:13px;border-radius:2px">' +
+            '<button type="button" class="btn btn-outline btn-sm admin-add-team-btn" data-gi="' + gi + '">Adicionar</button>' +
+          '</div>';
+
+        body.querySelectorAll(".admin-team-logo").forEach(function(btn){
+          btn.addEventListener("click", function(){
+            pendingLogoTarget = { kind:"team", team: btn.dataset.team };
+            teamLogoFileInput.click();
+          });
+        });
+        body.querySelectorAll(".admin-team-remove").forEach(function(btn){
+          btn.addEventListener("click", async function(){
+            var gi2 = Number(btn.dataset.gi), ti2 = Number(btn.dataset.ti);
+            TEAM_GROUPS[cat][gi2].teams.splice(ti2, 1);
+            renderAdminLeagues();
+            renderLeagueRows();
+            await saveSiteConfig();
+          });
+        });
+        var addInput = body.querySelector(".admin-new-team-input");
+        var addBtn = body.querySelector(".admin-add-team-btn");
+        function addTeam(){
+          var name = addInput.value.trim();
+          if(!name) return;
+          if(TEAM_GROUPS[cat][gi].teams.indexOf(name) !== -1){ addInput.value = ""; return; }
+          TEAM_GROUPS[cat][gi].teams.push(name);
+          renderAdminLeagues();
+          renderLeagueRows();
+          saveSiteConfig();
+        }
+        addBtn.addEventListener("click", addTeam);
+        addInput.addEventListener("keydown", function(e){ if(e.key === "Enter"){ e.preventDefault(); addTeam(); } });
+      }
+
+      box.querySelector(".admin-league-header").addEventListener("click", function(e){
+        if(e.target.closest(".admin-league-logo") || e.target.closest(".admin-league-remove")) return;
+        expanded = !expanded;
+        body.hidden = !expanded;
+        caret.style.transform = expanded ? "rotate(180deg)" : "";
+        if(expanded && !body.dataset.rendered){
+          renderBody();
+          body.dataset.rendered = "1";
+        }
+      });
+
       container.appendChild(box);
     });
 
-    container.querySelectorAll(".admin-team-logo").forEach(function(btn){
-      btn.addEventListener("click", function(){
-        pendingLogoTarget = { kind:"team", team: btn.dataset.team };
-        teamLogoFileInput.click();
-      });
-    });
     container.querySelectorAll(".admin-league-logo").forEach(function(btn){
       btn.addEventListener("click", function(){
         pendingLogoTarget = { kind:"league", league: btn.dataset.liga };
         teamLogoFileInput.click();
       });
     });
-    container.querySelectorAll(".admin-team-remove").forEach(function(btn){
-      btn.addEventListener("click", async function(){
-        var gi = Number(btn.dataset.gi), ti = Number(btn.dataset.ti);
-        TEAM_GROUPS[cat][gi].teams.splice(ti, 1);
-        renderAdminLeagues();
-        renderLeagueRows();
-        applyFilters();
-        await saveSiteConfig();
-      });
-    });
     container.querySelectorAll(".admin-league-remove").forEach(function(btn){
       btn.addEventListener("click", async function(){
         if(!window.confirm("Remover esta liga e todos os seus times?")) return;
         TEAM_GROUPS[cat].splice(Number(btn.dataset.gi), 1);
-        renderAdminLeagues();
-        renderLeagueRows();
-        applyFilters();
-        await saveSiteConfig();
-      });
-    });
-    container.querySelectorAll(".admin-add-team-btn").forEach(function(btn){
-      btn.addEventListener("click", async function(){
-        var gi = Number(btn.dataset.gi);
-        var input = container.querySelector('.admin-new-team-input[data-gi="' + gi + '"]');
-        var name = input.value.trim();
-        if(!name) return;
-        TEAM_GROUPS[cat][gi].teams.push(name);
         renderAdminLeagues();
         renderLeagueRows();
         applyFilters();
