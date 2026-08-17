@@ -9,19 +9,19 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=EB+Garamond:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 /* ============================================================
    POINT SUPPLY — Landing Page + mini painel administrativo
    PLACEHOLDERS a substituir antes de publicar:
    - WHATSAPP_NUMBER (já atualizado com o número informado)
-   - APPS_SCRIPT_URL (cole a URL do seu Web App — ver apps-script-backend.js
-     e o passo a passo enviado junto para publicar o backend no Google Sheets)
-   - A senha do painel é definida DENTRO do Google Apps Script (Propriedades
-     do script), nunca neste arquivo.
+   - SUPABASE_URL e SUPABASE_ANON_KEY (cole os dados do seu projeto —
+     ver supabase-schema.sql e o passo a passo enviado junto)
+   - A senha do painel é o usuário administrador criado dentro do
+     Supabase (Authentication → Users), nunca neste arquivo.
    - PRODUCTS, TEAM_GROUPS, SIZE_CHARTS, PROGRESSIVE_DISCOUNTS no <script>
    - Imagens reais dos produtos (hoje: marca d'água tipográfica)
-   Sem a APPS_SCRIPT_URL configurada, a loja e o WhatsApp funcionam
+   Sem o Supabase configurado, a loja e o WhatsApp funcionam
    normalmente, mas cadastro de cliente, rastreio e painel administrativo
    ficam inativos (a interface avisa isso na hora).
    ============================================================ */
@@ -550,11 +550,6 @@ p{ margin:0; }
 /* ============================================================
    INSTAGRAM
    ============================================================ */
-.insta-grid{ display:grid; grid-template-columns:repeat(6,1fr); gap:2px; margin-top:12px; }
-.insta-tile{ aspect-ratio:1/1; position:relative; overflow:hidden; }
-.insta-tile .icon{ position:relative; z-index:1; width:26px; height:26px; margin:16px; color:rgba(247,247,244,.6); }
-.insta-cta{ display:flex; justify-content:center; margin-top:40px; }
-@media (max-width:860px){ .insta-grid{ grid-template-columns:repeat(3,1fr); } }
 
 /* ============================================================
    CTA FINAL
@@ -1082,11 +1077,13 @@ p{ margin:0; }
     <h2 class="section-title section-title--center">@POINTSUPPLY_</h2>
     <p class="section-text" style="text-align:center;margin-left:auto;margin-right:auto">Esporte, estilo e novidades.</p>
   </div>
-  <div class="container">
-    <div class="insta-grid" id="instaGrid"><!-- tiles via JS --></div>
-    <div class="insta-cta">
-      <a href="#" target="_blank" rel="noopener" class="btn btn-outline js-instagram-link">Seguir no Instagram</a>
-    </div>
+  <div class="container" style="max-width:520px">
+    <a href="#" target="_blank" rel="noopener" class="js-instagram-link ghost-panel" style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;padding:48px 32px;text-decoration:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" style="width:38px;height:38px;position:relative;z-index:1"><rect x="3" y="3" width="18" height="18" rx="5"></rect><circle cx="12" cy="12" r="4.2"></circle><circle cx="17.3" cy="6.7" r="1"></circle></svg>
+      <span style="position:relative;z-index:1;font-family:var(--font-display);font-size:18px;text-transform:uppercase">Acompanhe a Point Supply</span>
+      <span style="position:relative;z-index:1;color:var(--gray);font-size:14px">Lançamentos, bastidores e novidades direto no nosso perfil.</span>
+      <span class="btn btn-outline" style="position:relative;z-index:1;pointer-events:none">Seguir no Instagram</span>
+    </a>
   </div>
 </section>
 
@@ -1252,12 +1249,10 @@ p{ margin:0; }
     </button>
     <h3 class="modal-title" id="adminLoginTitle">Área do lojista</h3>
     <p style="color:var(--gray);font-size:12.5px;margin-bottom:16px">Acesso restrito ao administrador da loja. Este é um protótipo — veja o aviso completo após entrar.</p>
-    <div id="googleSignInWrap" style="margin-bottom:14px;display:flex;justify-content:center"></div>
-    <div id="googleSignInDivider" style="display:none;align-items:center;gap:10px;color:var(--gray);font-size:11.5px;margin:4px 0 16px"><span style="flex:1;height:1px;background:rgba(247,247,244,.15)"></span>ou entre com usuário e senha<span style="flex:1;height:1px;background:rgba(247,247,244,.15)"></span></div>
     <form id="adminLoginForm" class="form-grid">
-      <label class="form-field">Usuário<input type="text" name="username" required autocomplete="username"></label>
+      <label class="form-field">E-mail<input type="email" name="username" required autocomplete="username"></label>
       <label class="form-field">Senha<input type="password" name="password" required autocomplete="current-password"></label>
-      <p class="form-error" id="adminLoginError" hidden>Usuário ou senha incorretos.</p>
+      <p class="form-error" id="adminLoginError" hidden>E-mail ou senha incorretos.</p>
       <button type="submit" class="btn btn-primary btn-block">Entrar</button>
     </form>
   </div>
@@ -1292,7 +1287,7 @@ p{ margin:0; }
 
     <div class="admin-main">
   <div class="admin-warning" id="adminBackendMissingWarning" style="border-color:#6b1a1a;background:#241010;color:#f28e8e" hidden>
-    ⚠ O backend (Google Apps Script) ainda não foi configurado — configure a URL em <strong>APPS_SCRIPT_URL</strong> para os dados funcionarem de verdade (veja o passo a passo enviado junto).
+    ⚠ O backend (Supabase) ainda não foi configurado — configure a URL e a chave em <strong>SUPABASE_URL</strong> / <strong>SUPABASE_ANON_KEY</strong> para os dados funcionarem de verdade (veja o passo a passo enviado junto).
   </div>
   <p style="color:var(--gray);font-size:11.5px;line-height:1.6;max-width:70ch;margin:0 0 22px">
     Lembrete: a senha deste painel é simples — sem múltiplos usuários, 2FA ou trilha de auditoria — adequada para uma loja pequena, não para dados sensíveis em larga escala. Você é responsável por tratar os dados de clientes conforme a LGPD.
@@ -1520,16 +1515,11 @@ p{ margin:0; }
   var WHATSAPP_NUMBER = "5571992442091"; // atualizado conforme informado
   var INSTAGRAM_URL = "https://instagram.com/pointsupply_";
 
-  // PLACEHOLDER — cole aqui a URL do seu Web App do Google Apps Script
-  // (arquivo "apps-script-backend.js" enviado junto, com o passo a passo).
-  // Sem essa URL configurada, carrinho e WhatsApp funcionam normalmente,
-  // mas cadastro de cliente, rastreio e painel administrativo ficam inativos.
-  var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzF_wEnLrbXx_Xcpdlaszy_pK_DGczGM9C3YWwXWv07php3ibsxIk2fO-IJUpaaRXmg/exec";
-
-  // PLACEHOLDER (opcional) — permite entrar no painel com a Conta Google
-  // em vez de usuário/senha. Ver seção "LOGIN COM GOOGLE" no final do
-  // apps-script-backend.js para o passo a passo completo.
-  var GOOGLE_CLIENT_ID = "COLE_AQUI_SEU_GOOGLE_CLIENT_ID";
+  // PLACEHOLDER — cole aqui a URL e a chave "anon public" do seu projeto
+  // Supabase (Configurações do projeto → API). Veja o passo a passo
+  // enviado junto (supabase-schema.sql + instruções).
+  var SUPABASE_URL = "COLE_AQUI_A_URL_DO_SEU_PROJETO_SUPABASE";
+  var SUPABASE_ANON_KEY = "COLE_AQUI_SUA_CHAVE_ANON_PUBLIC";
 
   var STATUS_STAGES = ["Pedido recebido", "Em preparação", "Enviado", "Entregue"];
   var ORDER_STATUS_STAGES = ["Pendente", "Concluído", "Cancelado"];
@@ -2807,23 +2797,166 @@ p{ margin:0; }
     });
   }
 
-  // Backend — todas as leituras/gravações de vendas e clientes passam por
-  // um Google Apps Script (Web App) publicado na conta Google do dono da
-  // loja. A senha do painel é verificada DENTRO do Apps Script (nunca fica
-  // neste arquivo), e as leituras sensíveis (getSales/getCustomers) exigem
-  // essa senha a cada chamada. Ver apps-script-backend.js para o código do
-  // backend e o passo a passo de publicação.
-  function hasBackend(){ return APPS_SCRIPT_URL && APPS_SCRIPT_URL.indexOf("COLE_AQUI") === -1; }
+  // Backend — todas as leituras/gravações de vendas e clientes passam pelo
+  // Supabase (banco de dados + autenticação). O login do painel usa o
+  // Supabase Auth (e-mail/senha criados em Authentication → Users), e as
+  // regras de segurança (RLS) do próprio banco garantem que só o
+  // administrador logado consegue ler/editar vendas e clientes. Ver
+  // supabase-schema.sql para a configuração do banco.
+  function hasBackend(){
+    return SUPABASE_URL && SUPABASE_URL.indexOf("https://exactftfsuvxarzidkkaj.supabase.co") === -1 &&
+      SUPABASE_ANON_KEY && SUPABASE_ANON_KEY.indexOf("sb_publishable_Oosjk_GrQ5Yd6K9_TcxZjw_lPNs817E") === -1;
+  }
+
+  var supabaseClientInstance = null;
+  function getSupabase(){
+    if(!supabaseClientInstance && window.supabase){
+      supabaseClientInstance = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
+    return supabaseClientInstance;
+  }
+
+  // Nomes dos campos no app (camelCase) <-> nomes das colunas no Postgres
+  // (minúsculas, por convenção do Supabase/Postgres).
+  var SALE_FIELD_MAP = {
+    id:"id", orderId:"orderid", date:"date", product:"product", size:"size", time:"time",
+    customerName:"customername", customerPhone:"customerphone", saleValue:"salevalue",
+    costValue:"costvalue", discountPercent:"discountpercent", status:"status",
+    orderStatus:"orderstatus", trackingCode:"trackingcode", source:"source"
+  };
+  var CUSTOMER_FIELD_MAP = { name:"name", phone:"phone", city:"city", orderId:"orderid", date:"date", vip:"vip" };
+
+  function mapToDb(obj, fieldMap){
+    var out = {};
+    Object.keys(fieldMap).forEach(function(k){ if(obj[k] !== undefined) out[fieldMap[k]] = obj[k]; });
+    return out;
+  }
+  function mapFromDb(row, fieldMap){
+    var out = {};
+    Object.keys(fieldMap).forEach(function(k){ out[k] = row[fieldMap[k]]; });
+    return out;
+  }
 
   async function callBackend(action, params){
     if(!hasBackend()) return { ok:false, error:"backend-not-configured" };
+    var sb = getSupabase();
+    if(!sb) return { ok:false, error:"network" };
+    params = params || {};
     try{
-      var body = new URLSearchParams(Object.assign({ action:action }, params || {}));
-      var res = await fetch(APPS_SCRIPT_URL, { method:"POST", body:body });
-      if(!res.ok) return { ok:false, error:"http-" + res.status };
-      return await res.json();
+      if(action === "adminLogin"){
+        var loginRes = await sb.auth.signInWithPassword({ email: params.username, password: params.password });
+        if(loginRes.error) return { ok:false, error: loginRes.error.message };
+        return { ok:true };
+      }
+
+      if(action === "getSales"){
+        var gs = await sb.from("vendas").select("*").order("date", { ascending:false });
+        if(gs.error) return { ok:false, error: gs.error.message };
+        return { ok:true, rows: gs.data.map(function(r){ return mapFromDb(r, SALE_FIELD_MAP); }) };
+      }
+
+      if(action === "getCustomers"){
+        var gc = await sb.from("clientes").select("*");
+        if(gc.error) return { ok:false, error: gc.error.message };
+        return { ok:true, rows: gc.data.map(function(r){ return mapFromDb(r, CUSTOMER_FIELD_MAP); }) };
+      }
+
+      if(action === "addSale"){
+        var addSaleRes = await sb.from("vendas").insert(mapToDb(params, SALE_FIELD_MAP));
+        if(addSaleRes.error) return { ok:false, error: addSaleRes.error.message };
+        return { ok:true };
+      }
+
+      if(action === "addCustomer"){
+        var addCustRes = await sb.from("clientes").insert(mapToDb(params, CUSTOMER_FIELD_MAP));
+        if(addCustRes.error) return { ok:false, error: addCustRes.error.message };
+        return { ok:true };
+      }
+
+      if(action === "trackOrder"){
+        var trackRes = await sb.rpc("track_order", { p_order_id: params.orderId || "" });
+        if(trackRes.error) return { ok:false, error: trackRes.error.message };
+        return { ok:true, rows: (trackRes.data || []).map(function(r){ return mapFromDb(r, SALE_FIELD_MAP); }) };
+      }
+
+      if(action === "updateSale"){
+        var saleDbField = SALE_FIELD_MAP[params.field];
+        if(!saleDbField) return { ok:false, error:"Campo inválido" };
+        var updObj = {}; updObj[saleDbField] = params.value;
+        var updRes = await sb.from("vendas").update(updObj).eq("id", params.id);
+        if(updRes.error) return { ok:false, error: updRes.error.message };
+        return { ok:true };
+      }
+
+      if(action === "updateCustomer"){
+        // Identifica o cliente pelo telefone (não tem id próprio) e atualiza
+        // TODAS as linhas dele — a mesma pessoa pode ter uma linha por pedido.
+        var custDbField = CUSTOMER_FIELD_MAP[params.field];
+        if(!custDbField) return { ok:false, error:"Campo inválido" };
+        var custUpdObj = {}; custUpdObj[custDbField] = params.value;
+        var custUpdRes = await sb.from("clientes").update(custUpdObj, { count:"exact" }).eq("phone", params.phone);
+        if(custUpdRes.error) return { ok:false, error: custUpdRes.error.message };
+        // Cliente que só existe por causa de uma venda avulsa (nunca passou
+        // pelo checkout) ainda não tem linha na planilha — cria uma agora,
+        // pra edição/VIP funcionar e persistir de verdade.
+        if(!custUpdRes.count){
+          var newCustRow = { phone: params.phone };
+          newCustRow[custDbField] = params.value;
+          var insRes = await sb.from("clientes").insert(newCustRow);
+          if(insRes.error) return { ok:false, error: insRes.error.message };
+        }
+        return { ok:true };
+      }
+
+      if(action === "deleteSale"){
+        var delSaleRes = await sb.from("vendas").delete({ count:"exact" }).eq("id", params.id);
+        if(delSaleRes.error) return { ok:false, error: delSaleRes.error.message };
+        if(!delSaleRes.count) return { ok:false, error:"Venda não encontrada" };
+        return { ok:true };
+      }
+
+      if(action === "deleteCustomer"){
+        var delCustRes = await sb.from("clientes").delete({ count:"exact" }).eq("phone", params.phone);
+        if(delCustRes.error) return { ok:false, error: delCustRes.error.message };
+        if(!delCustRes.count) return { ok:false, error:"Cliente não encontrado" };
+        return { ok:true };
+      }
+
+      if(action === "clearAll"){
+        await sb.from("vendas").delete().neq("id", "__never__");
+        await sb.from("clientes").delete().neq("id", -1);
+        return { ok:true };
+      }
+
+      if(action === "uploadImage"){
+        if(!params.data) return { ok:false, error:"Nenhuma imagem recebida" };
+        var byteChars = atob(params.data);
+        var byteArr = new Uint8Array(byteChars.length);
+        for(var bi = 0; bi < byteChars.length; bi++){ byteArr[bi] = byteChars.charCodeAt(bi); }
+        var blob = new Blob([byteArr], { type: params.mimeType || "image/jpeg" });
+        var path = Date.now() + "-" + Math.random().toString(36).slice(2,8) + "-" + (params.filename || "imagem");
+        var upRes = await sb.storage.from("site-images").upload(path, blob, { contentType: params.mimeType || "image/jpeg" });
+        if(upRes.error) return { ok:false, error: upRes.error.message };
+        var pub = sb.storage.from("site-images").getPublicUrl(path);
+        return { ok:true, url: pub.data.publicUrl };
+      }
+
+      if(action === "getConfig"){
+        var cfgRes = await sb.from("site_config").select("config").eq("id", 1).single();
+        if(cfgRes.error) return { ok:true, config: null };
+        return { ok:true, config: cfgRes.data ? cfgRes.data.config : null };
+      }
+
+      if(action === "saveConfig"){
+        var parsedCfg = JSON.parse(params.config);
+        var saveRes = await sb.from("site_config").update({ config: parsedCfg }).eq("id", 1);
+        if(saveRes.error) return { ok:false, error: saveRes.error.message };
+        return { ok:true };
+      }
+
+      return { ok:false, error:"Ação desconhecida" };
     }catch(e){
-      return { ok:false, error:"network" };
+      return { ok:false, error: "network" };
     }
   }
 
@@ -3585,21 +3718,6 @@ p{ margin:0; }
   }
 
   /* ============================================================
-     INSTAGRAM (placeholder)
-     ============================================================ */
-  var instaGrid = document.getElementById("instaGrid");
-  for(var i = 0; i < 6; i++){
-    var tile = document.createElement("a");
-    tile.className = "insta-tile ghost-panel";
-    tile.href = INSTAGRAM_URL;
-    tile.target = "_blank";
-    tile.rel = "noopener";
-    tile.setAttribute("aria-label", "Ver publicação no Instagram da Point Supply");
-    tile.innerHTML = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="4"></rect><circle cx="12" cy="12" r="4"></circle><circle cx="17.5" cy="6.5" r="1"></circle></svg>';
-    instaGrid.appendChild(tile);
-  }
-
-  /* ============================================================
      SCROLL REVEAL
      ============================================================ */
   var revealEls = document.querySelectorAll(".reveal");
@@ -3630,16 +3748,16 @@ p{ margin:0; }
 
   /* ============================================================
      PAINEL ADMINISTRATIVO
-     A senha é verificada dentro do Google Apps Script (nunca fica neste
-     arquivo). Ela é guardada só em memória durante a sessão do navegador
-     (nunca em localStorage) e enviada a cada leitura/gravação sensível.
+     A autenticação é feita pelo Supabase Auth (e-mail/senha do
+     administrador, criado em Authentication → Users no painel do
+     Supabase). A sessão fica guardada em sessionStorage (só nessa
+     aba, some ao fechar o navegador ou clicar em "Voltar à loja").
      ============================================================ */
   var storefrontRoot = document.getElementById("storefrontRoot");
   var adminPanel = document.getElementById("adminPanel");
   var adminSales = [];
   var adminCustomers = [];
-  var adminAuth = null; // { username, password } OU { idToken }
-  var googleReady = false;
+  var adminAuth = null; // { username, password } — usados na sessão do Supabase Auth
 
   function authParams(){
     return adminAuth || {};
@@ -3659,8 +3777,6 @@ p{ margin:0; }
     try{ sessionStorage.removeItem("psAdminAuth"); }catch(e){}
   }
 
-  function hasGoogleAuth(){ return GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID.indexOf("COLE_AQUI") === -1; }
-
   async function finishAdminLogin(auth, errorEl){
     var res = await callBackend("adminLogin", auth);
     if(res.ok){
@@ -3671,53 +3787,19 @@ p{ margin:0; }
       loadAdminData();
     } else if(errorEl){
       if(res.error === "network"){
-        errorEl.textContent = "Não foi possível conectar ao backend. Confira sua internet e se a URL do Apps Script (APPS_SCRIPT_URL) está correta.";
-      } else if(res.error && res.error.indexOf("http-") === 0){
-        errorEl.textContent = "O backend respondeu com erro (" + res.error + "). Confira se a implantação está com acesso \"Qualquer pessoa\".";
+        errorEl.textContent = "Não foi possível conectar ao backend. Confira sua internet e se a URL/chave do Supabase estão corretas.";
       } else {
-        errorEl.textContent = "Usuário ou senha incorretos (ou conta Google sem acesso). Confira as Propriedades do script ADMIN_USERNAME/ADMIN_PASSWORD.";
+        errorEl.textContent = "E-mail ou senha incorretos (" + (res.error || "confira o usuário criado em Authentication → Users no Supabase") + ").";
       }
       errorEl.hidden = false;
     }
     return res.ok;
   }
 
-  async function handleGoogleCredential(response){
-    var errorEl = document.getElementById("adminLoginError");
-    errorEl.hidden = true;
-    if(!hasBackend()){
-      errorEl.textContent = "O painel ainda não foi conectado ao backend (Google Apps Script). Veja o arquivo apps-script-backend.js.";
-      errorEl.hidden = false;
-      return;
-    }
-    await finishAdminLogin({ idToken: response.credential }, errorEl);
-  }
-
-  function tryInitGoogleSignIn(){
-    if(googleReady || !hasGoogleAuth()) return;
-    if(typeof google === "undefined" || !google.accounts) return;
-    google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleGoogleCredential });
-    googleReady = true;
-  }
-  window.addEventListener("load", tryInitGoogleSignIn);
-
   document.getElementById("adminTrigger").addEventListener("click", function(){
     document.getElementById("adminLoginForm").reset();
     document.getElementById("adminLoginError").hidden = true;
     openModal("adminLoginModal");
-
-    tryInitGoogleSignIn();
-    var wrap = document.getElementById("googleSignInWrap");
-    var divider = document.getElementById("googleSignInDivider");
-    if(googleReady){
-      wrap.innerHTML = "";
-      google.accounts.id.renderButton(wrap, { theme: "filled_black", size: "large", width: 280, text: "signin_with" });
-      wrap.style.display = "flex";
-      divider.style.display = "flex";
-    } else {
-      wrap.style.display = "none";
-      divider.style.display = "none";
-    }
   });
 
   document.getElementById("adminLoginForm").addEventListener("submit", async function(e){
@@ -3728,7 +3810,7 @@ p{ margin:0; }
     errorEl.hidden = true;
 
     if(!hasBackend()){
-      errorEl.textContent = "O painel ainda não foi conectado ao backend (Google Apps Script). Veja o arquivo apps-script-backend.js.";
+      errorEl.textContent = "O painel ainda não foi conectado ao backend (Supabase). Veja o passo a passo enviado junto.";
       errorEl.hidden = false;
       return;
     }
@@ -3804,7 +3886,7 @@ p{ margin:0; }
   /* Dados de exemplo para testar o painel (marcados com source:"exemplo",
      removíveis a qualquer momento com "Apagar todos os dados"). */
   async function seedSampleData(){
-    if(!hasBackend()){ alert("Conecte o backend (Google Apps Script) antes de carregar dados de exemplo."); return; }
+    if(!hasBackend()){ alert("Conecte o backend (Supabase) antes de carregar dados de exemplo."); return; }
     var btn = document.getElementById("adminSeedBtn");
     btn.disabled = true; btn.textContent = "Carregando...";
 
@@ -4270,8 +4352,7 @@ p{ margin:0; }
   /* ============================================================
      GESTÃO DE CONTEÚDO DO SITE (Produtos, Times e Ligas, FAQ,
      Descontos, Aparência) — tudo salvo em um único bloco de
-     configuração no backend (ver saveConfig/getConfig no
-     apps-script-backend.js).
+     configuração no backend (tabela site_config no Supabase).
      ============================================================ */
   async function saveSiteConfig(){
     var payload = {
