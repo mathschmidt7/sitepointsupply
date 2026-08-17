@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+git<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -2804,8 +2804,8 @@ p{ margin:0; }
   // administrador logado consegue ler/editar vendas e clientes. Ver
   // supabase-schema.sql para a configuração do banco.
   function hasBackend(){
-    return SUPABASE_URL && SUPABASE_URL.indexOf("https://exactftfsuvxarzidkkaj.supabase.co") === -1 &&
-      SUPABASE_ANON_KEY && SUPABASE_ANON_KEY.indexOf("sb_publishable_Oosjk_GrQ5Yd6K9_TcxZjw_lPNs817E") === -1;
+    return SUPABASE_URL && SUPABASE_URL.indexOf("COLE_AQUI") === -1 &&
+      SUPABASE_ANON_KEY && SUPABASE_ANON_KEY.indexOf("COLE_AQUI") === -1;
   }
 
   var supabaseClientInstance = null;
@@ -2837,11 +2837,27 @@ p{ margin:0; }
     return out;
   }
 
+  // Garante que nenhuma chamada ao backend fique "pendurada" pra sempre —
+  // se o Supabase não responder em 15s (rede ruim, instável, travada),
+  // desiste e avisa, em vez de deixar o botão girando pra sempre.
+  function withTimeout(promise, ms){
+    return Promise.race([
+      promise,
+      new Promise(function(resolve){
+        setTimeout(function(){ resolve({ ok:false, error:"timeout" }); }, ms);
+      })
+    ]);
+  }
+
   async function callBackend(action, params){
     if(!hasBackend()) return { ok:false, error:"backend-not-configured" };
     var sb = getSupabase();
     if(!sb) return { ok:false, error:"network" };
     params = params || {};
+    return withTimeout(callBackendInner(sb, action, params), 15000);
+  }
+
+  async function callBackendInner(sb, action, params){
     try{
       if(action === "adminLogin"){
         var loginRes = await sb.auth.signInWithPassword({ email: params.username, password: params.password });
@@ -2956,7 +2972,8 @@ p{ margin:0; }
 
       return { ok:false, error:"Ação desconhecida" };
     }catch(e){
-      return { ok:false, error: "network" };
+      var detail = (e && (e.message || e.name)) ? (e.name ? e.name + ": " : "") + (e.message || "") : String(e);
+      return { ok:false, error: "network (" + detail + ")" };
     }
   }
 
@@ -2977,7 +2994,7 @@ p{ margin:0; }
     if(file.size > MAX_UPLOAD_MB * 1024 * 1024) return { ok:false, error:"Imagem muito grande — escolha um arquivo de até " + MAX_UPLOAD_MB + "MB." };
     var base64 = await readFileAsBase64(file);
     var res = await callBackend("uploadImage", Object.assign({ data: base64, filename: file.name, mimeType: file.type }, authParams()));
-    if(!res.ok){ return { ok:false, error: res.error === "network" ? "Falha de conexão ao enviar a imagem." : (res.error || "Não foi possível enviar a imagem.") }; }
+    if(!res.ok){ return { ok:false, error: (res.error && res.error.indexOf("network") === 0) ? "Falha de conexão ao enviar a imagem (" + res.error + ")." : (res.error || "Não foi possível enviar a imagem.") }; }
     return { ok:true, url: res.url };
   }
 
@@ -3786,8 +3803,10 @@ p{ margin:0; }
       showAdmin();
       loadAdminData();
     } else if(errorEl){
-      if(res.error === "network"){
-        errorEl.textContent = "Não foi possível conectar ao backend. Confira sua internet e se a URL/chave do Supabase estão corretas.";
+      if(res.error && res.error.indexOf("network") === 0){
+        errorEl.textContent = "Não foi possível conectar ao backend (" + res.error + "). Confira sua internet e se a URL/chave do Supabase estão corretas.";
+      } else if(res.error === "timeout"){
+        errorEl.textContent = "A conexão demorou demais e foi cancelada. Confira sua internet e tente de novo.";
       } else {
         errorEl.textContent = "E-mail ou senha incorretos (" + (res.error || "confira o usuário criado em Authentication → Users no Supabase") + ").";
       }
@@ -3817,8 +3836,14 @@ p{ margin:0; }
 
     var submitBtn = e.target.querySelector("button[type=submit]");
     submitBtn.disabled = true; submitBtn.textContent = "Verificando...";
-    await finishAdminLogin({ username: user, password: pass }, errorEl);
-    submitBtn.disabled = false; submitBtn.textContent = "Entrar";
+    try{
+      await finishAdminLogin({ username: user, password: pass }, errorEl);
+    }catch(err){
+      errorEl.textContent = "Ocorreu um erro inesperado (" + (err && err.message ? err.message : String(err)) + "). Tente de novo.";
+      errorEl.hidden = false;
+    }finally{
+      submitBtn.disabled = false; submitBtn.textContent = "Entrar";
+    }
   });
 
   document.getElementById("adminExitBtn").addEventListener("click", hideAdmin);
