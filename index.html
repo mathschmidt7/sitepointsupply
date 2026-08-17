@@ -657,6 +657,8 @@ p{ margin:0; }
 
 .admin-metrics{ display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; }
 .admin-metric-card{ background:var(--graphite); border:1px solid rgba(247,247,244,.08); border-top:2px solid var(--off); padding:20px; border-radius:8px; }
+.admin-metric-icon{ display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:9px; background:var(--off); color:var(--black); margin-bottom:14px; }
+.admin-metric-icon svg{ width:18px; height:18px; }
 .admin-metric-value{ font-family:var(--font-display); font-size:26px; text-transform:uppercase; }
 .admin-metric-label{ font-size:12px; color:var(--gray); margin-top:6px; }
 .admin-toolbar{ display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap; }
@@ -3872,15 +3874,28 @@ p{ margin:0; }
     }, 0);
     var uniqueCustomers = {};
     adminCustomers.forEach(function(c){ uniqueCustomers[normalizePhone(c.phone)] = true; });
+    adminSales.forEach(function(s){
+      var key = normalizePhone(s.customerPhone);
+      if(key) uniqueCustomers[key] = true;
+    });
+    var ICONS = {
+      sales: '<path d="M3 6h18M3 6l2 13h14l2-13M8 10v4M12 10v4M16 10v4"></path>',
+      check: '<path d="M20 6 9 17l-5-5"></path>',
+      users: '<circle cx="9" cy="8" r="3.2"></circle><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 8.5c1.4.4 2.5 1.7 2.5 3.3M21 20c0-2.8-2-5.1-4.6-5.8"></path>',
+      money: '<circle cx="12" cy="12" r="9"></circle><path d="M9.5 15c0 1.1 1.1 2 2.5 2s2.5-.9 2.5-2-1.1-1.7-2.5-2-2.5-.9-2.5-2 1.1-2 2.5-2 2.5.9 2.5 2M12 6.5v1M12 16.5v1"></path>',
+      profit: '<path d="M3 17 9 11l4 4 8-8M17 7h4v4"></path>'
+    };
     var metrics = [
-      { label:"Total de vendas", value: String(adminSales.length) },
-      { label:"Vendas concluídas", value: String(concluded.length) },
-      { label:"Total de clientes", value: String(Object.keys(uniqueCustomers).length) },
-      { label:"Faturamento (concluídas)", value: formatBRL(faturamentoTotal) },
-      { label:"Lucro total estimado", value: formatBRL(lucroTotal) }
+      { label:"Total de vendas", value: String(adminSales.length), icon: ICONS.sales },
+      { label:"Vendas concluídas", value: String(concluded.length), icon: ICONS.check },
+      { label:"Total de clientes", value: String(Object.keys(uniqueCustomers).length), icon: ICONS.users },
+      { label:"Faturamento (concluídas)", value: formatBRL(faturamentoTotal), icon: ICONS.money },
+      { label:"Lucro total estimado", value: formatBRL(lucroTotal), icon: ICONS.profit }
     ];
     document.getElementById("adminMetrics").innerHTML = metrics.map(function(m){
-      return '<div class="admin-metric-card"><div class="admin-metric-value">' + escapeHtml(m.value) + '</div><div class="admin-metric-label">' + escapeHtml(m.label) + '</div></div>';
+      return '<div class="admin-metric-card">' +
+        '<span class="admin-metric-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' + m.icon + '</svg></span>' +
+        '<div class="admin-metric-value">' + escapeHtml(m.value) + '</div><div class="admin-metric-label">' + escapeHtml(m.label) + '</div></div>';
     }).join("");
     renderTopProducts();
   }
@@ -4017,7 +4032,7 @@ p{ margin:0; }
 
   function renderAdminCustomersTable(){
     var tbody = document.getElementById("adminCustomersBody");
-    if(!adminCustomers.length){
+    if(!adminCustomers.length && !adminSales.length){
       tbody.innerHTML = '<tr><td colspan="7" class="admin-empty">Nenhum cliente registrado ainda.</td></tr>';
       return;
     }
@@ -4028,6 +4043,13 @@ p{ margin:0; }
       var key = normalizePhone(c.phone) || "—";
       if(!byPhone[key]){ byPhone[key] = { name: c.name, phone: c.phone, vip: false }; }
       if((c.vip === true || c.vip === "true" || c.vip === "TRUE")) byPhone[key].vip = true;
+    });
+    // vendas adicionadas manualmente no painel não criam um registro de
+    // cliente separado — inclui aqui também, pra não "sumirem" da aba.
+    adminSales.forEach(function(s){
+      var key = normalizePhone(s.customerPhone);
+      if(!key || key === "—") return;
+      if(!byPhone[key]){ byPhone[key] = { name: s.customerName || "—", phone: s.customerPhone, vip: false }; }
     });
 
     var list = Object.keys(byPhone).map(function(phoneKey){
@@ -4086,24 +4108,33 @@ p{ margin:0; }
       tr.querySelector(".admin-vip-toggle").addEventListener("click", async function(e){
         var btn = e.currentTarget;
         var next = btn.dataset.vip !== "true";
-        btn.disabled = true;
+
+        // Atualiza a tela imediatamente (não espera o servidor responder,
+        // pra não parecer travado) — só desfaz se o salvamento falhar de verdade.
+        c.vip = next;
+        btn.dataset.vip = next ? "true" : "false";
+        btn.setAttribute("aria-pressed", next ? "true" : "false");
+        tr.classList.toggle("is-vip", next);
+        var nameCell = tr.querySelector('[data-field="name"]').parentElement;
+        var star = nameCell.querySelector(".admin-vip-star");
+        if(next && !star){
+          nameCell.insertAdjacentHTML("beforeend", ' <span class="admin-vip-star" title="Cliente VIP">★</span>');
+        } else if(!next && star){
+          star.remove();
+        }
+        adminCustomers.forEach(function(row){ if(normalizePhone(row.phone) === c.phoneKey) row.vip = next; });
+
         var res = await callBackend("updateCustomer", Object.assign({ phone: c.phone, field: "vip", value: next }, authParams()));
-        btn.disabled = false;
-        if(res.ok){
-          c.vip = next;
-          btn.dataset.vip = next ? "true" : "false";
-          btn.setAttribute("aria-pressed", next ? "true" : "false");
-          tr.classList.toggle("is-vip", next);
-          var nameCell = tr.querySelector('[data-field="name"]').parentElement;
-          var star = nameCell.querySelector(".admin-vip-star");
-          if(next && !star){
-            nameCell.insertAdjacentHTML("beforeend", ' <span class="admin-vip-star" title="Cliente VIP">★</span>');
-          } else if(!next && star){
-            star.remove();
-          }
-          adminCustomers.forEach(function(row){ if(normalizePhone(row.phone) === c.phoneKey) row.vip = next; });
-        } else {
-          window.alert("Não foi possível salvar essa alteração agora. Tente de novo.");
+        if(!res.ok){
+          // desfaz visualmente e avisa
+          c.vip = !next;
+          btn.dataset.vip = !next ? "true" : "false";
+          btn.setAttribute("aria-pressed", !next ? "true" : "false");
+          tr.classList.toggle("is-vip", !next);
+          if(star) star.remove();
+          if(!next){ nameCell.insertAdjacentHTML("beforeend", ' <span class="admin-vip-star" title="Cliente VIP">★</span>'); }
+          adminCustomers.forEach(function(row){ if(normalizePhone(row.phone) === c.phoneKey) row.vip = !next; });
+          window.alert("Não foi possível salvar essa alteração agora (" + (res.error || "erro de conexão") + "). Tente de novo em alguns segundos.");
         }
       });
       tr.querySelector(".admin-customer-delete").addEventListener("click", async function(){
