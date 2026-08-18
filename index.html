@@ -4515,7 +4515,11 @@ p{ margin:0; }
       extraSizeSurcharge: EXTRA_SIZE_SURCHARGE,
       personalizationPrice: PERSONALIZATION_PRICE
     };
-    var res = await callBackend("saveConfig", Object.assign({ config: JSON.stringify(payload) }, authParams()));
+    var json = JSON.stringify(payload);
+    var res = await callBackend("saveConfig", Object.assign({ config: json }, authParams()));
+    if(!res.ok){
+      window.alert("Atenção: a última alteração NÃO foi salva no banco de dados (" + (res.error || "erro desconhecido") + "). Ela pode se perder se você sair ou recarregar a página. Tente de novo, e se continuar falhando, me avise com essa mensagem de erro.");
+    }
     return res.ok;
   }
 
@@ -4878,8 +4882,8 @@ p{ margin:0; }
           var ti = group.teams.indexOf(team);
           return '<span class="team-chip" style="cursor:default">' +
             teamBadgeHtml(team) + escapeHtml(team) +
-            ' <button type="button" data-team="' + escapeHtml(team) + '" class="admin-team-logo" style="background:none;border:none;color:var(--gray);font-size:13px;cursor:pointer" aria-label="Enviar logo do time" title="Enviar logo">📷</button>' +
-            ' <button type="button" data-gi="' + gi + '" data-ti="' + ti + '" class="admin-team-remove" style="background:none;border:none;color:var(--gray);margin-left:2px;font-size:14px;cursor:pointer" aria-label="Remover time">&times;</button>' +
+            ' <button type="button" data-team="' + escapeHtml(team) + '" class="admin-team-logo" style="background:none;border:none;color:var(--gray);font-size:13px;cursor:pointer;padding:2px 4px" aria-label="Enviar logo do time" title="Enviar logo">📷</button>' +
+            '<button type="button" data-gi="' + gi + '" data-ti="' + ti + '" class="admin-team-remove" style="background:none;border:none;color:var(--gray);margin-left:8px;padding:2px 4px;font-size:14px;cursor:pointer" aria-label="Remover time" title="Remover time">&times;</button>' +
           '</span>';
         }).join("");
         body.innerHTML =
@@ -4898,6 +4902,8 @@ p{ margin:0; }
         body.querySelectorAll(".admin-team-remove").forEach(function(btn){
           btn.addEventListener("click", async function(){
             var gi2 = Number(btn.dataset.gi), ti2 = Number(btn.dataset.ti);
+            var teamName = TEAM_GROUPS[cat][gi2].teams[ti2];
+            if(!window.confirm("Remover o time \"" + teamName + "\"?")) return;
             TEAM_GROUPS[cat][gi2].teams.splice(ti2, 1);
             renderAdminLeagues();
             renderLeagueRows();
