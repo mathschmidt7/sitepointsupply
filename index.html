@@ -2812,6 +2812,9 @@ p{ margin:0; }
   function waLink(message){
     return "https://wa.me/" + WHATSAPP_NUMBER + "?text=" + encodeURIComponent(message);
   }
+  function pacoteVicioLink(trackingCode){
+    return "https://pacotevicio.app/track/" + encodeURIComponent(trackingCode.trim());
+  }
   function formatBRL(n){
     var num = Number(n) || 0;
     return "R$ " + num.toFixed(2).replace(".", ",");
@@ -3792,7 +3795,10 @@ p{ margin:0; }
       '<div class="tracking-result-title">Pedido ' + escapeHtml(code) + '</div>' +
       '<div class="tracking-items">' + itemsHtml + '</div>' +
       '<div class="tracking-steps">' + stepsHtml + '</div>' +
-      (trackingCode ? '<div class="tracking-code">Código de rastreio: ' + escapeHtml(trackingCode) + '</div>' : "");
+      (trackingCode
+        ? '<div class="tracking-code">Código de rastreio: ' + escapeHtml(trackingCode) +
+          '<br><a href="' + pacoteVicioLink(trackingCode) + '" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="margin-top:10px">Ver rastreio completo (Correios/transportadora)</a></div>'
+        : "");
   }
 
   trackingBtn.addEventListener("click", handleTrackingLookup);
@@ -4181,7 +4187,7 @@ p{ margin:0; }
         "<td>" + formatBRL(profit) + "</td>" +
         '<td><select data-field="status">' + statusOptionsHtml(sale.status) + '</select></td>' +
         '<td><select data-field="orderStatus">' + orderStatusOptionsHtml(sale.orderStatus || "Pendente") + '</select></td>' +
-        '<td><input type="text" data-field="trackingCode" value="' + escapeHtml(sale.trackingCode || "") + '"></td>' +
+        '<td style="white-space:nowrap"><input type="text" data-field="trackingCode" value="' + escapeHtml(sale.trackingCode || "") + '" style="width:100px">' + (sale.trackingCode ? ' <a href="' + pacoteVicioLink(sale.trackingCode) + '" target="_blank" rel="noopener" title="Ver rastreio" style="color:var(--gray);font-size:14px">↗</a>' : '') + '</td>' +
         "<td>" + escapeHtml(sale.source || "manual") + "</td>" +
         '<td style="white-space:nowrap"><button type="button" class="btn btn-outline btn-sm admin-sale-edit">Editar</button> <button type="button" class="admin-row-delete" aria-label="Excluir venda">&times;</button></td>';
 
