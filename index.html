@@ -1043,6 +1043,12 @@ p{ margin:0; }
       <button type="button" class="btn btn-primary" id="trackingBtn">Consultar</button>
     </div>
     <div id="trackingResult" hidden></div>
+
+    <p style="text-align:center;color:var(--gray);font-size:13px;margin-top:28px">Já tem o código de rastreio da transportadora (Correios, etc)?</p>
+    <div class="tracking-box" style="margin-top:10px">
+      <input type="text" id="carrierTrackingInput" placeholder="Ex: LZ447568210CN" aria-label="Código de rastreio da transportadora">
+      <button type="button" class="btn btn-outline" id="carrierTrackingBtn">Rastrear</button>
+    </div>
   </div>
 </section>
 
@@ -3803,6 +3809,15 @@ p{ margin:0; }
 
   trackingBtn.addEventListener("click", handleTrackingLookup);
   trackingInput.addEventListener("keydown", function(e){ if(e.key === "Enter") handleTrackingLookup(); });
+
+  function handleCarrierTrackingLookup(){
+    var input = document.getElementById("carrierTrackingInput");
+    var code = input.value.trim();
+    if(!code) return;
+    window.open(pacoteVicioLink(code), "_blank", "noopener");
+  }
+  document.getElementById("carrierTrackingBtn").addEventListener("click", handleCarrierTrackingLookup);
+  document.getElementById("carrierTrackingInput").addEventListener("keydown", function(e){ if(e.key === "Enter") handleCarrierTrackingLookup(); });
 
   /* ============================================================
      FAQ — renderizada a partir de FAQ_ITEMS (editável no painel)
