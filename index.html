@@ -1373,8 +1373,16 @@ p{ margin:0; }
         </select>
         <button type="button" class="btn btn-primary btn-sm" id="adminAddLeagueBtn">+ Nova liga</button>
       </div>
+      <div style="background:var(--graphite);border:1px solid rgba(247,247,244,.08);padding:16px 18px;margin-bottom:20px">
+        <h4 style="margin:0 0 6px;font-size:14px">Enviar vários escudos de uma vez</h4>
+        <p style="color:var(--gray);font-size:12px;margin:0 0 14px">Selecione várias fotos ao mesmo tempo. Cada arquivo é associado ao time (ou liga) pelo <strong>nome do arquivo</strong> — ex: <code>flamengo.png</code> vira o escudo do "Flamengo" automaticamente. Nomes com espaço, acento ou hífen funcionam igual (ex: <code>atletico-mg.png</code> ou <code>Atlético MG.jpg</code>).</p>
+        <button type="button" class="btn btn-outline btn-sm" id="adminBulkLogoBtn">Escolher fotos...</button>
+        <span id="adminBulkLogoStatus" style="font-size:12.5px;color:var(--gray);margin-left:10px"></span>
+        <div id="adminBulkLogoResults" style="margin-top:12px;font-size:12.5px"></div>
+      </div>
       <div id="adminLeaguesList"></div>
       <input type="file" id="teamLogoFileInput" accept="image/*" style="display:none">
+      <input type="file" id="bulkLogoFileInput" accept="image/*" multiple style="display:none">
     </div>
 
     <div class="admin-panel-view" data-admin-view="faq">
@@ -1387,6 +1395,23 @@ p{ margin:0; }
 
     <div class="admin-panel-view" data-admin-view="discounts">
       <h2 class="admin-view-title">Descontos</h2>
+      <div style="background:var(--graphite);border:1px solid rgba(247,247,244,.08);padding:16px 18px;margin-bottom:20px;display:flex;flex-wrap:wrap;gap:24px">
+        <div>
+          <label style="display:block;font-size:12.5px;color:var(--gray);margin-bottom:6px">Adicional a partir do 2XL (R$)</label>
+          <div style="display:flex;gap:8px">
+            <input type="number" id="adminExtraSizeInput" min="0" step="0.01" style="width:120px;background:var(--black);border:1px solid rgba(247,247,244,.15);color:var(--off);padding:8px 10px;font-size:13px">
+            <button type="button" class="btn btn-outline btn-sm" id="adminSaveExtraSizeBtn">Salvar</button>
+          </div>
+          <p style="font-size:11.5px;color:var(--gray);margin-top:6px">Aplicado nos tamanhos 2XL, 3XL e 4XL.</p>
+        </div>
+        <div>
+          <label style="display:block;font-size:12.5px;color:var(--gray);margin-bottom:6px">Personalização (nome e número) (R$)</label>
+          <div style="display:flex;gap:8px">
+            <input type="number" id="adminPersonalizationInput" min="0" step="0.01" style="width:120px;background:var(--black);border:1px solid rgba(247,247,244,.15);color:var(--off);padding:8px 10px;font-size:13px">
+            <button type="button" class="btn btn-outline btn-sm" id="adminSavePersonalizationBtn">Salvar</button>
+          </div>
+        </div>
+      </div>
       <p style="color:var(--gray);font-size:12.5px;margin-bottom:16px">"A partir de" = quantidade mínima de peças no carrinho para o desconto valer.</p>
       <div class="admin-toolbar">
         <button type="button" class="btn btn-primary btn-sm" id="adminAddDiscountBtn">+ Novo desconto</button>
@@ -1531,6 +1556,11 @@ p{ margin:0; }
     { minQty: 3, percent: 15 },
     { minQty: 4, percent: 20 }
   ];
+
+  // Editável em Painel administrativo → Descontos
+  var EXTRA_SIZE_SURCHARGE = 15; // valor adicional a partir do 2XL (2XL, 3XL, 4XL)
+  var EXTRA_SIZES = ["2XL", "3XL", "4XL"];
+  var PERSONALIZATION_PRICE = 30; // nome + número
 
   // Editável em Painel administrativo → FAQ
   var FAQ_ITEMS = [
@@ -2786,6 +2816,20 @@ p{ margin:0; }
     var num = Number(n) || 0;
     return "R$ " + num.toFixed(2).replace(".", ",");
   }
+
+  // Preço final de um item: preço base + adicional de tamanho (2XL+) +
+  // personalização (nome e número), se aplicável. Retorna Infinity se o
+  // preço base não for um número (ex: "Sob consulta") — nesse caso, os
+  // adicionais ainda são informados separadamente na tela.
+  function computeItemPrice(basePrice, size, personalized){
+    var base = priceSortValue(basePrice);
+    if(!isFinite(base)) return Infinity;
+    var total = base;
+    if(size && EXTRA_SIZES.indexOf(size) !== -1) total += EXTRA_SIZE_SURCHARGE;
+    if(personalized) total += PERSONALIZATION_PRICE;
+    return total;
+  }
+
   function generateOrderId(){
     var t = Date.now().toString(36).toUpperCase().slice(-5);
     var r = Math.random().toString(36).toUpperCase().slice(2,4);
@@ -3102,12 +3146,14 @@ p{ margin:0; }
     return "Camisas";
   }
 
-  function productMessage(name, size, price){
-    var priceText = (price && price !== "Sob consulta") ? " (" + price + ")" : "";
+  function productMessage(name, size, basePrice, personalization){
+    var effective = computeItemPrice(basePrice, size, !!personalization);
+    var priceText = isFinite(effective) ? " (" + formatBRL(effective) + ")" : (basePrice && basePrice !== "Sob consulta" ? " (" + basePrice + ")" : "");
+    var personalizeText = personalization ? " — Personalização: " + [personalization.name, personalization.number ? "Nº " + personalization.number : ""].filter(Boolean).join(" ") : "";
     if(size){
-      return "Olá! Tenho interesse no produto " + name + priceText + ", tamanho " + size + ". Gostaria de confirmar a disponibilidade.";
+      return "Olá! Tenho interesse no produto " + name + priceText + ", tamanho " + size + personalizeText + ". Gostaria de confirmar a disponibilidade.";
     }
-    return "Olá! Tenho interesse no produto " + name + priceText + ". Gostaria de saber quais tamanhos estão disponíveis.";
+    return "Olá! Tenho interesse no produto " + name + priceText + personalizeText + ". Gostaria de saber quais tamanhos estão disponíveis.";
   }
 
   function optionsHtml(list, allLabel){
@@ -3294,6 +3340,14 @@ p{ margin:0; }
         '<span class="product-installment">' + escapeHtml(p.installment) + '</span>' +
         '<div class="product-sizes">' + sizeChips + '</div>' +
         '<p class="size-helper">Não sabe seu tamanho? <button type="button" class="size-chart-link" data-id="' + p.id + '" data-open-modal="sizeChartModal">Ver tabela de medidas</button></p>' +
+        '<p class="size-surcharge-note" hidden style="font-size:12px;color:var(--gray);margin:2px 0 0">+ ' + formatBRL(EXTRA_SIZE_SURCHARGE) + ' para tamanhos ' + EXTRA_SIZES.join("/") + '</p>' +
+        '<label class="personalize-toggle" style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;cursor:pointer">' +
+          '<input type="checkbox" class="js-personalize-check">Personalizar (nome e número) — +' + formatBRL(PERSONALIZATION_PRICE) +
+        '</label>' +
+        '<div class="personalize-fields" hidden style="display:flex;gap:8px;margin-top:8px">' +
+          '<input type="text" class="js-personalize-name" placeholder="Nome" maxlength="20" style="flex:1;background:var(--black);border:1px solid rgba(247,247,244,.2);color:var(--off);padding:8px 10px;font-size:13px">' +
+          '<input type="text" class="js-personalize-number" placeholder="Nº" maxlength="3" inputmode="numeric" style="width:64px;background:var(--black);border:1px solid rgba(247,247,244,.2);color:var(--off);padding:8px 10px;font-size:13px">' +
+        '</div>' +
         '<span class="product-avail">Disponibilidade a confirmar</span>' +
         '<div class="product-actions">' +
           '<a href="#" class="btn btn-primary js-buy-now" data-id="' + p.id + '">Comprar agora</a>' +
@@ -3301,21 +3355,39 @@ p{ margin:0; }
         '</div>' +
       '</div>';
 
+    var surchargeNote = card.querySelector(".size-surcharge-note");
+    var personalizeCheck = card.querySelector(".js-personalize-check");
+    var personalizeFields = card.querySelector(".personalize-fields");
+
     card.querySelectorAll(".size-chip").forEach(function(chip){
       chip.addEventListener("click", function(){
         var siblings = chip.parentElement.querySelectorAll(".size-chip");
         var already = chip.classList.contains("is-selected");
         siblings.forEach(function(s){ s.classList.remove("is-selected"); });
         if(!already){ chip.classList.add("is-selected"); }
+        surchargeNote.hidden = !(!already && EXTRA_SIZES.indexOf(chip.dataset.size) !== -1);
         updateProductWaLink(card);
       });
+    });
+    personalizeCheck.addEventListener("change", function(){
+      personalizeFields.hidden = !personalizeCheck.checked;
+      updateProductWaLink(card);
+    });
+    personalizeFields.querySelectorAll("input").forEach(function(inp){
+      inp.addEventListener("input", function(){ updateProductWaLink(card); });
     });
     updateProductWaLink(card);
 
     card.querySelector(".js-buy-now").addEventListener("click", function(e){
       e.preventDefault();
       var selected = card.querySelector(".size-chip.is-selected");
-      addToCart(p, selected ? selected.dataset.size : null);
+      var personalization = null;
+      if(personalizeCheck.checked){
+        var pname = card.querySelector(".js-personalize-name").value.trim();
+        var pnumber = card.querySelector(".js-personalize-number").value.trim();
+        if(pname || pnumber){ personalization = { name: pname, number: pnumber }; }
+      }
+      addToCart(p, selected ? selected.dataset.size : null, personalization);
       openCart();
     });
 
@@ -3357,7 +3429,14 @@ p{ margin:0; }
     var id = btn.dataset.id;
     var product = PRODUCTS.find(function(p){ return p.id === id; });
     var selected = card.querySelector(".size-chip.is-selected");
-    btn.setAttribute("href", waLink(productMessage(product.name, selected ? selected.dataset.size : null, product.price)));
+    var personalizeCheck = card.querySelector(".js-personalize-check");
+    var personalization = null;
+    if(personalizeCheck && personalizeCheck.checked){
+      var pname = card.querySelector(".js-personalize-name").value.trim();
+      var pnumber = card.querySelector(".js-personalize-number").value.trim();
+      if(pname || pnumber){ personalization = { name: pname, number: pnumber }; }
+    }
+    btn.setAttribute("href", waLink(productMessage(product.name, selected ? selected.dataset.size : null, product.price, personalization)));
   }
 
   function applyFilters(){
@@ -3498,8 +3577,8 @@ p{ margin:0; }
     return applicable.reduce(function(a,b){ return b.percent > a.percent ? b : a; });
   }
 
-  function addToCart(product, size){
-    cart.push({ name: product.name, size: size, imageUrl: product.imageUrl, time: product.time, price: product.price });
+  function addToCart(product, size, personalization){
+    cart.push({ name: product.name, size: size, imageUrl: product.imageUrl, time: product.time, price: product.price, personalization: personalization || null });
     renderCart();
   }
   function removeFromCart(index){ cart.splice(index, 1); renderCart(); }
@@ -3516,21 +3595,27 @@ p{ margin:0; }
       var thumbHtml = item.imageUrl
         ? '<div style="width:52px;height:65px;flex-shrink:0;background-image:url(\'' + escapeHtml(item.imageUrl) + '\');background-size:cover;background-position:center;background-color:var(--graphite)"></div>'
         : '<div style="width:52px;height:65px;flex-shrink:0;background:var(--graphite)"></div>';
+      var effectivePrice = computeItemPrice(item.price, item.size, !!item.personalization);
+      var priceLabel = isFinite(effectivePrice) ? formatBRL(effectivePrice) : (item.price || "Sob consulta");
+      var personalizeLabel = item.personalization
+        ? '<div style="font-size:12px;color:var(--gray);margin-top:2px">Personalização: ' + escapeHtml([item.personalization.name, item.personalization.number ? "Nº " + item.personalization.number : ""].filter(Boolean).join(" ") || "sim") + '</div>'
+        : "";
       row.innerHTML =
         '<div style="display:flex;align-items:center;gap:10px;min-width:0">' + thumbHtml +
         '<div style="min-width:0"><div style="font-weight:700;font-size:14.5px">' + escapeHtml(item.name) + '</div>' +
         '<div style="font-size:12.5px;color:var(--gray);margin-top:4px">' + (item.size ? "Tamanho " + escapeHtml(item.size) : "Tamanho a confirmar") + '</div>' +
-        '<div style="font-size:12.5px;color:var(--off);margin-top:2px">' + escapeHtml(item.price || "Sob consulta") + '</div></div></div>' +
+        personalizeLabel +
+        '<div style="font-size:12.5px;color:var(--off);margin-top:2px">' + escapeHtml(priceLabel) + '</div></div></div>' +
         '<button type="button" aria-label="Remover item" style="background:none;border:none;color:var(--gray);font-size:18px;line-height:1;flex-shrink:0">&times;</button>';
       row.querySelector("button").addEventListener("click", function(){ removeFromCart(index); });
       cartItemsEl.appendChild(row);
     });
 
     var totalValue = cart.reduce(function(sum, item){
-      var v = priceSortValue(item.price);
+      var v = computeItemPrice(item.price, item.size, !!item.personalization);
       return sum + (isFinite(v) ? v : 0);
     }, 0);
-    var hasUnpriced = cart.some(function(item){ return !isFinite(priceSortValue(item.price)); });
+    var hasUnpriced = cart.some(function(item){ return !isFinite(computeItemPrice(item.price, item.size, !!item.personalization)); });
     var totalEl = document.getElementById("cartTotal");
     if(totalEl){
       totalEl.textContent = cart.length
@@ -3579,11 +3664,14 @@ p{ margin:0; }
     var total = 0;
     var hasUnpriced = false;
     items.forEach(function(item){
-      var v = priceSortValue(item.price);
+      var v = computeItemPrice(item.price, item.size, !!item.personalization);
       var priceText;
       if(isFinite(v)){ total += v; priceText = " - " + formatBRL(v); }
       else { hasUnpriced = true; priceText = " - Sob consulta"; }
-      msg += "- " + item.name + (item.size ? " (tamanho " + item.size + ")" : " (tamanho a confirmar)") + priceText + "\n";
+      var personalizeText = item.personalization
+        ? " — Personalização: " + [item.personalization.name, item.personalization.number ? "Nº " + item.personalization.number : ""].filter(Boolean).join(" ")
+        : "";
+      msg += "- " + item.name + (item.size ? " (tamanho " + item.size + ")" : " (tamanho a confirmar)") + personalizeText + priceText + "\n";
     });
     if(discount){ msg += "Desconto progressivo aplicado: " + discount.percent + "% (" + items.length + " peças)\n"; }
     msg += "Total: " + formatBRL(total) + (hasUnpriced ? " + itens sob consulta" : "") + "\n";
@@ -3606,16 +3694,20 @@ p{ margin:0; }
     var itemsSnapshot = cart.slice();
 
     var saleResults = await Promise.all(itemsSnapshot.map(function(item){
+      var effectiveValue = computeItemPrice(item.price, item.size, !!item.personalization);
+      var productLabel = item.name + (item.personalization
+        ? " [Personalizado: " + [item.personalization.name, item.personalization.number ? "Nº " + item.personalization.number : ""].filter(Boolean).join(" ") + "]"
+        : "");
       return callBackend("addSale", {
         id: orderId + "-" + Math.random().toString(36).slice(2,6),
         orderId: orderId,
         date: dateIso,
-        product: item.name,
+        product: productLabel,
         size: item.size || "—",
         time: item.time || "—",
         customerName: name,
         customerPhone: phone,
-        saleValue: isFinite(priceSortValue(item.price)) ? priceSortValue(item.price) : 0,
+        saleValue: isFinite(effectiveValue) ? effectiveValue : 0,
         costValue: 0,
         discountPercent: discount ? discount.percent : 0,
         status: STATUS_STAGES[0],
@@ -4392,7 +4484,9 @@ p{ margin:0; }
       logoUrl: LOGO_URL,
       teamLogos: TEAM_LOGOS,
       leagueLogos: LEAGUE_LOGOS,
-      hiddenCategories: HIDDEN_CATEGORIES
+      hiddenCategories: HIDDEN_CATEGORIES,
+      extraSizeSurcharge: EXTRA_SIZE_SURCHARGE,
+      personalizationPrice: PERSONALIZATION_PRICE
     };
     var res = await callBackend("saveConfig", Object.assign({ config: JSON.stringify(payload) }, authParams()));
     return res.ok;
@@ -4649,6 +4743,82 @@ p{ margin:0; }
     await saveSiteConfig();
   });
 
+  /* ---------- Upload em massa de escudos (casa pelo nome do arquivo) ---------- */
+  function normalizeForMatch(s){
+    return String(s || "")
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/\.[a-z0-9]+$/, "")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+  }
+
+  document.getElementById("adminBulkLogoBtn").addEventListener("click", function(){
+    document.getElementById("bulkLogoFileInput").click();
+  });
+
+  document.getElementById("bulkLogoFileInput").addEventListener("change", async function(){
+    var files = Array.prototype.slice.call(this.files);
+    this.value = "";
+    if(!files.length) return;
+
+    var statusEl = document.getElementById("adminBulkLogoStatus");
+    var resultsEl = document.getElementById("adminBulkLogoResults");
+    resultsEl.innerHTML = "";
+
+    // monta um índice: nome normalizado -> {kind, key}
+    var index = {};
+    ["futebol", "nba"].forEach(function(cat){
+      TEAM_GROUPS[cat].forEach(function(group){
+        var ligaNorm = normalizeForMatch(group.liga);
+        if(!index[ligaNorm]) index[ligaNorm] = { kind: "league", key: group.liga };
+        group.teams.forEach(function(team){
+          index[normalizeForMatch(team)] = { kind: "team", key: team };
+        });
+      });
+    });
+
+    var matched = [];
+    var unmatched = [];
+    files.forEach(function(file){
+      var norm = normalizeForMatch(file.name);
+      var hit = index[norm];
+      if(hit){ matched.push({ file: file, hit: hit }); }
+      else{ unmatched.push(file.name); }
+    });
+
+    var okCount = 0, failCount = 0;
+    for(var i = 0; i < matched.length; i++){
+      statusEl.textContent = "Enviando " + (i + 1) + " de " + matched.length + "...";
+      var m = matched[i];
+      var res = await uploadImageFile(m.file);
+      if(res.ok){
+        if(m.hit.kind === "team"){ TEAM_LOGOS[m.hit.key] = res.url; }
+        else{ LEAGUE_LOGOS[m.hit.key] = res.url; }
+        okCount++;
+      } else {
+        failCount++;
+        unmatched.push(m.file.name + " (falha no envio: " + res.error + ")");
+      }
+    }
+    statusEl.textContent = "";
+
+    if(okCount){
+      renderAdminLeagues();
+      renderLeagueRows();
+      await saveSiteConfig();
+    }
+
+    var summary = '<p style="color:var(--off)">✓ ' + okCount + ' de ' + files.length + ' fotos enviadas e associadas com sucesso.</p>';
+    if(unmatched.length){
+      summary += '<p style="color:var(--gray);margin-top:6px">Não reconhecidos (' + unmatched.length + '), envie manualmente pelo 📷 de cada um:</p>' +
+        '<ul style="color:var(--gray);margin:4px 0 0 18px;max-height:160px;overflow-y:auto">' +
+        unmatched.map(function(n){ return '<li>' + escapeHtml(n) + '</li>'; }).join("") +
+        '</ul>';
+    }
+    resultsEl.innerHTML = summary;
+  });
+
   function renderAdminLeagues(){
     var cat = adminTeamsCategory.value;
     var container = document.getElementById("adminLeaguesList");
@@ -4874,6 +5044,30 @@ p{ margin:0; }
     await saveSiteConfig();
   });
 
+  /* ---------- Adicional de tamanho (2XL+) e personalização ---------- */
+  var adminExtraSizeInput = document.getElementById("adminExtraSizeInput");
+  var adminPersonalizationInput = document.getElementById("adminPersonalizationInput");
+  adminExtraSizeInput.value = EXTRA_SIZE_SURCHARGE;
+  adminPersonalizationInput.value = PERSONALIZATION_PRICE;
+
+  document.getElementById("adminSaveExtraSizeBtn").addEventListener("click", async function(){
+    var v = Number(adminExtraSizeInput.value);
+    if(isNaN(v) || v < 0) return;
+    EXTRA_SIZE_SURCHARGE = v;
+    renderProducts();
+    renderProntaEntrega();
+    await saveSiteConfig();
+  });
+
+  document.getElementById("adminSavePersonalizationBtn").addEventListener("click", async function(){
+    var v = Number(adminPersonalizationInput.value);
+    if(isNaN(v) || v < 0) return;
+    PERSONALIZATION_PRICE = v;
+    renderProducts();
+    renderProntaEntrega();
+    await saveSiteConfig();
+  });
+
   /* ---------- Aparência (logo/ícone) ---------- */
   var adminLogoUrlInput = document.getElementById("adminLogoUrlInput");
   var adminLogoPreview = document.getElementById("adminLogoPreview");
@@ -4951,6 +5145,12 @@ p{ margin:0; }
     if(cfg.teamLogos){ TEAM_LOGOS = cfg.teamLogos; }
     if(cfg.leagueLogos){ LEAGUE_LOGOS = cfg.leagueLogos; }
     if(cfg.hiddenCategories){ HIDDEN_CATEGORIES = cfg.hiddenCategories; }
+    if(cfg.extraSizeSurcharge !== undefined){ EXTRA_SIZE_SURCHARGE = cfg.extraSizeSurcharge; }
+    if(cfg.personalizationPrice !== undefined){ PERSONALIZATION_PRICE = cfg.personalizationPrice; }
+    var extraSizeInputEl = document.getElementById("adminExtraSizeInput");
+    var personalizationInputEl = document.getElementById("adminPersonalizationInput");
+    if(extraSizeInputEl) extraSizeInputEl.value = EXTRA_SIZE_SURCHARGE;
+    if(personalizationInputEl) personalizationInputEl.value = PERSONALIZATION_PRICE;
 
     applyCategoryVisibility();
     renderProducts();
