@@ -313,6 +313,12 @@ p{ margin:0; }
 .cat-icon svg{ width:100%; height:auto; aspect-ratio:1/1; }
 .cat-name{ font-size:22px; margin-bottom:10px; position:relative; z-index:1; }
 .cat-text{ color:var(--gray); font-size:14px; line-height:1.6; max-width:26ch; position:relative; z-index:1; }
+.cat-card--banner{ background-size:cover; background-position:center; }
+.cat-card--banner::before{
+  content:""; position:absolute; inset:0; z-index:0;
+  background:linear-gradient(180deg, rgba(10,10,10,.15) 0%, rgba(10,10,10,.55) 55%, rgba(10,10,10,.92) 100%);
+}
+.cat-card--banner .cat-icon{ display:none; }
 .cat-link{ margin-top:20px; display:inline-flex; align-items:center; gap:8px; font-size:13px; font-weight:600; letter-spacing:.03em; position:relative; z-index:1; }
 .cat-link svg{ width:15px; height:15px; transition:transform .25s var(--ease); }
 .cat-card:hover .cat-link svg{ transform:translateX(4px); }
@@ -825,7 +831,7 @@ p{ margin:0; }
   </div>
 
   <div class="cat-grid">
-    <a class="cat-card" href="#produtos" data-filter-link="futebol">
+    <a class="cat-card" href="#produtos" data-filter-link="futebol" data-cat-key="futebol">
       <span class="cat-icon" aria-hidden="true">
         <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="50" cy="50" r="42"></circle><path d="M50 37L62 46L58 61L42 61L38 46Z"></path><path d="M50 37L50 8M62 46L90 37M58 61L75 84M42 61L25 84M38 46L10 37"></path></svg>
       </span>
@@ -836,7 +842,7 @@ p{ margin:0; }
       </span>
     </a>
 
-    <a class="cat-card" href="#produtos" data-filter-link="nba" data-cat-nav="nba">
+    <a class="cat-card" href="#produtos" data-filter-link="nba" data-cat-nav="nba" data-cat-key="nba">
       <span class="cat-icon" aria-hidden="true">
         <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="50" cy="50" r="42"></circle><path d="M50 8V92M8 50H92M50 8C33 8 33 92 50 92M50 8C67 8 67 92 50 92"></path></svg>
       </span>
@@ -847,7 +853,7 @@ p{ margin:0; }
       </span>
     </a>
 
-    <a class="cat-card" href="#produtos" data-filter-link="todos">
+    <a class="cat-card" href="#produtos" data-filter-link="todos" data-cat-key="camisas">
       <span class="cat-icon" aria-hidden="true">
         <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M25 15L40 15L50 26L60 15L75 15L90 28L74 38L74 88L26 88L26 38L10 28Z"></path></svg>
       </span>
@@ -858,7 +864,7 @@ p{ margin:0; }
       </span>
     </a>
 
-    <a class="cat-card" href="#produtos" data-filter-link="pronta">
+    <a class="cat-card" href="#produtos" data-filter-link="pronta" data-cat-key="pronta">
       <span class="cat-icon" aria-hidden="true">
         <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M55 8L22 55H44L38 92L80 42H56L55 8Z" stroke-linejoin="round"></path></svg>
       </span>
@@ -1460,6 +1466,10 @@ p{ margin:0; }
         <button type="button" class="btn btn-primary" id="adminSaveLogoBtn">Salvar logo</button>
         <button type="button" class="btn btn-outline btn-sm" id="adminResetLogoBtn">Usar ícone padrão (diamante)</button>
       </div>
+
+      <h2 class="admin-view-title" style="margin-top:40px">Banners das categorias</h2>
+      <p style="color:var(--gray);font-size:13.5px;max-width:56ch;margin-bottom:20px">Envie uma foto pra cada categoria da tela inicial, no lugar do ícone simples. Se não enviar nada, o ícone continua aparecendo normalmente — não precisa preencher todas.</p>
+      <div id="adminCategoryBanners" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px"></div>
     </div>
   </div>
     </div>
@@ -1517,8 +1527,8 @@ p{ margin:0; }
       <label class="form-field">Categoria
         <select name="category"><option value="futebol">Futebol</option><option value="nba">NBA</option></select>
       </label>
-      <label class="form-field">Liga<input type="text" name="liga" placeholder="Ex: Brasileirão"></label>
-      <label class="form-field">Time<input type="text" name="time" placeholder="Ex: Flamengo"></label>
+      <label class="form-field">Liga<select name="liga" id="adminProductLigaSelect"></select></label>
+      <label class="form-field">Time<select name="time" id="adminProductTimeSelect"></select></label>
       <label class="form-field">Tipo<select name="tipo"></select></label>
       <label class="form-field">Preço (texto livre — ex: "Sob consulta" ou "R$ 199,90")<input type="text" name="price" value="Sob consulta"></label>
       <label class="form-field">Preço original (opcional, mostra riscado)<input type="text" name="originalPrice" placeholder="Ex: R$ 250,00"></label>
@@ -1603,6 +1613,7 @@ p{ margin:0; }
   // aqui ("futebol" e/ou "nba") ficam totalmente fora do site — sem
   // sumir os dados, só escondidas até serem reativadas.
   var HIDDEN_CATEGORIES = [];
+  var CATEGORY_BANNERS = {}; // { futebol: url, nba: url, camisas: url, pronta: url } — se vazio, mostra o ícone padrão
 
   // Editável em Painel administrativo → Times e Ligas. Chave = nome exato
   // do time/liga, valor = URL da imagem enviada. Vazio = usa as iniciais
@@ -3290,6 +3301,19 @@ p{ margin:0; }
     }
   }
 
+  function applyCategoryBanners(){
+    document.querySelectorAll("[data-cat-key]").forEach(function(card){
+      var url = CATEGORY_BANNERS[card.dataset.catKey];
+      if(url){
+        card.classList.add("cat-card--banner");
+        card.style.backgroundImage = "url('" + url + "')";
+      } else {
+        card.classList.remove("cat-card--banner");
+        card.style.backgroundImage = "";
+      }
+    });
+  }
+
   function setCategoryPill(category){
     currentFilter = category;
     document.querySelectorAll(".filter-btn").forEach(function(b){
@@ -4559,6 +4583,7 @@ p{ margin:0; }
       leagueLogos: LEAGUE_LOGOS,
       hiddenCategories: HIDDEN_CATEGORIES,
       extraSizeSurcharges: EXTRA_SIZE_SURCHARGES,
+      categoryBanners: CATEGORY_BANNERS,
       personalizationPrice: PERSONALIZATION_PRICE
     };
     var json = JSON.stringify(payload);
@@ -4571,6 +4596,35 @@ p{ margin:0; }
 
   /* ---------- Produtos ---------- */
   var adminProductForm = document.getElementById("adminProductForm");
+  var adminProductLigaSelect = document.getElementById("adminProductLigaSelect");
+  var adminProductTimeSelect = document.getElementById("adminProductTimeSelect");
+
+  function populateLigaSelect(category, selectedLiga){
+    var groups = TEAM_GROUPS[category] || [];
+    var ligas = groups.map(function(g){ return g.liga; });
+    // se o produto tem uma liga que nao existe mais no cadastro, mantem ela
+    // como opcao extra pra nao perder/alterar o dado sem querer
+    if(selectedLiga && ligas.indexOf(selectedLiga) === -1) ligas.unshift(selectedLiga);
+    adminProductLigaSelect.innerHTML = '<option value="">— Nenhuma —</option>' +
+      ligas.map(function(l){ return '<option value="' + escapeHtml(l) + '"' + (l === selectedLiga ? " selected" : "") + '>' + escapeHtml(l) + '</option>'; }).join("");
+  }
+
+  function populateTimeSelect(category, liga, selectedTime){
+    var group = (TEAM_GROUPS[category] || []).find(function(g){ return g.liga === liga; });
+    var teams = group ? sortTeamsAlpha(group.teams) : [];
+    if(selectedTime && teams.indexOf(selectedTime) === -1) teams = [selectedTime].concat(teams);
+    adminProductTimeSelect.innerHTML = '<option value="">— Nenhum —</option>' +
+      teams.map(function(t){ return '<option value="' + escapeHtml(t) + '"' + (t === selectedTime ? " selected" : "") + '>' + escapeHtml(t) + '</option>'; }).join("");
+  }
+
+  adminProductForm.category.addEventListener("change", function(){
+    populateLigaSelect(adminProductForm.category.value, "");
+    populateTimeSelect(adminProductForm.category.value, "", "");
+  });
+  adminProductLigaSelect.addEventListener("change", function(){
+    populateTimeSelect(adminProductForm.category.value, adminProductLigaSelect.value, "");
+  });
+
   (function fillProductTipoSelect(){
     adminProductForm.tipo.innerHTML = TIPOS.map(function(t){ return '<option value="' + t + '">' + t + '</option>'; }).join("");
   })();
@@ -4729,8 +4783,8 @@ p{ margin:0; }
       form.imageUrl.value = product.imageUrl || "";
       form.name.value = product.name;
       form.category.value = product.category;
-      form.liga.value = product.liga && product.liga !== "—" ? product.liga : "";
-      form.time.value = product.time && product.time !== "—" ? product.time : "";
+      populateLigaSelect(product.category, product.liga && product.liga !== "—" ? product.liga : "");
+      populateTimeSelect(product.category, product.liga, product.time && product.time !== "—" ? product.time : "");
       form.tipo.value = product.tipo;
       form.price.value = product.price;
       form.originalPrice.value = product.originalPrice || "";
@@ -4745,6 +4799,8 @@ p{ margin:0; }
       form.id.value = "";
       form.imageUrl.value = "";
       form.ativo.checked = true;
+      populateLigaSelect(form.category.value, "");
+      populateTimeSelect(form.category.value, "", "");
       adminProductPreview.style.display = "none";
     }
     openModal("adminProductModal");
@@ -4913,6 +4969,7 @@ p{ margin:0; }
             '<button type="button" data-liga="' + escapeHtml(group.liga) + '" class="admin-league-logo" style="background:none;border:none;color:var(--gray);font-size:13px;cursor:pointer" aria-label="Enviar logo da liga" title="Enviar logo da liga">📷</button>' +
           '</span>' +
           '<span style="display:flex;align-items:center;gap:10px">' +
+            '<button type="button" class="admin-league-rename" data-gi="' + gi + '" style="background:none;border:none;color:var(--gray);font-size:13px;cursor:pointer" aria-label="Renomear liga" title="Renomear liga">✎</button>' +
             '<button type="button" class="admin-row-delete admin-league-remove" data-gi="' + gi + '" aria-label="Remover liga">&times;</button>' +
             '<svg class="admin-league-caret" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="transition:transform .15s var(--ease)"><path d="M6 9l6 6 6-6"></path></svg>' +
           '</span>' +
@@ -4929,6 +4986,7 @@ p{ margin:0; }
           return '<span class="team-chip" style="cursor:default">' +
             teamBadgeHtml(team) + escapeHtml(team) +
             ' <button type="button" data-team="' + escapeHtml(team) + '" class="admin-team-logo" style="background:none;border:none;color:var(--gray);font-size:13px;cursor:pointer;padding:2px 4px" aria-label="Enviar logo do time" title="Enviar logo">📷</button>' +
+            '<button type="button" data-gi="' + gi + '" data-ti="' + ti + '" class="admin-team-rename" style="background:none;border:none;color:var(--gray);padding:2px 4px;font-size:13px;cursor:pointer" aria-label="Renomear time" title="Renomear time">✎</button>' +
             '<button type="button" data-gi="' + gi + '" data-ti="' + ti + '" class="admin-team-remove" style="background:none;border:none;color:var(--gray);margin-left:8px;padding:2px 4px;font-size:14px;cursor:pointer" aria-label="Remover time" title="Remover time">&times;</button>' +
           '</span>';
         }).join("");
@@ -4943,6 +5001,29 @@ p{ margin:0; }
           btn.addEventListener("click", function(){
             pendingLogoTarget = { kind:"team", team: btn.dataset.team };
             teamLogoFileInput.click();
+          });
+        });
+        body.querySelectorAll(".admin-team-rename").forEach(function(btn){
+          btn.addEventListener("click", async function(){
+            var gi2 = Number(btn.dataset.gi), ti2 = Number(btn.dataset.ti);
+            var oldName = TEAM_GROUPS[cat][gi2].teams[ti2];
+            var newName = window.prompt("Novo nome para \"" + oldName + "\":", oldName);
+            if(!newName || !newName.trim() || newName.trim() === oldName) return;
+            newName = newName.trim();
+            if(TEAM_GROUPS[cat][gi2].teams.indexOf(newName) !== -1){
+              window.alert("Já existe um time com esse nome nessa liga.");
+              return;
+            }
+            TEAM_GROUPS[cat][gi2].teams[ti2] = newName;
+            if(TEAM_LOGOS[oldName]){ TEAM_LOGOS[newName] = TEAM_LOGOS[oldName]; delete TEAM_LOGOS[oldName]; }
+            var updatedCount = 0;
+            PRODUCTS.forEach(function(p){ if(p.time === oldName){ p.time = newName; updatedCount++; } });
+            renderAdminLeagues();
+            renderLeagueRows();
+            renderProducts();
+            renderProntaEntrega();
+            await saveSiteConfig();
+            if(updatedCount) window.alert("Renomeado! " + updatedCount + " produto(s) atualizado(s) automaticamente para o novo nome.");
           });
         });
         body.querySelectorAll(".admin-team-remove").forEach(function(btn){
@@ -4972,7 +5053,7 @@ p{ margin:0; }
       }
 
       box.querySelector(".admin-league-header").addEventListener("click", function(e){
-        if(e.target.closest(".admin-league-logo") || e.target.closest(".admin-league-remove")) return;
+        if(e.target.closest(".admin-league-logo") || e.target.closest(".admin-league-remove") || e.target.closest(".admin-league-rename")) return;
         expanded = !expanded;
         body.hidden = !expanded;
         caret.style.transform = expanded ? "rotate(180deg)" : "";
@@ -4999,6 +5080,29 @@ p{ margin:0; }
         renderLeagueRows();
         applyFilters();
         await saveSiteConfig();
+      });
+    });
+    container.querySelectorAll(".admin-league-rename").forEach(function(btn){
+      btn.addEventListener("click", async function(){
+        var gi2 = Number(btn.dataset.gi);
+        var oldName = TEAM_GROUPS[cat][gi2].liga;
+        var newName = window.prompt("Novo nome para a liga \"" + oldName + "\":", oldName);
+        if(!newName || !newName.trim() || newName.trim() === oldName) return;
+        newName = newName.trim();
+        if(TEAM_GROUPS[cat].some(function(g){ return g.liga === newName; })){
+          window.alert("Já existe uma liga com esse nome.");
+          return;
+        }
+        TEAM_GROUPS[cat][gi2].liga = newName;
+        if(LEAGUE_LOGOS[oldName]){ LEAGUE_LOGOS[newName] = LEAGUE_LOGOS[oldName]; delete LEAGUE_LOGOS[oldName]; }
+        var updatedCount = 0;
+        PRODUCTS.forEach(function(p){ if(p.liga === oldName){ p.liga = newName; updatedCount++; } });
+        renderAdminLeagues();
+        renderLeagueRows();
+        renderProducts();
+        renderProntaEntrega();
+        await saveSiteConfig();
+        if(updatedCount) window.alert("Renomeado! " + updatedCount + " produto(s) atualizado(s) automaticamente para o novo nome.");
       });
     });
   }
@@ -5196,6 +5300,46 @@ p{ margin:0; }
     else{ alert("Não foi possível salvar agora. Tente novamente."); }
   });
 
+  /* ---------- Banners de categoria ---------- */
+  var CATEGORY_BANNER_LABELS = { futebol:"Futebol", nba:"NBA", camisas:"Camisas", pronta:"Pronta Entrega" };
+  function renderAdminCategoryBanners(){
+    var wrap = document.getElementById("adminCategoryBanners");
+    wrap.innerHTML = Object.keys(CATEGORY_BANNER_LABELS).map(function(key){
+      var url = CATEGORY_BANNERS[key];
+      return '<div style="background:var(--graphite);border:1px solid rgba(247,247,244,.08);padding:14px">' +
+        '<div style="font-size:13px;font-weight:700;margin-bottom:8px">' + CATEGORY_BANNER_LABELS[key] + '</div>' +
+        (url
+          ? '<div style="width:100%;height:90px;background-image:url(\'' + escapeHtml(url) + '\');background-size:cover;background-position:center;margin-bottom:8px"></div>'
+          : '<div style="width:100%;height:90px;display:flex;align-items:center;justify-content:center;color:var(--gray);font-size:11.5px;border:1px dashed rgba(247,247,244,.15);margin-bottom:8px">Sem banner — usando ícone</div>') +
+        '<input type="file" accept="image/*" class="admin-cat-banner-file" data-key="' + key + '" style="font-size:11.5px;width:100%;margin-bottom:6px">' +
+        (url ? '<button type="button" class="btn btn-outline btn-sm admin-cat-banner-clear" data-key="' + key + '" style="width:100%">Remover banner (voltar ao ícone)</button>' : '') +
+      '</div>';
+    }).join("");
+
+    wrap.querySelectorAll(".admin-cat-banner-file").forEach(function(input){
+      input.addEventListener("change", async function(){
+        var file = input.files[0];
+        if(!file) return;
+        var key = input.dataset.key;
+        var res = await uploadImageFile(file);
+        if(!res.ok){ alert(res.error); return; }
+        CATEGORY_BANNERS[key] = res.url;
+        applyCategoryBanners();
+        renderAdminCategoryBanners();
+        await saveSiteConfig();
+      });
+    });
+    wrap.querySelectorAll(".admin-cat-banner-clear").forEach(function(btn){
+      btn.addEventListener("click", async function(){
+        delete CATEGORY_BANNERS[btn.dataset.key];
+        applyCategoryBanners();
+        renderAdminCategoryBanners();
+        await saveSiteConfig();
+      });
+    });
+  }
+  renderAdminCategoryBanners();
+
   /* ============================================================
      LOGO/ÍCONE PERSONALIZADO (Painel administrativo → Aparência)
      ============================================================ */
@@ -5230,6 +5374,9 @@ p{ margin:0; }
     if(cfg.teamLogos){ TEAM_LOGOS = cfg.teamLogos; }
     if(cfg.leagueLogos){ LEAGUE_LOGOS = cfg.leagueLogos; }
     if(cfg.hiddenCategories){ HIDDEN_CATEGORIES = cfg.hiddenCategories; }
+    if(cfg.categoryBanners){ CATEGORY_BANNERS = cfg.categoryBanners; applyCategoryBanners(); }
+    var catBannersWrapEl = document.getElementById("adminCategoryBanners");
+    if(catBannersWrapEl) renderAdminCategoryBanners();
     if(cfg.extraSizeSurcharges){
       EXTRA_SIZE_SURCHARGES = cfg.extraSizeSurcharges;
     } else if(cfg.extraSizeSurcharge !== undefined){
