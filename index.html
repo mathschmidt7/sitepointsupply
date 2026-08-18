@@ -1403,12 +1403,23 @@ p{ margin:0; }
       <h2 class="admin-view-title">Descontos</h2>
       <div style="background:var(--graphite);border:1px solid rgba(247,247,244,.08);padding:16px 18px;margin-bottom:20px;display:flex;flex-wrap:wrap;gap:24px">
         <div>
-          <label style="display:block;font-size:12.5px;color:var(--gray);margin-bottom:6px">Adicional a partir do 2XL (R$)</label>
-          <div style="display:flex;gap:8px">
-            <input type="number" id="adminExtraSizeInput" min="0" step="0.01" style="width:120px;background:var(--black);border:1px solid rgba(247,247,244,.15);color:var(--off);padding:8px 10px;font-size:13px">
+          <label style="display:block;font-size:12.5px;color:var(--gray);margin-bottom:6px">Adicional por tamanho (R$)</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <span style="display:flex;align-items:center;gap:6px">
+              <span style="font-size:12.5px;color:var(--gray);width:32px">2XL</span>
+              <input type="number" id="adminExtraSize2XLInput" min="0" step="0.01" style="width:90px;background:var(--black);border:1px solid rgba(247,247,244,.15);color:var(--off);padding:8px 10px;font-size:13px">
+            </span>
+            <span style="display:flex;align-items:center;gap:6px">
+              <span style="font-size:12.5px;color:var(--gray);width:32px">3XL</span>
+              <input type="number" id="adminExtraSize3XLInput" min="0" step="0.01" style="width:90px;background:var(--black);border:1px solid rgba(247,247,244,.15);color:var(--off);padding:8px 10px;font-size:13px">
+            </span>
+            <span style="display:flex;align-items:center;gap:6px">
+              <span style="font-size:12.5px;color:var(--gray);width:32px">4XL</span>
+              <input type="number" id="adminExtraSize4XLInput" min="0" step="0.01" style="width:90px;background:var(--black);border:1px solid rgba(247,247,244,.15);color:var(--off);padding:8px 10px;font-size:13px">
+            </span>
             <button type="button" class="btn btn-outline btn-sm" id="adminSaveExtraSizeBtn">Salvar</button>
           </div>
-          <p style="font-size:11.5px;color:var(--gray);margin-top:6px">Aplicado nos tamanhos 2XL, 3XL e 4XL.</p>
+          <p style="font-size:11.5px;color:var(--gray);margin-top:6px">Cada tamanho pode ter um valor adicional diferente.</p>
         </div>
         <div>
           <label style="display:block;font-size:12.5px;color:var(--gray);margin-bottom:6px">Personalização (nome e número) (R$)</label>
@@ -1564,8 +1575,8 @@ p{ margin:0; }
   ];
 
   // Editável em Painel administrativo → Descontos
-  var EXTRA_SIZE_SURCHARGE = 15; // valor adicional a partir do 2XL (2XL, 3XL, 4XL)
   var EXTRA_SIZES = ["2XL", "3XL", "4XL"];
+  var EXTRA_SIZE_SURCHARGES = { "2XL": 15, "3XL": 15, "4XL": 15 }; // valor adicional por tamanho, editável individualmente
   var PERSONALIZATION_PRICE = 30; // nome + número
 
   // Editável em Painel administrativo → FAQ
@@ -2834,7 +2845,7 @@ p{ margin:0; }
     var base = priceSortValue(basePrice);
     if(!isFinite(base)) return Infinity;
     var total = base;
-    if(size && EXTRA_SIZES.indexOf(size) !== -1) total += EXTRA_SIZE_SURCHARGE;
+    if(size && EXTRA_SIZE_SURCHARGES[size] !== undefined) total += EXTRA_SIZE_SURCHARGES[size];
     if(personalized) total += PERSONALIZATION_PRICE;
     return total;
   }
@@ -3355,7 +3366,7 @@ p{ margin:0; }
         '<span class="product-installment">' + escapeHtml(p.installment) + '</span>' +
         '<div class="product-sizes">' + sizeChips + '</div>' +
         '<p class="size-helper">Não sabe seu tamanho? <button type="button" class="size-chart-link" data-id="' + p.id + '" data-open-modal="sizeChartModal">Ver tabela de medidas</button></p>' +
-        '<p class="size-surcharge-note" hidden style="font-size:12px;color:var(--gray);margin:2px 0 0">+ ' + formatBRL(EXTRA_SIZE_SURCHARGE) + ' para tamanhos ' + EXTRA_SIZES.join("/") + '</p>' +
+        '<p class="size-surcharge-note" hidden style="font-size:12px;color:var(--gray);margin:2px 0 0"></p>' +
         '<label class="personalize-toggle" style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;cursor:pointer">' +
           '<input type="checkbox" class="js-personalize-check">Personalizar (nome e número) — +' + formatBRL(PERSONALIZATION_PRICE) +
         '</label>' +
@@ -3380,7 +3391,14 @@ p{ margin:0; }
         var already = chip.classList.contains("is-selected");
         siblings.forEach(function(s){ s.classList.remove("is-selected"); });
         if(!already){ chip.classList.add("is-selected"); }
-        surchargeNote.hidden = !(!already && EXTRA_SIZES.indexOf(chip.dataset.size) !== -1);
+        var sizeNow = !already ? chip.dataset.size : null;
+        var extra = sizeNow && EXTRA_SIZE_SURCHARGES[sizeNow] !== undefined ? EXTRA_SIZE_SURCHARGES[sizeNow] : null;
+        if(extra !== null){
+          surchargeNote.textContent = "+ " + formatBRL(extra) + " para o tamanho " + sizeNow;
+          surchargeNote.hidden = false;
+        } else {
+          surchargeNote.hidden = true;
+        }
         updateProductWaLink(card);
       });
     });
@@ -4512,7 +4530,7 @@ p{ margin:0; }
       teamLogos: TEAM_LOGOS,
       leagueLogos: LEAGUE_LOGOS,
       hiddenCategories: HIDDEN_CATEGORIES,
-      extraSizeSurcharge: EXTRA_SIZE_SURCHARGE,
+      extraSizeSurcharges: EXTRA_SIZE_SURCHARGES,
       personalizationPrice: PERSONALIZATION_PRICE
     };
     var json = JSON.stringify(payload);
@@ -5077,16 +5095,22 @@ p{ margin:0; }
     await saveSiteConfig();
   });
 
-  /* ---------- Adicional de tamanho (2XL+) e personalização ---------- */
-  var adminExtraSizeInput = document.getElementById("adminExtraSizeInput");
+  /* ---------- Adicional por tamanho (2XL/3XL/4XL) e personalização ---------- */
+  var adminExtraSize2XLInput = document.getElementById("adminExtraSize2XLInput");
+  var adminExtraSize3XLInput = document.getElementById("adminExtraSize3XLInput");
+  var adminExtraSize4XLInput = document.getElementById("adminExtraSize4XLInput");
   var adminPersonalizationInput = document.getElementById("adminPersonalizationInput");
-  adminExtraSizeInput.value = EXTRA_SIZE_SURCHARGE;
+  adminExtraSize2XLInput.value = EXTRA_SIZE_SURCHARGES["2XL"];
+  adminExtraSize3XLInput.value = EXTRA_SIZE_SURCHARGES["3XL"];
+  adminExtraSize4XLInput.value = EXTRA_SIZE_SURCHARGES["4XL"];
   adminPersonalizationInput.value = PERSONALIZATION_PRICE;
 
   document.getElementById("adminSaveExtraSizeBtn").addEventListener("click", async function(){
-    var v = Number(adminExtraSizeInput.value);
-    if(isNaN(v) || v < 0) return;
-    EXTRA_SIZE_SURCHARGE = v;
+    var v2 = Number(adminExtraSize2XLInput.value);
+    var v3 = Number(adminExtraSize3XLInput.value);
+    var v4 = Number(adminExtraSize4XLInput.value);
+    if(isNaN(v2) || v2 < 0 || isNaN(v3) || v3 < 0 || isNaN(v4) || v4 < 0) return;
+    EXTRA_SIZE_SURCHARGES = { "2XL": v2, "3XL": v3, "4XL": v4 };
     renderProducts();
     renderProntaEntrega();
     await saveSiteConfig();
@@ -5178,11 +5202,21 @@ p{ margin:0; }
     if(cfg.teamLogos){ TEAM_LOGOS = cfg.teamLogos; }
     if(cfg.leagueLogos){ LEAGUE_LOGOS = cfg.leagueLogos; }
     if(cfg.hiddenCategories){ HIDDEN_CATEGORIES = cfg.hiddenCategories; }
-    if(cfg.extraSizeSurcharge !== undefined){ EXTRA_SIZE_SURCHARGE = cfg.extraSizeSurcharge; }
+    if(cfg.extraSizeSurcharges){
+      EXTRA_SIZE_SURCHARGES = cfg.extraSizeSurcharges;
+    } else if(cfg.extraSizeSurcharge !== undefined){
+      // configuração salva antes de cada tamanho ter valor próprio —
+      // usa o valor único antigo como ponto de partida pros três.
+      EXTRA_SIZE_SURCHARGES = { "2XL": cfg.extraSizeSurcharge, "3XL": cfg.extraSizeSurcharge, "4XL": cfg.extraSizeSurcharge };
+    }
     if(cfg.personalizationPrice !== undefined){ PERSONALIZATION_PRICE = cfg.personalizationPrice; }
-    var extraSizeInputEl = document.getElementById("adminExtraSizeInput");
+    var extraSize2XLInputEl = document.getElementById("adminExtraSize2XLInput");
+    var extraSize3XLInputEl = document.getElementById("adminExtraSize3XLInput");
+    var extraSize4XLInputEl = document.getElementById("adminExtraSize4XLInput");
     var personalizationInputEl = document.getElementById("adminPersonalizationInput");
-    if(extraSizeInputEl) extraSizeInputEl.value = EXTRA_SIZE_SURCHARGE;
+    if(extraSize2XLInputEl) extraSize2XLInputEl.value = EXTRA_SIZE_SURCHARGES["2XL"];
+    if(extraSize3XLInputEl) extraSize3XLInputEl.value = EXTRA_SIZE_SURCHARGES["3XL"];
+    if(extraSize4XLInputEl) extraSize4XLInputEl.value = EXTRA_SIZE_SURCHARGES["4XL"];
     if(personalizationInputEl) personalizationInputEl.value = PERSONALIZATION_PRICE;
 
     applyCategoryVisibility();
