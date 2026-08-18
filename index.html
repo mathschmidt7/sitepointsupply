@@ -3007,7 +3007,13 @@ p{ margin:0; }
         var byteArr = new Uint8Array(byteChars.length);
         for(var bi = 0; bi < byteChars.length; bi++){ byteArr[bi] = byteChars.charCodeAt(bi); }
         var blob = new Blob([byteArr], { type: params.mimeType || "image/jpeg" });
-        var path = Date.now() + "-" + Math.random().toString(36).slice(2,8) + "-" + (params.filename || "imagem");
+        // Nomes de arquivo com acento (ex: "camarões.png") ou outros caracteres
+        // especiais quebram o caminho de armazenamento — normaliza pra só
+        // letras/números/hífen antes de usar como nome do arquivo salvo.
+        var safeName = String(params.filename || "imagem")
+          .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-zA-Z0-9.\-]+/g, "-");
+        var path = Date.now() + "-" + Math.random().toString(36).slice(2,8) + "-" + safeName;
         var upRes = await sb.storage.from("site-images").upload(path, blob, { contentType: params.mimeType || "image/jpeg" });
         if(upRes.error) return { ok:false, error: upRes.error.message };
         var pub = sb.storage.from("site-images").getPublicUrl(path);
