@@ -1504,6 +1504,11 @@ p{ margin:0; }
     </div>
     <form id="adminSaleForm" class="form-grid">
       <label class="form-field">Produto*<input type="text" name="product" required></label>
+      <input type="hidden" name="productId">
+      <div id="adminSaleProductAmbiguous" hidden style="grid-column:1/-1;background:rgba(247,247,244,.06);border:1px solid rgba(247,247,244,.15);padding:10px 12px;font-size:12.5px">
+        <p style="color:var(--gray);margin-bottom:8px">Mais de um produto com esse nome — escolha o certo:</p>
+        <div id="adminSaleProductAmbiguousList" style="display:flex;flex-direction:column;gap:6px"></div>
+      </div>
       <label class="form-field">Tamanho
         <select name="size"><option>P</option><option>M</option><option>G</option><option>GG</option><option>2XL</option><option>3XL</option><option>4XL</option><option>—</option></select>
       </label>
@@ -2919,7 +2924,7 @@ p{ margin:0; }
     id:"id", orderId:"orderid", date:"date", product:"product", size:"size", time:"time",
     customerName:"customername", customerPhone:"customerphone", saleValue:"salevalue",
     costValue:"costvalue", discountPercent:"discountpercent", status:"status",
-    orderStatus:"orderstatus", trackingCode:"trackingcode", source:"source"
+    orderStatus:"orderstatus", trackingCode:"trackingcode", source:"source", productId:"productid"
   };
   var CUSTOMER_FIELD_MAP = { name:"name", phone:"phone", city:"city", orderId:"orderid", date:"date", vip:"vip" };
 
@@ -3699,7 +3704,7 @@ p{ margin:0; }
   }
 
   function addToCart(product, size, personalization){
-    cart.push({ name: product.name, size: size, imageUrl: product.imageUrl, time: product.time, price: product.price, personalization: personalization || null });
+    cart.push({ productId: product.id, name: product.name, size: size, imageUrl: product.imageUrl, time: product.time, price: product.price, personalization: personalization || null });
     renderCart();
   }
   function removeFromCart(index){ cart.splice(index, 1); renderCart(); }
@@ -3824,6 +3829,7 @@ p{ margin:0; }
         orderId: orderId,
         date: dateIso,
         product: productLabel,
+        productId: item.productId || "",
         size: item.size || "—",
         time: item.time || "—",
         customerName: name,
@@ -4250,8 +4256,12 @@ p{ margin:0; }
     var bySize = {};
     concluded.forEach(function(s){
       var v = Number(s.saleValue) || 0;
-      var key = s.product || "—";
-      if(!byProduct[key]) byProduct[key] = { name: key, qty: 0, revenue: 0 };
+      // Usa o ID do produto como chave quando disponível (mais preciso —
+      // evita juntar vendas de produtos com nome igual mas tipo diferente,
+      // tipo "Vitória 26/27" Masculina x Feminina). Vendas antigas sem ID
+      // ainda caem pelo nome.
+      var key = s.productId || s.product || "—";
+      if(!byProduct[key]) byProduct[key] = { name: s.product || "—", productId: s.productId || "", qty: 0, revenue: 0 };
       byProduct[key].qty++; byProduct[key].revenue += v;
 
       if(s.time && s.time !== "—"){
@@ -4274,7 +4284,7 @@ p{ margin:0; }
       '</div>';
 
     var rowsHtml = topProducts.map(function(p, i){
-      var match = findProductForSaleName(p.name);
+      var match = findProductForSale(p);
       var thumbHtml = match && match.imageUrl
         ? '<img src="' + escapeHtml(match.imageUrl) + '" style="width:32px;height:40px;object-fit:cover;vertical-align:middle;margin-right:8px">'
         : '<span style="display:inline-block;width:32px;height:40px;background:var(--graphite);vertical-align:middle;margin-right:8px"></span>';
@@ -4522,23 +4532,52 @@ p{ margin:0; }
     document.getElementById("adminSaleTitle").textContent = "Adicionar venda manual";
     adminSaleForm.querySelector("button[type=submit]").textContent = "Adicionar venda";
     document.getElementById("adminSaleProductPreview").hidden = true;
+    document.getElementById("adminSaleProductAmbiguous").hidden = true;
     openModal("adminSaleModal");
   });
   adminSaleForm.product.addEventListener("input", function(){
-    updateSaleProductPreview(adminSaleForm.product.value);
+    updateSaleProductPreview({ product: adminSaleForm.product.value });
+    adminSaleForm.productId.value = "";
+    var typed = adminSaleForm.product.value.trim();
+    var ambWrap = document.getElementById("adminSaleProductAmbiguous");
+    var ambList = document.getElementById("adminSaleProductAmbiguousList");
+    var matches = typed ? PRODUCTS.filter(function(p){ return p.name === typed; }) : [];
+    if(matches.length > 1){
+      ambWrap.hidden = false;
+      ambList.innerHTML = matches.map(function(p){
+        return '<button type="button" class="btn btn-outline btn-sm admin-sale-product-pick" data-id="' + escapeHtml(p.id) + '" style="text-align:left">' + escapeHtml(p.tipo || "Tipo não informado") + (p.liga && p.liga !== "—" ? " · " + escapeHtml(p.liga) : "") + '</button>';
+      }).join("");
+      ambList.querySelectorAll(".admin-sale-product-pick").forEach(function(btn){
+        btn.addEventListener("click", function(){
+          adminSaleForm.productId.value = btn.dataset.id;
+          ambWrap.hidden = true;
+          updateSaleProductPreview({ productId: btn.dataset.id, product: typed });
+        });
+      });
+    } else {
+      ambWrap.hidden = true;
+      if(matches.length === 1) adminSaleForm.productId.value = matches[0].id;
+    }
   });
 
-  // Acha o produto do catálogo que corresponde ao nome salvo numa venda —
-  // remove o sufixo de personalização (se houver) antes de comparar.
-  function findProductForSaleName(saleProductName){
-    if(!saleProductName) return null;
-    var cleanName = saleProductName.replace(/\s*\[Personalizado:.*\]\s*$/, "").trim();
+  // Acha o produto do catálogo correspondente a uma venda. Prioriza o ID
+  // exato do produto (guardado desde essa versão) — só cai pro nome (que
+  // pode ser ambíguo, ex: duas camisas "Vitória 26/27" Masculina/Feminina)
+  // em vendas antigas que ainda não tinham o ID salvo.
+  function findProductForSale(saleOrName){
+    var sale = (typeof saleOrName === "string") ? { product: saleOrName } : (saleOrName || {});
+    if(sale.productId){
+      var byId = PRODUCTS.find(function(p){ return p.id === sale.productId; });
+      if(byId) return byId;
+    }
+    if(!sale.product) return null;
+    var cleanName = sale.product.replace(/\s*\[Personalizado:.*\]\s*$/, "").trim();
     return PRODUCTS.find(function(p){ return p.name === cleanName; }) || null;
   }
-  function updateSaleProductPreview(saleProductName){
+  function updateSaleProductPreview(sale){
     var wrap = document.getElementById("adminSaleProductPreview");
     var img = document.getElementById("adminSaleProductPreviewImg");
-    var match = findProductForSaleName(saleProductName);
+    var match = findProductForSale(sale);
     if(match && match.imageUrl){
       img.src = match.imageUrl;
       wrap.hidden = false;
@@ -4566,7 +4605,9 @@ p{ margin:0; }
     f.status.innerHTML = statusOptionsHtml(sale.status || STATUS_STAGES[0]);
     f.orderStatus.innerHTML = orderStatusOptionsHtml(sale.orderStatus || ORDER_STATUS_STAGES[0]);
     f.trackingCode.value = sale.trackingCode || "";
-    updateSaleProductPreview(sale.product);
+    f.productId.value = sale.productId || "";
+    document.getElementById("adminSaleProductAmbiguous").hidden = true;
+    updateSaleProductPreview(sale);
     document.getElementById("adminSaleTitle").textContent = "Editar venda";
     f.querySelector("button[type=submit]").textContent = "Salvar alterações";
     openModal("adminSaleModal");
@@ -4618,6 +4659,7 @@ p{ margin:0; }
       orderId: f.orderId.value.trim() || "",
       date: new Date().toISOString(),
       product: product,
+      productId: f.productId.value || "",
       size: f.size.value,
       time: f.time.value.trim() || "—",
       customerName: f.customerName.value.trim() || "—",
