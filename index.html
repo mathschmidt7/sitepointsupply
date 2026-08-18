@@ -210,7 +210,7 @@ p{ margin:0; }
 .menu-toggle{ display:none; }
 
 /* Mobile nav / cart drawer (painel lateral genérico) */
-.mobile-drawer{ position:fixed; inset:0; z-index:600; visibility:hidden; }
+.mobile-drawer{ position:fixed; inset:0; z-index:600; visibility:hidden; overflow:hidden; }
 .mobile-drawer.is-open{ visibility:visible; }
 .mobile-drawer-backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.6); opacity:0; transition:opacity .3s var(--ease); }
 .mobile-drawer.is-open .mobile-drawer-backdrop{ opacity:1; }
@@ -349,7 +349,7 @@ p{ margin:0; }
 .product-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:22px; }
 .product-card{
   background:var(--graphite); border:1px solid rgba(247,247,244,.06); display:flex; flex-direction:column;
-  transition:opacity .3s, transform .3s, border-color .3s;
+  transition:opacity .3s, transform .3s, border-color .3s; min-width:0;
 }
 .product-card:hover{ border-color:rgba(247,247,244,.18); transform:translateY(-4px); }
 .product-card[hidden]{ display:none; }
@@ -377,6 +377,8 @@ p{ margin:0; }
 .product-avail{ font-size:12px; color:var(--gray); display:flex; align-items:center; gap:6px; }
 .product-avail::before{ content:""; width:6px; height:6px; border-radius:50%; background:var(--gray); }
 .product-actions{ display:flex; gap:8px; margin-top:auto; padding-top:6px; }
+.personalize-fields:not([hidden]){ display:flex; }
+.personalize-fields input{ min-width:0; }
 .product-actions .btn{ flex:1; padding:11px 10px; font-size:12.5px; }
 
 @media (max-width:960px){ .product-grid{ grid-template-columns:repeat(2,1fr); gap:14px; } }
@@ -397,6 +399,7 @@ p{ margin:0; }
 .team-scroll{
   display:flex; gap:10px; overflow-x:auto; padding:2px 24px 10px; scroll-snap-type:x proximity;
   -webkit-overflow-scrolling:touch; scrollbar-width:thin; scrollbar-color:rgba(247,247,244,.25) transparent;
+  min-width:0;
 }
 .team-scroll::-webkit-scrollbar{ height:5px; }
 .team-scroll::-webkit-scrollbar-thumb{ background:rgba(247,247,244,.2); border-radius:99px; }
@@ -1234,12 +1237,12 @@ p{ margin:0; }
      ============================================================ -->
 <div class="modal" id="policyModal">
   <div class="modal-backdrop" data-close-modal="policyModal"></div>
-  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="policyTitle">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="policyTitle" style="max-height:80vh;overflow-y:auto">
     <button class="icon-btn modal-close" data-close-modal="policyModal" aria-label="Fechar">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"></path></svg>
     </button>
     <h3 class="modal-title" id="policyTitle">Em breve</h3>
-    <p style="color:var(--gray);font-size:14px;line-height:1.7" id="policyText">Este conteúdo ainda será adicionado pela Point Supply. Em caso de dúvida agora, fale com a gente pelo WhatsApp.</p>
+    <div style="color:var(--gray);font-size:14px;line-height:1.7" id="policyText">Este conteúdo ainda será adicionado pela Point Supply. Em caso de dúvida agora, fale com a gente pelo WhatsApp.</div>
     <a href="#" class="btn btn-whatsapp js-wa-generic" target="_blank" rel="noopener" style="margin-top:20px">Falar no WhatsApp</a>
   </div>
 </div>
@@ -3153,8 +3156,33 @@ p{ margin:0; }
     trocas: "Trocas e Devoluções",
     entrega: "Entrega"
   };
+  var POLICY_BODIES = {
+    privacidade:
+      "<p>A Point Supply coleta apenas os dados necessários para processar seu pedido: nome e WhatsApp/telefone no momento da compra, e o código de rastreio quando o pedido é enviado.</p>" +
+      "<p>Esses dados são usados exclusivamente para confirmar disponibilidade, tirar dúvidas, informar o status do pedido e permitir o rastreio pelo site. Não vendemos nem compartilhamos seus dados com terceiros para fins de marketing.</p>" +
+      "<p>Seus dados ficam armazenados de forma segura em nosso banco de dados. Você pode solicitar a correção ou exclusão dos seus dados a qualquer momento, entrando em contato pelo WhatsApp.</p>" +
+      "<p>Esta política pode ser atualizada periodicamente para refletir melhorias no site ou mudanças na legislação (LGPD).</p>",
+    termos:
+      "<p>Ao usar este site, você concorda que os preços marcados como \"Sob consulta\" precisam ser confirmados diretamente pelo WhatsApp antes da finalização da compra — os valores finais, com eventuais adicionais de tamanho ou personalização, são sempre confirmados nessa conversa.</p>" +
+      "<p>As imagens dos produtos são meramente ilustrativas; pequenas variações de cor, estampa ou posicionamento de escudo/número podem ocorrer em relação à foto exibida.</p>" +
+      "<p>Nomes, escudos e marcas de times, ligas e seleções pertencem aos seus respectivos detentores de direitos. A Point Supply não afirma ser licenciada oficialmente por nenhum clube, liga ou confederação, salvo quando isso for explicitamente informado.</p>" +
+      "<p>A Point Supply pode atualizar preços, disponibilidade de produtos e estes Termos de Uso a qualquer momento, sem aviso prévio.</p>",
+    trocas:
+      "<p><strong>Direito de arrependimento:</strong> por se tratar de uma compra feita fora de loja física, você tem até 7 dias corridos após o recebimento do produto para desistir da compra, sem precisar justificar o motivo (Art. 49 do Código de Defesa do Consumidor).</p>" +
+      "<p><strong>Produto com defeito:</strong> você tem até 90 dias após o recebimento para reclamar de vícios ou defeitos, com direito a troca, reparo ou devolução do valor pago.</p>" +
+      "<p><strong>Condições para troca:</strong> o produto precisa estar sem uso, com as etiquetas originais e, se possível, na embalagem em que foi recebido.</p>" +
+      "<p><strong>Produtos personalizados</strong> (com nome e número aplicados) são feitos sob medida e, por isso, não têm direito de arrependimento — a troca nesses casos vale apenas em caso de defeito ou erro no envio.</p>" +
+      "<p>Para solicitar troca ou devolução, chame no WhatsApp informando o código do pedido e, se houver defeito, uma foto do problema.</p>",
+    entrega:
+      "<p>Nossos produtos são preparados sob encomenda — o prazo de produção e envio é confirmado com você diretamente pelo WhatsApp no momento da compra, já que pode variar conforme o item e a disponibilidade.</p>" +
+      "<p>Depois de despachado, o pedido é enviado pela transportadora informada no fechamento da compra, com código de rastreio disponível na aba \"Rastreie seu pedido\" deste site.</p>" +
+      "<p>O valor do frete é calculado e informado durante a conversa de finalização do pedido pelo WhatsApp, de acordo com o CEP de entrega.</p>" +
+      "<p>Prazos de entrega são estimativas fornecidas pela transportadora — a Point Supply não tem controle direto sobre atrasos causados por ela, mas está à disposição para ajudar a acompanhar qualquer ocorrência.</p>"
+  };
   function fillPolicyModal(key){
     document.getElementById("policyTitle").textContent = POLICY_TITLES[key] || "Em breve";
+    var bodyEl = document.getElementById("policyText");
+    bodyEl.innerHTML = POLICY_BODIES[key] || "Este conteúdo ainda será adicionado pela Point Supply. Em caso de dúvida agora, fale com a gente pelo WhatsApp.";
   }
 
   /* ============================================================
@@ -3370,7 +3398,7 @@ p{ margin:0; }
         '<label class="personalize-toggle" style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;cursor:pointer">' +
           '<input type="checkbox" class="js-personalize-check">Personalizar (nome e número) — +' + formatBRL(PERSONALIZATION_PRICE) +
         '</label>' +
-        '<div class="personalize-fields" hidden style="display:flex;gap:8px;margin-top:8px">' +
+        '<div class="personalize-fields" hidden style="gap:8px;margin-top:8px">' +
           '<input type="text" class="js-personalize-name" placeholder="Nome" maxlength="20" style="flex:1;background:var(--black);border:1px solid rgba(247,247,244,.2);color:var(--off);padding:8px 10px;font-size:13px">' +
           '<input type="text" class="js-personalize-number" placeholder="Nº" maxlength="3" inputmode="numeric" style="width:64px;background:var(--black);border:1px solid rgba(247,247,244,.2);color:var(--off);padding:8px 10px;font-size:13px">' +
         '</div>' +
