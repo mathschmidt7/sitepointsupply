@@ -538,7 +538,7 @@ p{ margin:0; }
   background:linear-gradient(90deg, transparent, var(--graphite));
 }
 .size-table{ width:100%; border-collapse:collapse; font-size:13.5px; }
-.size-table th, .size-table td{ padding:10px 8px; text-align:left; border-bottom:1px solid rgba(247,247,244,.1); }
+.size-table th, .size-table td{ padding:10px 8px; text-align:left; border-bottom:1px solid rgba(247,247,244,.1); white-space:nowrap; }
 .size-table th{ color:var(--gray); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.06em; }
 
 /* ============================================================
@@ -874,6 +874,20 @@ p{ margin:0; }
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
       </span>
     </a>
+  </div>
+</section>
+
+<!-- ============================================================
+     DESTAQUES (vitrine em destaque — controlada pelo painel)
+     ============================================================ -->
+<section class="section section--tight reveal" id="featuredSection" hidden>
+  <div class="container">
+    <p class="eyebrow">⭐ Selecionados pela loja</p>
+    <h2 class="section-title">Destaques</h2>
+    <p class="section-text">As camisas favoritas dos nossos clientes, escolhidas pela Point Supply.</p>
+  </div>
+  <div class="container" style="margin-top:32px">
+    <div class="pronta-entrega-row" id="featuredRow"></div>
   </div>
 </section>
 
@@ -1484,6 +1498,10 @@ p{ margin:0; }
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"></path></svg>
     </button>
     <h3 class="modal-title" id="adminSaleTitle">Adicionar venda manual</h3>
+    <div id="adminSaleProductPreview" hidden style="display:flex;gap:12px;align-items:center;background:var(--black);border:1px solid rgba(247,247,244,.1);padding:10px 12px;margin-bottom:16px">
+      <img id="adminSaleProductPreviewImg" style="width:52px;height:65px;object-fit:cover;background:var(--graphite);flex-shrink:0" alt="Foto do produto">
+      <span style="font-size:12.5px;color:var(--gray)">Produto encontrado no catálogo — foto exibida automaticamente.</span>
+    </div>
     <form id="adminSaleForm" class="form-grid">
       <label class="form-field">Produto*<input type="text" name="product" required></label>
       <label class="form-field">Tamanho
@@ -1536,6 +1554,7 @@ p{ margin:0; }
       <label class="form-field">Tamanhos (separados por vírgula)<input type="text" name="sizes" value="P,M,G,GG,2XL,3XL,4XL"></label>
       <label class="form-field" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" name="isOffer" style="width:auto"> Marcar como oferta</label>
       <label class="form-field" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" name="prontaEntrega" style="width:auto"> Pronta entrega</label>
+      <label class="form-field" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" name="isFeatured" style="width:auto"> Destaque (aparece na vitrine de destaques)</label>
       <label class="form-field" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" name="ativo" checked style="width:auto"> Produto ativo (visível na loja)</label>
       <button type="submit" class="btn btn-primary btn-block">Salvar produto</button>
     </form>
@@ -3508,6 +3527,22 @@ p{ margin:0; }
     });
   }
 
+  /* Seção "Destaques" — vitrine em destaque, controlada pelo checkbox
+     "Destaque" no formulário de produto do painel. */
+  function renderFeatured(){
+    var section = document.getElementById("featuredSection");
+    var row = document.getElementById("featuredRow");
+    var items = PRODUCTS.filter(function(p){ return p.ativo !== false && p.isFeatured; });
+    if(!items.length){ section.hidden = true; return; }
+    section.hidden = false;
+    row.innerHTML = "";
+    items.forEach(function(p){
+      var card = buildProductCard(p);
+      card.classList.add("pronta-entrega-card");
+      row.appendChild(card);
+    });
+  }
+
 
   function updateProductWaLink(card){
     var btn = card.querySelector(".js-wa-product");
@@ -3587,6 +3622,7 @@ p{ margin:0; }
   applyCategoryVisibility();
   renderProducts();
     renderProntaEntrega();
+    renderFeatured();
   renderLeagueRows();
   applyFilters();
   applyFromUrl();
@@ -4238,12 +4274,26 @@ p{ margin:0; }
       '</div>';
 
     var rowsHtml = topProducts.map(function(p, i){
-      return '<tr><td>' + (i + 1) + '</td><td>' + escapeHtml(p.name) + '</td><td>' + p.qty + '</td><td>' + formatBRL(p.revenue) + '</td></tr>';
+      var match = findProductForSaleName(p.name);
+      var thumbHtml = match && match.imageUrl
+        ? '<img src="' + escapeHtml(match.imageUrl) + '" style="width:32px;height:40px;object-fit:cover;vertical-align:middle;margin-right:8px">'
+        : '<span style="display:inline-block;width:32px;height:40px;background:var(--graphite);vertical-align:middle;margin-right:8px"></span>';
+      var rowAttrs = match ? ' class="admin-top-product-row" data-product-id="' + escapeHtml(match.id) + '" style="cursor:pointer"' : '';
+      var titleAttr = match ? ' title="Clique para abrir este produto"' : '';
+      return '<tr' + rowAttrs + titleAttr + '><td>' + (i + 1) + '</td><td>' + thumbHtml + escapeHtml(p.name) + '</td><td>' + p.qty + '</td><td>' + formatBRL(p.revenue) + '</td></tr>';
     }).join('');
 
     wrap.innerHTML = summaryHtml +
       '<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>#</th><th>Produto</th><th>Qtd. vendida</th><th>Valor vendido</th></tr></thead><tbody>' + rowsHtml + '</tbody></table></div>';
 
+    wrap.querySelectorAll(".admin-top-product-row").forEach(function(row){
+      row.addEventListener("click", function(){
+        var product = PRODUCTS.find(function(pr){ return pr.id === row.dataset.productId; });
+        if(!product) return;
+        document.querySelector('.admin-tab[data-admin-tab="products"]').click();
+        setTimeout(function(){ openProductForm(product); }, 50);
+      });
+    });
   }
 
   function statusOptionsHtml(selected){
@@ -4471,8 +4521,31 @@ p{ margin:0; }
     resetSaleFormSelects();
     document.getElementById("adminSaleTitle").textContent = "Adicionar venda manual";
     adminSaleForm.querySelector("button[type=submit]").textContent = "Adicionar venda";
+    document.getElementById("adminSaleProductPreview").hidden = true;
     openModal("adminSaleModal");
   });
+  adminSaleForm.product.addEventListener("input", function(){
+    updateSaleProductPreview(adminSaleForm.product.value);
+  });
+
+  // Acha o produto do catálogo que corresponde ao nome salvo numa venda —
+  // remove o sufixo de personalização (se houver) antes de comparar.
+  function findProductForSaleName(saleProductName){
+    if(!saleProductName) return null;
+    var cleanName = saleProductName.replace(/\s*\[Personalizado:.*\]\s*$/, "").trim();
+    return PRODUCTS.find(function(p){ return p.name === cleanName; }) || null;
+  }
+  function updateSaleProductPreview(saleProductName){
+    var wrap = document.getElementById("adminSaleProductPreview");
+    var img = document.getElementById("adminSaleProductPreviewImg");
+    var match = findProductForSaleName(saleProductName);
+    if(match && match.imageUrl){
+      img.src = match.imageUrl;
+      wrap.hidden = false;
+    } else {
+      wrap.hidden = true;
+    }
+  }
 
   function openSaleEditForm(sale){
     editingSaleId = sale.id;
@@ -4493,6 +4566,7 @@ p{ margin:0; }
     f.status.innerHTML = statusOptionsHtml(sale.status || STATUS_STAGES[0]);
     f.orderStatus.innerHTML = orderStatusOptionsHtml(sale.orderStatus || ORDER_STATUS_STAGES[0]);
     f.trackingCode.value = sale.trackingCode || "";
+    updateSaleProductPreview(sale.product);
     document.getElementById("adminSaleTitle").textContent = "Editar venda";
     f.querySelector("button[type=submit]").textContent = "Salvar alterações";
     openModal("adminSaleModal");
@@ -4655,6 +4729,7 @@ p{ margin:0; }
         if(!count){ window.alert("Nenhum produto do tipo \"" + tipo + "\" encontrado."); return; }
         renderProducts();
         renderProntaEntrega();
+        renderFeatured();
         renderAdminProducts();
         await saveSiteConfig();
         window.alert("Preço aplicado a " + count + " produto(s) do tipo \"" + tipo + "\".");
@@ -4764,6 +4839,7 @@ p{ margin:0; }
         PRODUCTS = PRODUCTS.filter(function(p){ return p.id !== btn.dataset.id; });
         renderProducts();
     renderProntaEntrega();
+    renderFeatured();
         renderAdminProducts();
         await saveSiteConfig();
       });
@@ -4792,6 +4868,7 @@ p{ margin:0; }
       form.sizes.value = (product.sizes || []).join(",");
       form.isOffer.checked = !!product.isOffer;
       form.prontaEntrega.checked = !!product.prontaEntrega;
+      form.isFeatured.checked = !!product.isFeatured;
       form.ativo.checked = product.ativo !== false;
       if(product.imageUrl){ adminProductPreview.src = product.imageUrl; adminProductPreview.style.display = "block"; }
       else{ adminProductPreview.style.display = "none"; }
@@ -4839,6 +4916,7 @@ p{ margin:0; }
       sizes: sizes.length ? sizes : ["P","M","G","GG"],
       isOffer: f.isOffer.checked,
       prontaEntrega: f.prontaEntrega.checked,
+      isFeatured: f.isFeatured.checked,
       ativo: f.ativo.checked
     };
     if(f.imageUrl.value.trim()) data.imageUrl = f.imageUrl.value.trim();
@@ -4850,6 +4928,7 @@ p{ margin:0; }
 
     renderProducts();
     renderProntaEntrega();
+    renderFeatured();
     renderAdminProducts();
     closeModal("adminProductModal");
     var ok = await saveSiteConfig();
@@ -4987,6 +5066,7 @@ p{ margin:0; }
             teamBadgeHtml(team) + escapeHtml(team) +
             ' <button type="button" data-team="' + escapeHtml(team) + '" class="admin-team-logo" style="background:none;border:none;color:var(--gray);font-size:13px;cursor:pointer;padding:2px 4px" aria-label="Enviar logo do time" title="Enviar logo">📷</button>' +
             '<button type="button" data-gi="' + gi + '" data-ti="' + ti + '" class="admin-team-rename" style="background:none;border:none;color:var(--gray);padding:2px 4px;font-size:13px;cursor:pointer" aria-label="Renomear time" title="Renomear time">✎</button>' +
+            '<button type="button" data-gi="' + gi + '" data-ti="' + ti + '" class="admin-team-move" style="background:none;border:none;color:var(--gray);padding:2px 4px;font-size:13px;cursor:pointer" aria-label="Mover time para outra liga" title="Mover para outra liga">⇄</button>' +
             '<button type="button" data-gi="' + gi + '" data-ti="' + ti + '" class="admin-team-remove" style="background:none;border:none;color:var(--gray);margin-left:8px;padding:2px 4px;font-size:14px;cursor:pointer" aria-label="Remover time" title="Remover time">&times;</button>' +
           '</span>';
         }).join("");
@@ -5022,8 +5102,40 @@ p{ margin:0; }
             renderLeagueRows();
             renderProducts();
             renderProntaEntrega();
+            renderFeatured();
             await saveSiteConfig();
             if(updatedCount) window.alert("Renomeado! " + updatedCount + " produto(s) atualizado(s) automaticamente para o novo nome.");
+          });
+        });
+        body.querySelectorAll(".admin-team-move").forEach(function(btn){
+          btn.addEventListener("click", async function(){
+            var gi2 = Number(btn.dataset.gi), ti2 = Number(btn.dataset.ti);
+            var teamName = TEAM_GROUPS[cat][gi2].teams[ti2];
+            var oldLiga = TEAM_GROUPS[cat][gi2].liga;
+            var otherLigas = TEAM_GROUPS[cat].map(function(g){ return g.liga; }).filter(function(l){ return l !== oldLiga; });
+            if(!otherLigas.length){ window.alert("Não há outra liga cadastrada nessa categoria pra mover o time."); return; }
+            var list = otherLigas.map(function(l, i){ return (i + 1) + ". " + l; }).join("\n");
+            var choice = window.prompt("Mover \"" + teamName + "\" (hoje em \"" + oldLiga + "\") para qual liga? Digite o número:\n\n" + list);
+            if(!choice) return;
+            var idx = parseInt(choice, 10) - 1;
+            if(isNaN(idx) || idx < 0 || idx >= otherLigas.length){ window.alert("Número inválido."); return; }
+            var newLiga = otherLigas[idx];
+            var newGroup = TEAM_GROUPS[cat].find(function(g){ return g.liga === newLiga; });
+            if(newGroup.teams.indexOf(teamName) !== -1){
+              window.alert("Já existe um time com esse nome na liga de destino.");
+              return;
+            }
+            TEAM_GROUPS[cat][gi2].teams.splice(ti2, 1);
+            newGroup.teams.push(teamName);
+            var updatedCount = 0;
+            PRODUCTS.forEach(function(p){ if(p.time === teamName && p.liga === oldLiga){ p.liga = newLiga; updatedCount++; } });
+            renderAdminLeagues();
+            renderLeagueRows();
+            renderProducts();
+            renderProntaEntrega();
+            renderFeatured();
+            await saveSiteConfig();
+            window.alert("\"" + teamName + "\" movido para \"" + newLiga + "\"! " + updatedCount + " produto(s) atualizado(s) junto.");
           });
         });
         body.querySelectorAll(".admin-team-remove").forEach(function(btn){
@@ -5101,6 +5213,7 @@ p{ margin:0; }
         renderLeagueRows();
         renderProducts();
         renderProntaEntrega();
+        renderFeatured();
         await saveSiteConfig();
         if(updatedCount) window.alert("Renomeado! " + updatedCount + " produto(s) atualizado(s) automaticamente para o novo nome.");
       });
@@ -5245,6 +5358,7 @@ p{ margin:0; }
     EXTRA_SIZE_SURCHARGES = { "2XL": v2, "3XL": v3, "4XL": v4 };
     renderProducts();
     renderProntaEntrega();
+    renderFeatured();
     await saveSiteConfig();
   });
 
@@ -5254,6 +5368,7 @@ p{ margin:0; }
     PERSONALIZATION_PRICE = v;
     renderProducts();
     renderProntaEntrega();
+    renderFeatured();
     await saveSiteConfig();
   });
 
@@ -5397,6 +5512,7 @@ p{ margin:0; }
     applyCategoryVisibility();
     renderProducts();
     renderProntaEntrega();
+    renderFeatured();
     renderLeagueRows();
     applyFilters();
     applyFromUrl();
