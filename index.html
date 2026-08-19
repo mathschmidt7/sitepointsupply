@@ -1068,7 +1068,7 @@ p{ margin:0; }
 
     <p style="text-align:center;color:var(--gray);font-size:13px;margin-top:28px">Já tem o código de rastreio da transportadora (Correios, etc)?</p>
     <div class="tracking-box" style="margin-top:10px">
-      <input type="text" id="carrierTrackingInput" placeholder="Ex: LZ447568210CN" aria-label="Código de rastreio da transportadora">
+      <input type="text" id="carrierTrackingInput" placeholder="Ex: BR123456789BR" aria-label="Código de rastreio da transportadora">
       <button type="button" class="btn btn-outline" id="carrierTrackingBtn">Rastrear</button>
     </div>
   </div>
@@ -1449,6 +1449,10 @@ p{ margin:0; }
             <input type="number" id="adminPersonalizationInput" min="0" step="0.01" style="width:120px;background:var(--black);border:1px solid rgba(247,247,244,.15);color:var(--off);padding:8px 10px;font-size:13px">
             <button type="button" class="btn btn-outline btn-sm" id="adminSavePersonalizationBtn">Salvar</button>
           </div>
+          <label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:12.5px;cursor:pointer">
+            <input type="checkbox" id="adminAllowPersonalizationProntaCheck" style="width:auto">
+            Permitir personalização em itens de Pronta Entrega
+          </label>
         </div>
       </div>
       <p style="color:var(--gray);font-size:12.5px;margin-bottom:16px">"A partir de" = quantidade mínima de peças no carrinho para o desconto valer.</p>
@@ -1620,6 +1624,7 @@ p{ margin:0; }
   var EXTRA_SIZES = ["2XL", "3XL", "4XL"];
   var EXTRA_SIZE_SURCHARGES = { "2XL": 15, "3XL": 15, "4XL": 15 }; // valor adicional por tamanho, editável individualmente
   var PERSONALIZATION_PRICE = 30; // nome + número
+  var ALLOW_PERSONALIZATION_PRONTA = false; // personalização em itens de Pronta Entrega — desligado por padrão
 
   // Editável em Painel administrativo → FAQ
   var FAQ_ITEMS = [
@@ -3438,6 +3443,16 @@ p{ margin:0; }
     var priceHtml = p.originalPrice
       ? '<span class="price-original">' + escapeHtml(p.originalPrice) + '</span><span class="price-current">' + escapeHtml(p.price) + '</span>'
       : '<span class="product-price">' + escapeHtml(p.price) + '</span>';
+    var showPersonalization = !p.prontaEntrega || ALLOW_PERSONALIZATION_PRONTA;
+    var personalizeHtml = showPersonalization
+      ? '<label class="personalize-toggle" style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;cursor:pointer">' +
+          '<input type="checkbox" class="js-personalize-check">Personalizar (nome e número) — +' + formatBRL(PERSONALIZATION_PRICE) +
+        '</label>' +
+        '<div class="personalize-fields" hidden style="gap:8px;margin-top:8px">' +
+          '<input type="text" class="js-personalize-name" placeholder="Nome" maxlength="20" style="flex:1;background:var(--black);border:1px solid rgba(247,247,244,.2);color:var(--off);padding:8px 10px;font-size:13px">' +
+          '<input type="text" class="js-personalize-number" placeholder="Nº" maxlength="3" inputmode="numeric" style="width:64px;background:var(--black);border:1px solid rgba(247,247,244,.2);color:var(--off);padding:8px 10px;font-size:13px">' +
+        '</div>'
+      : '';
 
     card.innerHTML =
       '<div class="product-media' + (p.imageUrl ? '' : ' ghost-panel') + '"' + (p.imageUrl ? ' style="background-image:url(\'' + escapeHtml(p.imageUrl) + '\');background-size:cover;background-position:center"' : '') + '>' + tagHtml + prontaHtml + '</div>' +
@@ -3449,13 +3464,7 @@ p{ margin:0; }
         '<div class="product-sizes">' + sizeChips + '</div>' +
         '<p class="size-helper">Não sabe seu tamanho? <button type="button" class="size-chart-link" data-id="' + p.id + '" data-open-modal="sizeChartModal">Ver tabela de medidas</button></p>' +
         '<p class="size-surcharge-note" hidden style="font-size:12px;color:var(--gray);margin:2px 0 0"></p>' +
-        '<label class="personalize-toggle" style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;cursor:pointer">' +
-          '<input type="checkbox" class="js-personalize-check">Personalizar (nome e número) — +' + formatBRL(PERSONALIZATION_PRICE) +
-        '</label>' +
-        '<div class="personalize-fields" hidden style="gap:8px;margin-top:8px">' +
-          '<input type="text" class="js-personalize-name" placeholder="Nome" maxlength="20" style="flex:1;background:var(--black);border:1px solid rgba(247,247,244,.2);color:var(--off);padding:8px 10px;font-size:13px">' +
-          '<input type="text" class="js-personalize-number" placeholder="Nº" maxlength="3" inputmode="numeric" style="width:64px;background:var(--black);border:1px solid rgba(247,247,244,.2);color:var(--off);padding:8px 10px;font-size:13px">' +
-        '</div>' +
+        personalizeHtml +
         '<span class="product-avail">Disponibilidade a confirmar</span>' +
         '<div class="product-actions">' +
           '<a href="#" class="btn btn-primary js-buy-now" data-id="' + p.id + '">Comprar agora</a>' +
@@ -3484,11 +3493,11 @@ p{ margin:0; }
         updateProductWaLink(card);
       });
     });
-    personalizeCheck.addEventListener("change", function(){
+    personalizeCheck && personalizeCheck.addEventListener("change", function(){
       personalizeFields.hidden = !personalizeCheck.checked;
       updateProductWaLink(card);
     });
-    personalizeFields.querySelectorAll("input").forEach(function(inp){
+    personalizeFields && personalizeFields.querySelectorAll("input").forEach(function(inp){
       inp.addEventListener("input", function(){ updateProductWaLink(card); });
     });
     updateProductWaLink(card);
@@ -3497,7 +3506,7 @@ p{ margin:0; }
       e.preventDefault();
       var selected = card.querySelector(".size-chip.is-selected");
       var personalization = null;
-      if(personalizeCheck.checked){
+      if(personalizeCheck && personalizeCheck.checked){
         var pname = card.querySelector(".js-personalize-name").value.trim();
         var pnumber = card.querySelector(".js-personalize-number").value.trim();
         if(pname || pnumber){ personalization = { name: pname, number: pnumber }; }
@@ -3524,6 +3533,17 @@ p{ margin:0; }
 
   /* Seção "Pronta Entrega" — vitrine em destaque, controlada pelo
      checkbox "Pronta entrega" no formulário de produto do painel. */
+  // Monta uma versão "de exibição" do produto com os tamanhos/preço
+  // específicos de pronta entrega, quando configurados — usado tanto na
+  // vitrine em destaque quanto no filtro "Pronta Entrega" da grade
+  // principal, pra nunca mostrarem dados diferentes um do outro.
+  function getProntaDisplayProduct(p){
+    return Object.assign({}, p, {
+      sizes: (p.prontaEntregaSizes && p.prontaEntregaSizes.length) ? p.prontaEntregaSizes : p.sizes,
+      price: (p.prontaEntregaPrice && p.prontaEntregaPrice.trim()) ? p.prontaEntregaPrice : p.price
+    });
+  }
+
   function renderProntaEntrega(){
     var section = document.getElementById("prontaEntregaSection");
     var row = document.getElementById("prontaEntregaRow");
@@ -3532,14 +3552,7 @@ p{ margin:0; }
     section.hidden = false;
     row.innerHTML = "";
     items.forEach(function(p){
-      // Mostra os tamanhos e o preço específicos de pronta entrega, quando
-      // configurados — sem alterar o produto original (que continua com o
-      // preço/tamanhos normais na vitrine principal, pra quem quiser
-      // encomendar um tamanho que não está pronto).
-      var displayProduct = Object.assign({}, p, {
-        sizes: (p.prontaEntregaSizes && p.prontaEntregaSizes.length) ? p.prontaEntregaSizes : p.sizes,
-        price: (p.prontaEntregaPrice && p.prontaEntregaPrice.trim()) ? p.prontaEntregaPrice : p.price
-      });
+      var displayProduct = getProntaDisplayProduct(p);
       var card = buildProductCard(displayProduct);
       card.classList.add("pronta-entrega-card");
       row.appendChild(card);
@@ -3601,7 +3614,10 @@ p{ margin:0; }
   function renderVisiblePage(){
     grid.innerHTML = "";
     var slice = currentFilteredProducts.slice(0, visiblePageCount);
-    slice.forEach(function(p){ grid.appendChild(buildProductCard(p)); });
+    slice.forEach(function(p){
+      var displayProduct = currentFilter === "pronta" ? getProntaDisplayProduct(p) : p;
+      grid.appendChild(buildProductCard(displayProduct));
+    });
 
     noResults.classList.toggle("is-visible", currentFilteredProducts.length === 0);
 
@@ -4714,6 +4730,7 @@ p{ margin:0; }
       hiddenCategories: HIDDEN_CATEGORIES,
       extraSizeSurcharges: EXTRA_SIZE_SURCHARGES,
       categoryBanners: CATEGORY_BANNERS,
+      allowPersonalizationPronta: ALLOW_PERSONALIZATION_PRONTA,
       personalizationPrice: PERSONALIZATION_PRICE
     };
     var json = JSON.stringify(payload);
@@ -5460,6 +5477,16 @@ p{ margin:0; }
     await saveSiteConfig();
   });
 
+  var adminAllowPersonalizationProntaCheck = document.getElementById("adminAllowPersonalizationProntaCheck");
+  adminAllowPersonalizationProntaCheck.checked = ALLOW_PERSONALIZATION_PRONTA;
+  adminAllowPersonalizationProntaCheck.addEventListener("change", async function(){
+    ALLOW_PERSONALIZATION_PRONTA = this.checked;
+    renderProducts();
+    renderProntaEntrega();
+    renderFeatured();
+    await saveSiteConfig();
+  });
+
   /* ---------- Aparência (logo/ícone) ---------- */
   var adminLogoUrlInput = document.getElementById("adminLogoUrlInput");
   var adminLogoPreview = document.getElementById("adminLogoPreview");
@@ -5583,6 +5610,9 @@ p{ margin:0; }
     if(cfg.leagueLogos){ LEAGUE_LOGOS = cfg.leagueLogos; }
     if(cfg.hiddenCategories){ HIDDEN_CATEGORIES = cfg.hiddenCategories; }
     if(cfg.categoryBanners){ CATEGORY_BANNERS = cfg.categoryBanners; applyCategoryBanners(); }
+    if(cfg.allowPersonalizationPronta !== undefined){ ALLOW_PERSONALIZATION_PRONTA = cfg.allowPersonalizationPronta; }
+    var allowPersonalizationCheckEl = document.getElementById("adminAllowPersonalizationProntaCheck");
+    if(allowPersonalizationCheckEl) allowPersonalizationCheckEl.checked = ALLOW_PERSONALIZATION_PRONTA;
     var catBannersWrapEl = document.getElementById("adminCategoryBanners");
     if(catBannersWrapEl) renderAdminCategoryBanners();
     if(cfg.extraSizeSurcharges){
