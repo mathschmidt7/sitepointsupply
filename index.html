@@ -1560,7 +1560,9 @@ p{ margin:0; }
       <label class="form-field" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" name="prontaEntrega" style="width:auto" id="adminProductProntaCheck"> Pronta entrega</label>
       <div id="adminProntaSizesWrap" hidden style="grid-column:1/-1;background:rgba(247,247,244,.06);border:1px solid rgba(247,247,244,.15);padding:10px 12px">
         <p style="color:var(--gray);font-size:12px;margin-bottom:8px">Quais tamanhos estão disponíveis pra envio imediato? (pode ser diferente dos tamanhos sob encomenda)</p>
-        <div id="adminProntaSizesList" style="display:flex;flex-wrap:wrap;gap:10px"></div>
+        <div id="adminProntaSizesList" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px"></div>
+        <label style="display:block;color:var(--gray);font-size:12px;margin-bottom:6px">Preço da pronta entrega (opcional — deixe em branco pra usar o preço normal acima)</label>
+        <input type="text" name="prontaEntregaPrice" placeholder="Ex: R$ 219,90" style="width:100%;background:var(--black);border:1px solid rgba(247,247,244,.15);color:var(--off);padding:9px 12px;font-size:13px">
       </div>
       <label class="form-field" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" name="isFeatured" style="width:auto"> Destaque (aparece na vitrine de destaques)</label>
       <label class="form-field" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" name="ativo" checked style="width:auto"> Produto ativo (visível na loja)</label>
@@ -3416,7 +3418,7 @@ p{ margin:0; }
   }
   window.addEventListener("popstate", applyFromUrl);
 
-  function buildProductCard(p, sizesOverride){
+  function buildProductCard(p){
     var card = document.createElement("article");
     card.className = "product-card";
     card.dataset.category = p.category;
@@ -3426,7 +3428,7 @@ p{ margin:0; }
     card.dataset.offer = p.isOffer ? "1" : "0";
     card.dataset.name = p.name.toLowerCase();
 
-    var displaySizes = sizesOverride && sizesOverride.length ? sizesOverride : p.sizes;
+    var displaySizes = p.sizes;
     var tagHtml = p.isOffer ? '<span class="product-tag product-tag--offer">Oferta</span>' : "";
     var prontaHtml = p.prontaEntrega ? '<span class="product-tag product-tag--pronta">🔥 Pronta entrega</span>' : "";
     var sizeChips = displaySizes.map(function(s){ return '<button type="button" class="size-chip" data-size="' + s + '">' + s + '</button>'; }).join("");
@@ -3530,7 +3532,15 @@ p{ margin:0; }
     section.hidden = false;
     row.innerHTML = "";
     items.forEach(function(p){
-      var card = buildProductCard(p, p.prontaEntregaSizes);
+      // Mostra os tamanhos e o preço específicos de pronta entrega, quando
+      // configurados — sem alterar o produto original (que continua com o
+      // preço/tamanhos normais na vitrine principal, pra quem quiser
+      // encomendar um tamanho que não está pronto).
+      var displayProduct = Object.assign({}, p, {
+        sizes: (p.prontaEntregaSizes && p.prontaEntregaSizes.length) ? p.prontaEntregaSizes : p.sizes,
+        price: (p.prontaEntregaPrice && p.prontaEntregaPrice.trim()) ? p.prontaEntregaPrice : p.price
+      });
+      var card = buildProductCard(displayProduct);
       card.classList.add("pronta-entrega-card");
       row.appendChild(card);
     });
@@ -4941,6 +4951,7 @@ p{ margin:0; }
       form.ativo.checked = product.ativo !== false;
       document.getElementById("adminProntaSizesWrap").hidden = !product.prontaEntrega;
       if(product.prontaEntrega) renderProntaSizesCheckboxes(product.prontaEntregaSizes || product.sizes || []);
+      form.prontaEntregaPrice.value = product.prontaEntregaPrice || "";
       if(product.imageUrl){ adminProductPreview.src = product.imageUrl; adminProductPreview.style.display = "block"; }
       else{ adminProductPreview.style.display = "none"; }
     } else {
@@ -4950,6 +4961,7 @@ p{ margin:0; }
       populateLigaSelect(form.category.value, "");
       populateTimeSelect(form.category.value, "", "");
       document.getElementById("adminProntaSizesWrap").hidden = true;
+      form.prontaEntregaPrice.value = "";
       adminProductPreview.style.display = "none";
     }
     openModal("adminProductModal");
@@ -4991,6 +5003,7 @@ p{ margin:0; }
       prontaEntregaSizes: f.prontaEntrega.checked
         ? [].slice.call(document.querySelectorAll(".admin-pronta-size-check:checked")).map(function(c){ return c.value; })
         : [],
+      prontaEntregaPrice: f.prontaEntrega.checked ? f.prontaEntregaPrice.value.trim() : "",
       isFeatured: f.isFeatured.checked,
       ativo: f.ativo.checked
     };
