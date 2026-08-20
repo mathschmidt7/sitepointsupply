@@ -3,9 +3,70 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Point Supply — Camisas de futebol e artigos esportivos</title>
-<meta name="description" content="Point Supply: camisas de futebol, NBA e artigos esportivos. Consulte tamanhos, disponibilidade e feche seu pedido direto pelo WhatsApp.">
+<title>Point Supply — Camisas de Futebol em Salvador-BA | NBA e Artigos Esportivos</title>
+<meta name="description" content="Loja de camisas de futebol em Salvador, Bahia — mais de 20 ligas, seleções e NBA. Times brasileiros, europeus e sul-americanos, tamanhos P ao 4XL, personalização com nome e número. Compre pelo WhatsApp com entrega para Salvador, Bahia e todo o Brasil.">
+<meta name="keywords" content="camisa de futebol Salvador, camisa de futebol Bahia, loja de camisas de futebol, artigos esportivos Salvador, camisa personalizada Salvador, camisa NBA Bahia, camisa de time Salvador BA">
+<meta name="robots" content="index, follow">
+<meta name="author" content="Point Supply">
+<meta name="geo.region" content="BR-BA">
+<meta name="geo.placename" content="Salvador">
+<meta name="ICBM" content="-12.9714, -38.5014">
+<link rel="canonical" href="https://pointsupply.com.br/">
+
+<!-- Open Graph (Facebook, WhatsApp, Instagram) -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Point Supply">
+<meta property="og:title" content="Point Supply — Camisas de Futebol em Salvador-BA">
+<meta property="og:description" content="Loja de camisas de futebol em Salvador, Bahia — mais de 20 ligas, seleções e NBA. Personalização com nome e número. Compre pelo WhatsApp.">
+<meta property="og:url" content="https://pointsupply.com.br/">
+<meta property="og:locale" content="pt_BR">
+<!-- PLACEHOLDER — depois de subir sua logo/uma foto de capa no painel (Aparência),
+     troque o link abaixo pela URL completa dessa imagem (precisa ser um link
+     direto .png/.jpg, não um upload local) -->
+<meta property="og:image" content="https://exacftfsuvxarzidkkaj.supabase.co/storage/v1/object/public/site-images/1787139979984-fx5e59-logo-point-supply-transparente.png">
+<meta property="og:image:width" content="300">
+<meta property="og:image:height" content="300">
+
+<!-- Twitter/X Card -->
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Point Supply — Camisas de Futebol em Salvador-BA">
+<meta name="twitter:description" content="Loja de camisas de futebol em Salvador, Bahia — mais de 20 ligas, seleções e NBA. Personalização com nome e número.">
+<meta name="twitter:image" content="https://exacftfsuvxarzidkkaj.supabase.co/storage/v1/object/public/site-images/1787139979984-fx5e59-logo-point-supply-transparente.png">
+
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' fill='%230A0A0A'/%3E%3Cpath d='M8 52 L33 16 L46 52 L60 14 L74 52 L87 16 L112 52 L60 106 Z' fill='%23F7F7F4' stroke='%230A0A0A' stroke-width='3' stroke-linejoin='round'/%3E%3Cpath d='M8 52H112M46 52L60 106M74 52L60 106' fill='none' stroke='%230A0A0A' stroke-width='3'/%3E%3C/svg%3E">
+
+<!-- Dados estruturados (JSON-LD) — ajuda o Google e ferramentas de IA
+     (ChatGPT, Perplexity, Google AI Overviews) a entenderem o que é a
+     loja, sem precisar "adivinhar" a partir do texto da página. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SportingGoodsStore",
+  "name": "Point Supply",
+  "url": "https://pointsupply.com.br/",
+  "description": "Loja online de camisas de futebol, seleções, NBA e artigos esportivos, com atendimento e finalização de pedido pelo WhatsApp.",
+  "address": {
+    "@type": "PostalAddress",
+    "addressLocality": "Salvador",
+    "addressRegion": "BA",
+    "addressCountry": "BR"
+  },
+  "areaServed": "BR",
+  "priceRange": "$$",
+  "sameAs": [
+    "https://www.instagram.com/pointsupply_"
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "Point Supply",
+  "url": "https://pointsupply.com.br/"
+}
+</script>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=EB+Garamond:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -3322,6 +3383,35 @@ p{ margin:0; }
         selectTeam(chip.dataset.team, chip.dataset.liga, chip.dataset.category);
       });
     });
+    updateCatalogStructuredData();
+  }
+
+  // Dados estruturados (JSON-LD) com o catálogo real de ligas e times —
+  // ajuda ferramentas de IA a responder perguntas do tipo "a Point Supply
+  // tem camisa do [time]?" corretamente. Atualiza sozinho sempre que o
+  // catálogo mudar (produto novo, time novo, etc), sem precisar editar
+  // esse arquivo manualmente.
+  function updateCatalogStructuredData(){
+    var existing = document.getElementById("catalogJsonLd");
+    if(existing) existing.remove();
+    var allLeagues = [];
+    ["futebol", "nba"].forEach(function(cat){
+      (TEAM_GROUPS[cat] || []).forEach(function(group){
+        allLeagues.push(group.liga + " (" + group.teams.length + " times)");
+      });
+    });
+    var script = document.createElement("script");
+    script.type = "application/ld+json";
+    script.id = "catalogJsonLd";
+    script.textContent = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      "name": "Ligas e seleções disponíveis na Point Supply",
+      "itemListElement": allLeagues.map(function(liga, i){
+        return { "@type": "ListItem", "position": i + 1, "name": liga };
+      })
+    });
+    document.head.appendChild(script);
   }
 
   function applyCategoryVisibility(){
@@ -3979,6 +4069,28 @@ p{ margin:0; }
         '<div class="faq-a"><div class="faq-a-inner">' + escapeHtml(item.a) + '</div></div>' +
       '</div>';
     }).join("");
+
+    // Mantém os dados estruturados de FAQ (JSON-LD) sempre batendo com o
+    // que está sendo mostrado — ajuda o Google e ferramentas de IA a
+    // usarem essas respostas diretamente, mesmo depois de você editar o
+    // FAQ pelo painel.
+    var existingFaqSchema = document.getElementById("faqJsonLd");
+    if(existingFaqSchema) existingFaqSchema.remove();
+    var faqSchema = document.createElement("script");
+    faqSchema.type = "application/ld+json";
+    faqSchema.id = "faqJsonLd";
+    faqSchema.textContent = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": FAQ_ITEMS.map(function(item){
+        return {
+          "@type": "Question",
+          "name": item.q,
+          "acceptedAnswer": { "@type": "Answer", "text": item.a }
+        };
+      })
+    });
+    document.head.appendChild(faqSchema);
 
     list.querySelectorAll(".faq-item").forEach(function(item){
       var q = item.querySelector(".faq-q");

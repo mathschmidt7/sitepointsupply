@@ -1,0 +1,36 @@
+User-agent: *
+Allow: /
+
+# Robôs de busca por IA (ChatGPT, Perplexity, Claude) — liberados
+# explicitamente, já que o objetivo aqui é aparecer nesses lugares,
+# não se proteger deles.
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+Sitemap: https://pointsupply.com.br/sitemap.xml
+
+# Resumo do site pra ferramentas de IA: https://pointsupply.com.br/llms.txt
