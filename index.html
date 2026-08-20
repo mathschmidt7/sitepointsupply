@@ -1545,6 +1545,21 @@ p{ margin:0; }
         <button type="button" class="btn btn-outline btn-sm" id="adminResetLogoBtn">Usar ícone padrão (diamante)</button>
       </div>
 
+      <h2 class="admin-view-title" style="margin-top:40px">Imagem de compartilhamento (WhatsApp, Instagram, etc)</h2>
+      <p style="color:var(--gray);font-size:13.5px;max-width:56ch;margin-bottom:20px">A foto que aparece quando alguém compartilha o link do site. É separada da logo do site — use uma imagem com <strong>fundo sólido</strong> (não transparente), porque apps como WhatsApp mostram a prévia num cartão branco, e uma logo com fundo transparente pode "sumir".</p>
+      <div class="form-grid" style="max-width:420px">
+        <label class="form-field">Enviar arquivo do computador
+          <input type="file" id="adminShareImageFileInput" accept="image/*">
+          <span id="adminShareImageUploadStatus" style="font-size:11.5px;color:var(--gray)"></span>
+        </label>
+        <label class="form-field">Ou cole a URL de uma imagem<input type="text" id="adminShareImageUrlInput" placeholder="https://..."></label>
+        <div style="display:flex;align-items:center;gap:14px">
+          <span style="font-size:12px;color:var(--gray)">Pré-visualização:</span>
+          <img id="adminShareImagePreview" src="" alt="" style="height:70px;width:70px;object-fit:cover;display:none;background:var(--black)">
+        </div>
+        <button type="button" class="btn btn-primary" id="adminSaveShareImageBtn">Salvar imagem de compartilhamento</button>
+      </div>
+
       <h2 class="admin-view-title" style="margin-top:40px">Banners das categorias</h2>
       <p style="color:var(--gray);font-size:13.5px;max-width:56ch;margin-bottom:20px">Envie uma foto pra cada categoria da tela inicial, no lugar do ícone simples. Se não enviar nada, o ícone continua aparecendo normalmente — não precisa preencher todas.</p>
       <div id="adminCategoryBanners" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px"></div>
@@ -1703,6 +1718,7 @@ p{ margin:0; }
   // Editável em Painel administrativo → Aparência. Vazio = usa o ícone de
   // diamante padrão em SVG. Preenchido = usa essa imagem no lugar dele.
   var LOGO_URL = "";
+  var SHARE_IMAGE_URL = ""; // imagem de compartilhamento (og:image/twitter:image) — separada da logo do site
 
   // Editável em Painel administrativo → Times e Ligas (topo). Categorias
   // aqui ("futebol" e/ou "nba") ficam totalmente fora do site — sem
@@ -4837,6 +4853,7 @@ p{ margin:0; }
       faq: FAQ_ITEMS,
       discounts: PROGRESSIVE_DISCOUNTS,
       logoUrl: LOGO_URL,
+      shareImageUrl: SHARE_IMAGE_URL,
       teamLogos: TEAM_LOGOS,
       leagueLogos: LEAGUE_LOGOS,
       hiddenCategories: HIDDEN_CATEGORIES,
@@ -5642,6 +5659,40 @@ p{ margin:0; }
     else{ alert("Não foi possível salvar agora. Tente novamente."); }
   });
 
+  /* ---------- Imagem de compartilhamento (og:image/twitter:image) ---------- */
+  var adminShareImageUrlInput = document.getElementById("adminShareImageUrlInput");
+  var adminShareImagePreview = document.getElementById("adminShareImagePreview");
+  var adminShareImageFileInput = document.getElementById("adminShareImageFileInput");
+  var adminShareImageUploadStatus = document.getElementById("adminShareImageUploadStatus");
+
+  adminShareImageUrlInput.addEventListener("input", function(){
+    var val = adminShareImageUrlInput.value.trim();
+    if(val){ adminShareImagePreview.src = val; adminShareImagePreview.style.display = "inline-block"; }
+    else{ adminShareImagePreview.style.display = "none"; }
+  });
+
+  adminShareImageFileInput.addEventListener("change", async function(){
+    var file = adminShareImageFileInput.files[0];
+    if(!file) return;
+    adminShareImageUploadStatus.textContent = "Enviando imagem...";
+    var res = await uploadImageFile(file);
+    if(res.ok){
+      adminShareImageUrlInput.value = res.url;
+      adminShareImagePreview.src = res.url;
+      adminShareImagePreview.style.display = "inline-block";
+      adminShareImageUploadStatus.textContent = "Imagem enviada — clique em \"Salvar\" para aplicar.";
+    } else {
+      adminShareImageUploadStatus.textContent = res.error;
+    }
+  });
+
+  document.getElementById("adminSaveShareImageBtn").addEventListener("click", async function(){
+    SHARE_IMAGE_URL = adminShareImageUrlInput.value.trim();
+    if(SHARE_IMAGE_URL){ applyShareImage(); }
+    var ok = await saveSiteConfig();
+    alert(ok ? "Imagem de compartilhamento atualizada! Teste com o Facebook Debugger (developers.facebook.com/tools/debug) depois de publicar." : "Salvo na página, mas não sincronizou com o backend agora. Tente novamente.");
+  });
+
   /* ---------- Banners de categoria ---------- */
   var CATEGORY_BANNER_LABELS = { futebol:"Futebol", nba:"NBA", camisas:"Camisas", pronta:"Pronta Entrega" };
   function renderAdminCategoryBanners(){
@@ -5704,6 +5755,15 @@ p{ margin:0; }
     if(favicon){ favicon.setAttribute("href", LOGO_URL); }
   }
 
+  function applyShareImage(){
+    if(!SHARE_IMAGE_URL) return;
+    ["og:image", "twitter:image"].forEach(function(prop){
+      var attr = prop.indexOf("og:") === 0 ? "property" : "name";
+      var el = document.querySelector('meta[' + attr + '="' + prop + '"]');
+      if(el) el.setAttribute("content", SHARE_IMAGE_URL);
+    });
+  }
+
   /* ============================================================
      CARREGA CONTEÚDO SALVO NO PAINEL (produtos, times, FAQ, descontos,
      logo) por cima dos padrões acima, se já houver algo salvo.
@@ -5718,6 +5778,14 @@ p{ margin:0; }
     if(cfg.faq){ FAQ_ITEMS = cfg.faq; }
     if(cfg.discounts){ PROGRESSIVE_DISCOUNTS = cfg.discounts; }
     if(cfg.logoUrl){ LOGO_URL = cfg.logoUrl; applyLogo(); }
+    if(cfg.shareImageUrl){
+      SHARE_IMAGE_URL = cfg.shareImageUrl;
+      applyShareImage();
+      var shareImgUrlEl = document.getElementById("adminShareImageUrlInput");
+      var shareImgPreviewEl = document.getElementById("adminShareImagePreview");
+      if(shareImgUrlEl){ shareImgUrlEl.value = SHARE_IMAGE_URL; }
+      if(shareImgPreviewEl){ shareImgPreviewEl.src = SHARE_IMAGE_URL; shareImgPreviewEl.style.display = "inline-block"; }
+    }
     if(cfg.teamLogos){ TEAM_LOGOS = cfg.teamLogos; }
     if(cfg.leagueLogos){ LEAGUE_LOGOS = cfg.leagueLogos; }
     if(cfg.hiddenCategories){ HIDDEN_CATEGORIES = cfg.hiddenCategories; }
