@@ -33,7 +33,7 @@
 <meta name="twitter:description" content="Loja de camisas de futebol em Salvador, Bahia — mais de 20 ligas, seleções e NBA. Personalização com nome e número.">
 <meta name="twitter:image" content="https://exacftfsuvxarzidkkaj.supabase.co/storage/v1/object/public/site-images/1787255762296-nkifde-logo-point-supply-preview-whatsapp.png">
 
-<link rel="icon" href="https://exacftfsuvxarzidkkaj.supabase.co/storage/v1/object/public/site-images/1787139979984-fx5e59-logo-point-supply-transparente.png">
+<link rel="icon" href="https://exacftfsuvxarzidkkaj.supabase.co/storage/v1/object/public/site-images/1787255762296-nkifde-logo-point-supply-preview-whatsapp.png">
 
 <!-- Dados estruturados (JSON-LD) — ajuda o Google e ferramentas de IA
      (ChatGPT, Perplexity, Google AI Overviews) a entenderem o que é a
@@ -5751,8 +5751,10 @@ p{ margin:0; }
     // via variável de CSS — atualiza todos os lugares de uma vez, mesmo
     // sendo um efeito de ::before que o JS não alcança diretamente.
     document.documentElement.style.setProperty("--ghost-panel-bg", "url('" + LOGO_URL + "')");
-    var favicon = document.querySelector('link[rel="icon"]');
-    if(favicon){ favicon.setAttribute("href", LOGO_URL); }
+    // Obs: o favicon NÃO é atualizado automaticamente aqui de propósito —
+    // ele fica fixo numa versão com fundo sólido (boa pra fundo branco do
+    // Google/navegador). A logo LOGO_URL é transparente, própria pra fundo
+    // escuro (cabeçalho do site), e ficaria com contraste ruim como favicon.
   }
 
   function applyShareImage(){
