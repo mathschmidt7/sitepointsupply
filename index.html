@@ -1201,7 +1201,7 @@ p{ margin:0; }
       <p class="footer-desc">Artigos esportivos para quem vive o esporte.</p>
     </div>
     <div class="footer-col">
-      <h4>Navegação</h4>
+      <h3>Navegação</h3>
       <ul>
         <li><a href="#produtos">Produtos</a></li>
         <li><a href="#produtos" data-filter-link="futebol">Futebol</a></li>
@@ -1213,7 +1213,7 @@ p{ margin:0; }
       </ul>
     </div>
     <div class="footer-col">
-      <h4>Atendimento</h4>
+      <h3>Atendimento</h3>
       <ul>
         <li><a href="#" class="js-wa-generic" target="_blank" rel="noopener">WhatsApp</a></li>
         <li><a href="#" target="_blank" rel="noopener" class="js-instagram-link">Instagram</a></li>
@@ -1221,7 +1221,7 @@ p{ margin:0; }
       </ul>
     </div>
     <div class="footer-col">
-      <h4>Informações</h4>
+      <h3>Informações</h3>
       <ul>
         <li><button type="button" data-open-modal="policyModal" data-policy="privacidade">Política de Privacidade</button></li>
         <li><button type="button" data-open-modal="policyModal" data-policy="termos">Termos de Uso</button></li>
@@ -1387,7 +1387,7 @@ p{ margin:0; }
     <div class="admin-panel-view is-active" data-admin-view="overview">
       <h2 class="admin-view-title">Visão geral</h2>
       <div class="admin-metrics" id="adminMetrics"></div>
-      <h4 style="margin:32px 0 14px;font-size:15px">Top 10 produtos mais vendidos</h4>
+      <h3 style="margin:32px 0 14px;font-size:15px">Top 10 produtos mais vendidos</h3>
       <div id="adminTopProducts"></div>
     </div>
 
@@ -1427,7 +1427,7 @@ p{ margin:0; }
         <button type="button" class="btn btn-primary btn-sm" id="adminAddProductBtn">+ Adicionar produto</button>
       </div>
       <div style="background:var(--graphite);border:1px solid rgba(247,247,244,.08);padding:16px 18px;margin-bottom:20px">
-        <h4 style="margin:0 0 6px;font-size:14px">Preço em massa por tipo</h4>
+        <h3 style="margin:0 0 6px;font-size:14px">Preço em massa por tipo</h3>
         <p style="color:var(--gray);font-size:12px;margin:0 0 14px">Define um preço padrão pra todos os produtos daquele tipo de uma vez. Depois, você ainda pode mudar o preço de um produto específico editando ele individualmente — isso não é sobrescrito.</p>
         <div id="bulkPriceRows"></div>
       </div>
@@ -1464,7 +1464,7 @@ p{ margin:0; }
         <button type="button" class="btn btn-primary btn-sm" id="adminAddLeagueBtn">+ Nova liga</button>
       </div>
       <div style="background:var(--graphite);border:1px solid rgba(247,247,244,.08);padding:16px 18px;margin-bottom:20px">
-        <h4 style="margin:0 0 6px;font-size:14px">Enviar vários escudos de uma vez</h4>
+        <h3 style="margin:0 0 6px;font-size:14px">Enviar vários escudos de uma vez</h3>
         <p style="color:var(--gray);font-size:12px;margin:0 0 14px">Selecione várias fotos ao mesmo tempo. Cada arquivo é associado ao time (ou liga) pelo <strong>nome do arquivo</strong> — ex: <code>flamengo.png</code> vira o escudo do "Flamengo" automaticamente. Nomes com espaço, acento ou hífen funcionam igual (ex: <code>atletico-mg.png</code> ou <code>Atlético MG.jpg</code>).</p>
         <button type="button" class="btn btn-outline btn-sm" id="adminBulkLogoBtn">Escolher fotos...</button>
         <span id="adminBulkLogoStatus" style="font-size:12.5px;color:var(--gray);margin-left:10px"></span>
@@ -3188,10 +3188,47 @@ p{ margin:0; }
       reader.readAsDataURL(file);
     });
   }
+
+  // Redimensiona a imagem no navegador ANTES de enviar, se ela for maior
+  // que o necessário (ex: foto tirada direto do celular, com 3000px+).
+  // Mantém PNG como PNG (preserva fundo transparente de logos) e reduz
+  // JPEG com boa qualidade — no mesmo padrão usado no catálogo (até 720px
+  // no lado maior). Se algo der errado, usa o arquivo original sem travar
+  // o envio.
+  var MAX_UPLOAD_SIDE = 720;
+  function resizeImageIfNeeded(file){
+    return new Promise(function(resolve){
+      if(!file || !file.type || file.type.indexOf("image/") !== 0 || file.type === "image/svg+xml"){
+        resolve(file); return;
+      }
+      var img = new Image();
+      var objectUrl = URL.createObjectURL(file);
+      img.onload = function(){
+        URL.revokeObjectURL(objectUrl);
+        var w = img.naturalWidth, h = img.naturalHeight;
+        if(Math.max(w, h) <= MAX_UPLOAD_SIDE){ resolve(file); return; }
+        var ratio = MAX_UPLOAD_SIDE / Math.max(w, h);
+        var newW = Math.round(w * ratio), newH = Math.round(h * ratio);
+        var canvas = document.createElement("canvas");
+        canvas.width = newW; canvas.height = newH;
+        var ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, newW, newH);
+        var outType = (file.type === "image/png") ? "image/png" : "image/jpeg";
+        canvas.toBlob(function(blob){
+          if(!blob){ resolve(file); return; }
+          resolve(new File([blob], file.name, { type: outType }));
+        }, outType, 0.84);
+      };
+      img.onerror = function(){ URL.revokeObjectURL(objectUrl); resolve(file); };
+      img.src = objectUrl;
+    });
+  }
+
   async function uploadImageFile(file){
     if(!file) return { ok:false, error:"Nenhum arquivo selecionado" };
     if(!file.type || file.type.indexOf("image/") !== 0) return { ok:false, error:"Escolha um arquivo de imagem (JPG, PNG, WEBP...)." };
     if(file.size > MAX_UPLOAD_MB * 1024 * 1024) return { ok:false, error:"Imagem muito grande — escolha um arquivo de até " + MAX_UPLOAD_MB + "MB." };
+    file = await resizeImageIfNeeded(file);
     var base64 = await readFileAsBase64(file);
     var res = await callBackend("uploadImage", Object.assign({ data: base64, filename: file.name, mimeType: file.type }, authParams()));
     if(!res.ok){ return { ok:false, error: (res.error && res.error.indexOf("network") === 0) ? "Falha de conexão ao enviar a imagem (" + res.error + ")." : (res.error || "Não foi possível enviar a imagem.") }; }
