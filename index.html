@@ -69,8 +69,8 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=EB+Garamond:wght@400;500;600&family=Inter:wght@400;500;600;700&display=optional" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Anton&family=EB+Garamond:wght@400;500;600&family=Inter:wght@400;500;600;700&display=optional" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Anton&family=EB+Garamond:wght@400;500;600&family=Inter:wght@400;500;600;700&display=optional" rel="stylesheet"></noscript>
 <style>
 /* ============================================================
    POINT SUPPLY — Landing Page + mini painel administrativo
@@ -1670,6 +1670,7 @@ p{ margin:0; }
 </div>
 
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 (function(){
   "use strict";
@@ -3802,9 +3803,13 @@ p{ margin:0; }
   renderProducts();
     renderProntaEntrega();
     renderFeatured();
-  renderLeagueRows();
   applyFilters();
-  applyFromUrl();
+  // A secao de Times/Seleções desenha muitos elementos (todos os times
+  // de todas as ligas) -- adia esse trabalho (feito aqui dentro de
+  // applyFromUrl, que sempre chama renderLeagueRows) pra depois da
+  // página principal já estar visível e responsiva, em vez de travar o
+  // carregamento inicial por causa dela.
+  if(window.requestIdleCallback){ requestIdleCallback(applyFromUrl); } else { setTimeout(applyFromUrl, 0); }
   renderFaq();
 
   /* Banner de descontos progressivos (texto gerado a partir da config) */
