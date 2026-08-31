@@ -2988,6 +2988,22 @@ p{ margin:0; }
     });
   }
 
+  // Monta o atributo "srcset" a partir de uma foto só — cada tamanho
+  // (420/640/800px) é gerado com esse mesmo nome + sufixo, tanto no lote
+  // de fotos dos produtos quanto em fotos enviadas manualmente pelo painel
+  // (ver resizeImageIfNeeded). O navegador de cada visitante escolhe
+  // sozinho a versão mais adequada pra tela dele.
+  var SRCSET_WIDTHS = [420, 640, 800];
+  function buildSrcset(url){
+    if(!url) return "";
+    var dot = url.lastIndexOf(".");
+    if(dot === -1) return "";
+    var base = url.slice(0, dot), ext = url.slice(dot);
+    var parts = SRCSET_WIDTHS.map(function(w){ return base + "-" + w + "w" + ext + " " + w + "w"; });
+    parts.push(url + " 900w");
+    return parts.join(", ");
+  }
+
   // Backend — todas as leituras/gravações de vendas e clientes passam pelo
   // Supabase (banco de dados + autenticação). O login do painel usa o
   // Supabase Auth (e-mail/senha criados em Authentication → Users), e as
@@ -3151,7 +3167,11 @@ p{ margin:0; }
         var safeName = String(params.filename || "imagem")
           .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
           .replace(/[^a-zA-Z0-9.\-]+/g, "-");
-        var path = Date.now() + "-" + Math.random().toString(36).slice(2,8) + "-" + safeName;
+        // Se vier um "basePath" fixo (usado pra subir as várias versões de
+        // tamanho de uma mesma foto), reaproveita ele em vez de gerar um
+        // prefixo novo — assim os arquivos ficam com nomes relacionados,
+        // permitindo montar o srcset a partir de um nome só.
+        var path = params.basePath ? (params.basePath + "-" + safeName) : (Date.now() + "-" + Math.random().toString(36).slice(2,8) + "-" + safeName);
         var upRes = await sb.storage.from("site-images").upload(path, blob, { contentType: params.mimeType || "image/jpeg" });
         if(upRes.error) return { ok:false, error: upRes.error.message };
         var pub = sb.storage.from("site-images").getPublicUrl(path);
@@ -3196,7 +3216,7 @@ p{ margin:0; }
   // JPEG com boa qualidade — no mesmo padrão usado no catálogo (até 720px
   // no lado maior). Se algo der errado, usa o arquivo original sem travar
   // o envio.
-  var MAX_UPLOAD_SIDE = 720;
+  var MAX_UPLOAD_SIDE = 900;
   function resizeImageIfNeeded(file){
     return new Promise(function(resolve){
       if(!file || !file.type || file.type.indexOf("image/") !== 0 || file.type === "image/svg+xml"){
@@ -3234,6 +3254,55 @@ p{ margin:0; }
     var res = await callBackend("uploadImage", Object.assign({ data: base64, filename: file.name, mimeType: file.type }, authParams()));
     if(!res.ok){ return { ok:false, error: (res.error && res.error.indexOf("network") === 0) ? "Falha de conexão ao enviar a imagem (" + res.error + ")." : (res.error || "Não foi possível enviar a imagem.") }; }
     return { ok:true, url: res.url };
+  }
+
+  // Redimensiona a mesma foto em várias larguras (420/640/800/900px) e
+  // sobe todas com nomes relacionados (mesmo prefixo, sufixo -420w etc),
+  // do mesmo jeito que as fotos do catálogo original — permitindo montar
+  // o srcset (ver buildSrcset). Usado só no upload de foto de produto,
+  // onde a foto aparece em muitos tamanhos de tela diferentes.
+  function resizeImageToWidth(img, targetW){
+    var w = img.naturalWidth, h = img.naturalHeight;
+    var w2 = Math.min(targetW, w);
+    var h2 = Math.round(h * (w2 / w));
+    var canvas = document.createElement("canvas");
+    canvas.width = w2; canvas.height = h2;
+    canvas.getContext("2d").drawImage(img, 0, 0, w2, h2);
+    return new Promise(function(resolve){
+      canvas.toBlob(function(blob){ resolve(blob); }, "image/jpeg", 0.84);
+    });
+  }
+  async function uploadProductPhoto(file){
+    if(!file) return { ok:false, error:"Nenhum arquivo selecionado" };
+    if(!file.type || file.type.indexOf("image/") !== 0) return { ok:false, error:"Escolha um arquivo de imagem (JPG, PNG, WEBP...)." };
+    if(file.size > MAX_UPLOAD_MB * 1024 * 1024) return { ok:false, error:"Imagem muito grande — escolha um arquivo de até " + MAX_UPLOAD_MB + "MB." };
+    var img = new Image();
+    var objectUrl = URL.createObjectURL(file);
+    await new Promise(function(resolve, reject){
+      img.onload = resolve; img.onerror = reject; img.src = objectUrl;
+    }).catch(function(){});
+    URL.revokeObjectURL(objectUrl);
+    if(!img.naturalWidth) return { ok:false, error:"Não foi possível ler essa imagem." };
+
+    var safeBaseName = file.name.replace(/\.[^.]+$/, "") || "foto";
+    var sharedBasePath = Date.now() + "-" + Math.random().toString(36).slice(2,8);
+    var mainUrl = null;
+
+    for(var i = 0; i < SRCSET_WIDTHS.length + 1; i++){
+      var isFull = i === SRCSET_WIDTHS.length;
+      var targetW = isFull ? MAX_UPLOAD_SIDE : SRCSET_WIDTHS[i];
+      var blob = await resizeImageToWidth(img, targetW);
+      if(!blob) continue;
+      var variantFile = new File([blob], isFull ? (safeBaseName + ".jpg") : (safeBaseName + "-" + targetW + "w.jpg"), { type:"image/jpeg" });
+      var base64 = await readFileAsBase64(variantFile);
+      var res = await callBackend("uploadImage", Object.assign({ data: base64, filename: variantFile.name, mimeType: "image/jpeg", basePath: sharedBasePath }, authParams()));
+      if(isFull){
+        if(!res.ok){ return { ok:false, error: res.error || "Não foi possível enviar a imagem." }; }
+        mainUrl = res.url;
+      }
+    }
+    if(!mainUrl) return { ok:false, error:"Não foi possível enviar a imagem." };
+    return { ok:true, url: mainUrl };
   }
 
   /* ============================================================
@@ -3600,7 +3669,7 @@ p{ margin:0; }
       : '';
 
     card.innerHTML =
-      '<div class="product-media' + (p.imageUrl ? '' : ' ghost-panel') + '">' + (p.imageUrl ? '<img src="' + escapeHtml(p.imageUrl) + '" alt="' + escapeHtml(p.name) + '" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover">' : '') + tagHtml + prontaHtml + '</div>' +
+      '<div class="product-media' + (p.imageUrl ? '' : ' ghost-panel') + '">' + (p.imageUrl ? '<img src="' + escapeHtml(p.imageUrl) + '" srcset="' + escapeHtml(buildSrcset(p.imageUrl)) + '" sizes="(max-width:960px) 47vw, 400px" alt="' + escapeHtml(p.name) + '" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover">' : '') + tagHtml + prontaHtml + '</div>' +
       '<div class="product-body">' +
         '<span class="product-meta-row">' + metaBits.map(escapeHtml).join(" · ") + '</span>' +
         '<h3 class="product-name">' + escapeHtml(p.name) + '</h3>' +
@@ -5162,7 +5231,7 @@ p{ margin:0; }
     var file = adminProductForm.imageFile.files[0];
     if(!file) return;
     adminProductUploadStatus.textContent = "Enviando imagem...";
-    var res = await uploadImageFile(file);
+    var res = await uploadProductPhoto(file);
     if(res.ok){
       adminProductForm.imageUrl.value = res.url;
       adminProductPreview.src = res.url;
