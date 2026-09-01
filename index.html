@@ -3200,7 +3200,7 @@ p{ margin:0; }
 
   // Lê um arquivo escolhido no computador e envia pro backend (que guarda
   // no Google Drive do dono da loja e devolve uma URL pública da imagem).
-  var MAX_UPLOAD_MB = 4;
+  var MAX_UPLOAD_MB = 25; // fotos passam por compressão automática depois, então o limite aqui só evita arquivos absurdos (ex: vídeo selecionado por engano)
   function readFileAsBase64(file){
     return new Promise(function(resolve, reject){
       var reader = new FileReader();
