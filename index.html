@@ -3673,7 +3673,7 @@ p{ margin:0; }
       : '';
 
     card.innerHTML =
-      '<div class="product-media' + (p.imageUrl ? '' : ' ghost-panel') + '">' + (p.imageUrl ? '<img src="' + escapeHtml(p.imageUrl) + '" srcset="' + escapeHtml(buildSrcset(p.imageUrl)) + '" sizes="(max-width:960px) 47vw, 400px" alt="' + escapeHtml(p.name) + '" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover">' : '') + tagHtml + prontaHtml + '</div>' +
+      '<div class="product-media' + (p.imageUrl ? '' : ' ghost-panel') + '">' + (p.imageUrl ? '<img src="' + escapeHtml(p.imageUrl) + '" srcset="' + escapeHtml(buildSrcset(p.imageUrl)) + '" sizes="(max-width:960px) 47vw, 700px" alt="' + escapeHtml(p.name) + '" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover">' : '') + tagHtml + prontaHtml + '</div>' +
       '<div class="product-body">' +
         '<span class="product-meta-row">' + metaBits.map(escapeHtml).join(" · ") + '</span>' +
         '<h3 class="product-name">' + escapeHtml(p.name) + '</h3>' +
