@@ -3292,12 +3292,16 @@ p{ margin:0; }
       var isFull = i === SRCSET_WIDTHS.length;
       var targetW = isFull ? MAX_UPLOAD_SIDE : SRCSET_WIDTHS[i];
       var blob = await resizeImageToWidth(img, targetW);
-      if(!blob) continue;
+      if(!blob) return { ok:false, error:"Não foi possível processar essa imagem (tamanho " + targetW + "px)." };
       var variantFile = new File([blob], isFull ? (safeBaseName + ".jpg") : (safeBaseName + "-" + targetW + "w.jpg"), { type:"image/jpeg" });
       var base64 = await readFileAsBase64(variantFile);
       var res = await callBackend("uploadImage", Object.assign({ data: base64, filename: variantFile.name, mimeType: "image/jpeg", basePath: sharedBasePath }, authParams()));
+      // Verifica TODAS as versões (não só a principal) — se qualquer uma
+      // falhar, o conjunto inteiro fica incompleto e o navegador do
+      // cliente pode tentar buscar uma versão que não existe (foto
+      // quebrada). Por isso, qualquer falha aqui cancela o envio inteiro.
+      if(!res.ok){ return { ok:false, error: (res.error || "Não foi possível enviar a imagem") + " (versão " + (isFull ? "completa" : targetW + "px") + ")." }; }
       if(isFull){
-        if(!res.ok){ return { ok:false, error: res.error || "Não foi possível enviar a imagem." }; }
         mainUrl = res.url;
       }
     }
