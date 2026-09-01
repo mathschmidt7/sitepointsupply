@@ -3261,7 +3261,7 @@ p{ margin:0; }
   // do mesmo jeito que as fotos do catálogo original — permitindo montar
   // o srcset (ver buildSrcset). Usado só no upload de foto de produto,
   // onde a foto aparece em muitos tamanhos de tela diferentes.
-  function resizeImageToWidth(img, targetW){
+  function resizeImageToWidth(img, targetW, quality){
     var w = img.naturalWidth, h = img.naturalHeight;
     var w2 = Math.min(targetW, w);
     var h2 = Math.round(h * (w2 / w));
@@ -3269,7 +3269,7 @@ p{ margin:0; }
     canvas.width = w2; canvas.height = h2;
     canvas.getContext("2d").drawImage(img, 0, 0, w2, h2);
     return new Promise(function(resolve){
-      canvas.toBlob(function(blob){ resolve(blob); }, "image/jpeg", 0.84);
+      canvas.toBlob(function(blob){ resolve(blob); }, "image/jpeg", quality);
     });
   }
   async function uploadProductPhoto(file){
@@ -3291,7 +3291,10 @@ p{ margin:0; }
     for(var i = 0; i < SRCSET_WIDTHS.length + 1; i++){
       var isFull = i === SRCSET_WIDTHS.length;
       var targetW = isFull ? MAX_UPLOAD_SIDE : SRCSET_WIDTHS[i];
-      var blob = await resizeImageToWidth(img, targetW);
+      // Qualidade mais alta nas versões maiores (usadas no desktop), onde
+      // detalhe fino (tipo escudos com estampa clara) fica mais visível.
+      var quality = targetW >= 800 ? 0.92 : (targetW >= 640 ? 0.86 : 0.82);
+      var blob = await resizeImageToWidth(img, targetW, quality);
       if(!blob) return { ok:false, error:"Não foi possível processar essa imagem (tamanho " + targetW + "px)." };
       var variantFile = new File([blob], isFull ? (safeBaseName + ".jpg") : (safeBaseName + "-" + targetW + "w.jpg"), { type:"image/jpeg" });
       var base64 = await readFileAsBase64(variantFile);
