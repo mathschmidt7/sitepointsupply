@@ -6232,12 +6232,14 @@ p{ margin:0; }
       img.setAttribute("class", el.getAttribute("class") || "logo-mark");
       el.replaceWith(img);
     });
-    // Obs: o fundo decorativo (usado no Instagram, Sobre nós, banner "Mais
-    // que um produto" e no placeholder de produto sem foto) NÃO é trocado
-    // pela logo enviada aqui de propósito — fica sempre no diamante
-    // vetorial padrão, que fica nítido em qualquer tamanho. A logo real
-    // (enviada pelo lojista) normalmente é um arquivo pequeno, e ampliada
-    // bastante nesses fundos decorativos ela fica borrada/manchada.
+    // Obs: o fundo decorativo (Instagram, Sobre nós, banner "Mais que um
+    // produto", placeholder de produto sem foto) fica sempre no diamante
+    // vetorial padrão, embutido direto no código — de propósito. Se
+    // fosse a logo enviada (um arquivo externo), e esse arquivo demorar
+    // ou falhar ao carregar por qualquer motivo (internet mais lenta,
+    // instabilidade), aparece uma caixa cinza com borda dura no lugar —
+    // exatamente o problema relatado antes. O desenho vetorial nunca tem
+    // esse risco, porque não depende de nenhum arquivo externo.
     // Obs: o favicon NÃO é atualizado automaticamente aqui de propósito —
     // ele fica fixo numa versão com fundo sólido (boa pra fundo branco do
     // Google/navegador). A logo LOGO_URL é transparente, própria pra fundo
