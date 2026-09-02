@@ -1615,7 +1615,8 @@ p{ margin:0; }
       <span style="font-size:12.5px;color:var(--gray)">Produto encontrado no catálogo — foto exibida automaticamente.</span>
     </div>
     <form id="adminSaleForm" class="form-grid">
-      <label class="form-field">Produto*<input type="text" name="product" required></label>
+      <label class="form-field">Produto*<input type="text" name="product" list="adminSaleProductList" required autocomplete="off"></label>
+      <datalist id="adminSaleProductList"></datalist>
       <input type="hidden" name="productId">
       <div id="adminSaleProductAmbiguous" hidden style="grid-column:1/-1;background:rgba(247,247,244,.06);border:1px solid rgba(247,247,244,.15);padding:10px 12px;font-size:12.5px">
         <p style="color:var(--gray);margin-bottom:8px">Mais de um produto com esse nome — escolha o certo:</p>
@@ -1635,7 +1636,7 @@ p{ margin:0; }
       <label class="form-field">Status do pedido
         <select name="orderStatus"></select>
       </label>
-      <label class="form-field">Código do pedido (opcional, p/ rastreio)<input type="text" name="orderId"></label>
+      <input type="hidden" name="orderId">
       <label class="form-field">Código de rastreio (opcional)<input type="text" name="trackingCode"></label>
       <button type="submit" class="btn btn-primary btn-block">Adicionar venda</button>
     </form>
@@ -1660,6 +1661,7 @@ p{ margin:0; }
           <button type="button" class="btn btn-outline btn-sm" id="adminEncomendaAddProductBtn">+ Produto</button>
         </div>
         <div id="adminEncomendaProductsList" style="display:flex;flex-direction:column;gap:8px"></div>
+        <datalist id="adminEncomendaProductList"></datalist>
       </div>
 
       <label class="form-field">Total pago em dólar (soma dos produtos acima)<input type="text" id="adminEncomendaTotalDolarDisplay" disabled value="US$ 0,00" style="opacity:.7"></label>
@@ -5036,8 +5038,29 @@ p{ margin:0; }
     adminSaleForm.querySelector("button[type=submit]").textContent = "Adicionar venda";
     document.getElementById("adminSaleProductPreview").hidden = true;
     document.getElementById("adminSaleProductAmbiguous").hidden = true;
+    document.getElementById("adminSaleProductList").innerHTML = PRODUCTS.map(function(p){
+      return '<option value="' + escapeHtml(p.name) + '">';
+    }).join("");
     openModal("adminSaleModal");
   });
+  function parseBRLPrice(str){
+    if(!str) return null;
+    var cleaned = String(str).replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", ".");
+    if(!cleaned || !/\d/.test(cleaned)) return null; // ex: "Sob consulta" — sem número nenhum
+    var n = Number(cleaned);
+    return isNaN(n) ? null : n;
+  }
+
+  function maybeAutofillSaleValue(product){
+    // só preenche sozinho se o campo ainda estiver zerado/vazio — nunca
+    // sobrescreve um valor que o lojista já tenha digitado (o valor da
+    // venda pode ser diferente do preço cadastrado, e isso é esperado).
+    if(!product || !product.price) return;
+    if(Number(adminSaleForm.saleValue.value) > 0) return;
+    var parsed = parseBRLPrice(product.price);
+    if(parsed !== null) adminSaleForm.saleValue.value = parsed;
+  }
+
   adminSaleForm.product.addEventListener("input", function(){
     updateSaleProductPreview({ product: adminSaleForm.product.value });
     adminSaleForm.productId.value = "";
@@ -5055,11 +5078,15 @@ p{ margin:0; }
           adminSaleForm.productId.value = btn.dataset.id;
           ambWrap.hidden = true;
           updateSaleProductPreview({ productId: btn.dataset.id, product: typed });
+          maybeAutofillSaleValue(PRODUCTS.find(function(p){ return p.id === btn.dataset.id; }));
         });
       });
     } else {
       ambWrap.hidden = true;
-      if(matches.length === 1) adminSaleForm.productId.value = matches[0].id;
+      if(matches.length === 1){
+        adminSaleForm.productId.value = matches[0].id;
+        maybeAutofillSaleValue(matches[0]);
+      }
     }
   });
 
@@ -5206,7 +5233,7 @@ p{ margin:0; }
     row.className = "js-enc-product-row";
     row.style.cssText = "display:flex;gap:8px;align-items:center";
     row.innerHTML =
-      '<input type="text" class="js-enc-product-nome" placeholder="Nome do produto" value="' + escapeHtml(nome || "") + '" style="flex:1;background:var(--black);border:1px solid rgba(247,247,244,.18);color:var(--off);padding:9px 10px;font-family:var(--font-body);font-size:13.5px;border-radius:2px">' +
+      '<input type="text" class="js-enc-product-nome" list="adminEncomendaProductList" placeholder="Nome do produto" value="' + escapeHtml(nome || "") + '" style="flex:1;background:var(--black);border:1px solid rgba(247,247,244,.18);color:var(--off);padding:9px 10px;font-family:var(--font-body);font-size:13.5px;border-radius:2px">' +
       '<input type="number" class="js-enc-product-dolar" placeholder="US$" min="0" step="0.01" value="' + (custoDolar != null ? custoDolar : "") + '" style="width:110px;background:var(--black);border:1px solid rgba(247,247,244,.18);color:var(--off);padding:9px 10px;font-family:var(--font-body);font-size:13.5px;border-radius:2px">' +
       '<button type="button" class="icon-btn js-enc-remove-row" aria-label="Remover produto" style="flex-shrink:0"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>';
     adminEncomendaProductsList.appendChild(row);
@@ -5224,6 +5251,9 @@ p{ margin:0; }
   function openEncomendaModal(id){
     adminEncomendaForm.reset();
     adminEncomendaProductsList.innerHTML = "";
+    document.getElementById("adminEncomendaProductList").innerHTML = PRODUCTS.map(function(p){
+      return '<option value="' + escapeHtml(p.name) + '">';
+    }).join("");
     editingEncomendaId = id || null;
     var titleEl = document.getElementById("adminEncomendaTitle");
 
