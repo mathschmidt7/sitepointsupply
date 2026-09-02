@@ -182,11 +182,11 @@ p{ margin:0; }
 
 /* ---------- Marca d'água diamante (peças de mídia placeholder) ---------- */
 :root{
-  --ghost-panel-bg: url("https://exacftfsuvxarzidkkaj.supabase.co/storage/v1/object/public/site-images/1787139979984-fx5e59-logo-point-supply-transparente.png");
+  --ghost-panel-bg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 100'%3E%3Cpath d='M10 32 L34 10 L60 24 L86 10 L110 32 L60 94 Z' fill='none' stroke='%23F7F7F4' stroke-width='4'/%3E%3Cpath d='M10 32H110M34 10L60 94M86 10L60 94' fill='none' stroke='%23F7F7F4' stroke-width='3'/%3E%3C/svg%3E");
 }
 .ghost-panel{
   position:relative; overflow:hidden;
-  background:var(--grain), radial-gradient(120% 120% at 20% 0%, #181818 0%, var(--black) 55%);
+  background:var(--grain), var(--black);
   isolation:isolate;
 }
 .ghost-panel::before{
@@ -863,7 +863,7 @@ p{ margin:0; }
      HERO
      ============================================================ -->
 <section class="hero" id="top">
-  <img class="hero-watermark" src="https://exacftfsuvxarzidkkaj.supabase.co/storage/v1/object/public/site-images/1787139979984-fx5e59-logo-point-supply-transparente.png" alt="" aria-hidden="true" width="120" height="100">
+  <svg class="hero-watermark" viewBox="0 0 120 100" aria-hidden="true"><use href="#icon-diamond"></use></svg>
   <div class="hero-sweep" aria-hidden="true"></div>
   <div class="container hero-inner">
     <p class="eyebrow hero-eyebrow">Point Supply</p>
@@ -1417,7 +1417,7 @@ p{ margin:0; }
       </div>
       <div class="admin-table-wrap">
         <table class="admin-table">
-          <thead><tr><th>Pedido</th><th>Produto</th><th>Tam.</th><th>Cliente</th><th>Valor (R$)</th><th>Custo (R$)</th><th>Lucro (R$)</th><th>Status envio</th><th>Status pedido</th><th>Rastreio</th><th>Origem</th><th></th></tr></thead>
+          <thead><tr><th>Produto</th><th>Tam.</th><th>Cliente</th><th>Valor (R$)</th><th>Custo (R$)</th><th>Lucro (R$)</th><th>Status envio</th><th>Status pedido</th><th>Rastreio</th><th>Origem</th><th></th></tr></thead>
           <tbody id="adminSalesBody"></tbody>
         </table>
       </div>
@@ -4769,7 +4769,6 @@ p{ margin:0; }
       var tr = document.createElement("tr");
       var profit = (Number(sale.saleValue) || 0) - (Number(sale.costValue) || 0);
       tr.innerHTML =
-        "<td>" + escapeHtml(sale.orderId || "—") + "</td>" +
         "<td>" + escapeHtml(sale.product) + "</td>" +
         "<td>" + escapeHtml(sale.size || "—") + "</td>" +
         "<td>" + escapeHtml(sale.customerName || "—") + "</td>" +
@@ -4788,7 +4787,7 @@ p{ margin:0; }
           var previous = sale[field];
           sale[field] = input.value;
           if(field === "saleValue" || field === "costValue"){
-            var profitCell = tr.children[6];
+            var profitCell = tr.children[5];
             profitCell.textContent = formatBRL((Number(sale.saleValue) || 0) - (Number(sale.costValue) || 0));
           }
           renderAdminMetrics();
@@ -6233,11 +6232,12 @@ p{ margin:0; }
       img.setAttribute("class", el.getAttribute("class") || "logo-mark");
       el.replaceWith(img);
     });
-    // Troca o padrão decorativo de fundo (usado no Instagram, Sobre nós,
-    // banner "Mais que um produto" e no placeholder de produto sem foto)
-    // via variável de CSS — atualiza todos os lugares de uma vez, mesmo
-    // sendo um efeito de ::before que o JS não alcança diretamente.
-    document.documentElement.style.setProperty("--ghost-panel-bg", "url('" + LOGO_URL + "')");
+    // Obs: o fundo decorativo (usado no Instagram, Sobre nós, banner "Mais
+    // que um produto" e no placeholder de produto sem foto) NÃO é trocado
+    // pela logo enviada aqui de propósito — fica sempre no diamante
+    // vetorial padrão, que fica nítido em qualquer tamanho. A logo real
+    // (enviada pelo lojista) normalmente é um arquivo pequeno, e ampliada
+    // bastante nesses fundos decorativos ela fica borrada/manchada.
     // Obs: o favicon NÃO é atualizado automaticamente aqui de propósito —
     // ele fica fixo numa versão com fundo sólido (boa pra fundo branco do
     // Google/navegador). A logo LOGO_URL é transparente, própria pra fundo
