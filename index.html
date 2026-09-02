@@ -23,7 +23,7 @@
 <!-- PLACEHOLDER — depois de subir sua logo/uma foto de capa no painel (Aparência),
      troque o link abaixo pela URL completa dessa imagem (precisa ser um link
      direto .png/.jpg, não um upload local) -->
-<meta property="og:image" content="https://exacftfsuvxarzidkkaj.supabase.co/storage/v1/object/public/site-images/1787255762296-nkifde-logo-point-supply-preview-whatsapp.png">
+<meta property="og:image" content="https://exacftfsuvxarzidkkaj.supabase.co/storage/v1/object/public/site-images/1788352455012-sj3t9v-logo-fundo-solido.png">
 <meta property="og:image:width" content="300">
 <meta property="og:image:height" content="300">
 
@@ -31,9 +31,9 @@
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Point Supply — Camisas de Futebol em Salvador-BA">
 <meta name="twitter:description" content="Loja de camisas de futebol em Salvador, Bahia — mais de 20 ligas, seleções e NBA. Personalização com nome e número.">
-<meta name="twitter:image" content="https://exacftfsuvxarzidkkaj.supabase.co/storage/v1/object/public/site-images/1787255762296-nkifde-logo-point-supply-preview-whatsapp.png">
+<meta name="twitter:image" content="https://exacftfsuvxarzidkkaj.supabase.co/storage/v1/object/public/site-images/1788352455012-sj3t9v-logo-fundo-solido.png">
 
-<link rel="icon" href="https://exacftfsuvxarzidkkaj.supabase.co/storage/v1/object/public/site-images/1787255762296-nkifde-logo-point-supply-preview-whatsapp.png">
+<link rel="icon" href="https://exacftfsuvxarzidkkaj.supabase.co/storage/v1/object/public/site-images/1788352455012-sj3t9v-logo-fundo-solido.png">
 
 <!-- Dados estruturados (JSON-LD) — ajuda o Google e ferramentas de IA
      (ChatGPT, Perplexity, Google AI Overviews) a entenderem o que é a
@@ -425,6 +425,7 @@ p{ margin:0; }
 .product-card:hover{ border-color:rgba(247,247,244,.18); transform:translateY(-4px); }
 .product-card[hidden]{ display:none; }
 .product-media{ aspect-ratio:4/5; }
+.product-media img{ cursor:zoom-in; }
 .product-tag{
   position:absolute; top:14px; left:14px; z-index:2; padding:5px 11px; font-size:10.5px;
   font-weight:700; letter-spacing:.08em; text-transform:uppercase; background:var(--off); color:var(--black);
@@ -1291,6 +1292,19 @@ p{ margin:0; }
 </div>
 
 <!-- ============================================================
+     MODAL — FOTO AMPLIADA (clique numa foto de produto)
+     ============================================================ -->
+<div class="modal" id="photoLightbox">
+  <div class="modal-backdrop" data-close-modal="photoLightbox"></div>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-label="Foto ampliada" style="max-width:min(700px, 92vw); padding:16px; background:transparent; border:none">
+    <button class="icon-btn modal-close" data-close-modal="photoLightbox" aria-label="Fechar" style="background:var(--graphite); border-radius:50%">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+    </button>
+    <img id="photoLightboxImg" src="" alt="" style="width:100%; height:auto; max-height:86vh; object-fit:contain; display:block; border-radius:2px">
+  </div>
+</div>
+
+<!-- ============================================================
      MODAL — FINALIZAR PEDIDO (checkout)
      ============================================================ -->
 <div class="modal" id="checkoutModal">
@@ -1363,6 +1377,7 @@ p{ margin:0; }
       <nav class="admin-nav" role="tablist">
         <button class="admin-tab is-active" data-admin-tab="overview" role="tab" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"></rect><rect x="14" y="3" width="7" height="5" rx="1"></rect><rect x="14" y="12" width="7" height="9" rx="1"></rect><rect x="3" y="16" width="7" height="5" rx="1"></rect></svg><span>Visão geral</span></button>
         <button class="admin-tab" data-admin-tab="sales" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 6l2 13h14l2-13M8 10v4M12 10v4M16 10v4"></path></svg><span>Vendas</span></button>
+        <button class="admin-tab" data-admin-tab="importcost" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"></rect><path d="M2 11h20M6 15h4"></path><path d="M7 7V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"></path></svg><span>Custo de importação</span></button>
         <button class="admin-tab" data-admin-tab="customers" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.2"></circle><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 8.5c1.4.4 2.5 1.7 2.5 3.3M21 20c0-2.8-2-5.1-4.6-5.8"></path></svg><span>Clientes</span></button>
         <button class="admin-tab" data-admin-tab="products" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3 6 7v13a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7l-3-4M6 7h12M9.5 11a2.5 2.5 0 0 0 5 0"></path></svg><span>Produtos</span></button>
         <button class="admin-tab" data-admin-tab="teams" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.3"></circle><path d="M4 20c.4-3.6 3.6-6.4 8-6.4s7.6 2.8 8 6.4"></path></svg><span>Times e Ligas</span></button>
@@ -1386,6 +1401,7 @@ p{ margin:0; }
   <div class="admin-content">
     <div class="admin-panel-view is-active" data-admin-view="overview">
       <h2 class="admin-view-title">Visão geral</h2>
+      <div id="adminMetricsPeriodTabs" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px"></div>
       <div class="admin-metrics" id="adminMetrics"></div>
       <h3 style="margin:32px 0 14px;font-size:15px">Top 10 produtos mais vendidos</h3>
       <div id="adminTopProducts"></div>
@@ -1405,6 +1421,22 @@ p{ margin:0; }
           <tbody id="adminSalesBody"></tbody>
         </table>
       </div>
+    </div>
+
+    <div class="admin-panel-view" data-admin-view="importcost">
+      <h2 class="admin-view-title">Custo de importação</h2>
+      <p style="color:var(--gray);font-size:13px;margin-bottom:18px">
+        Cada encomenda pode ter vários produtos, cada um com seu próprio
+        custo em dólar. A cotação usada é calculada a partir do que você
+        realmente pagou (não uma cotação "de tabela") — e a taxa
+        alfandegária, quando informada, é dividida entre os produtos
+        proporcionalmente ao valor em dólar de cada um.
+      </p>
+      <div class="admin-toolbar">
+        <button type="button" class="btn btn-primary btn-sm" id="adminAddEncomendaBtn">+ Nova encomenda</button>
+        <button type="button" class="btn btn-outline btn-sm" data-admin-refresh>Atualizar dados</button>
+      </div>
+      <div id="adminEncomendasList" style="display:flex; flex-direction:column; gap:16px; margin-top:18px"></div>
     </div>
 
     <div class="admin-panel-view" data-admin-view="customers">
@@ -1606,6 +1638,36 @@ p{ margin:0; }
       <label class="form-field">Código do pedido (opcional, p/ rastreio)<input type="text" name="orderId"></label>
       <label class="form-field">Código de rastreio (opcional)<input type="text" name="trackingCode"></label>
       <button type="submit" class="btn btn-primary btn-block">Adicionar venda</button>
+    </form>
+  </div>
+</div>
+
+<!-- Modal — nova/editar encomenda de importação -->
+<div class="modal" id="adminEncomendaModal">
+  <div class="modal-backdrop" data-close-modal="adminEncomendaModal"></div>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="adminEncomendaTitle" style="max-width:640px">
+    <button class="icon-btn modal-close" data-close-modal="adminEncomendaModal" aria-label="Fechar">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+    </button>
+    <h3 class="modal-title" id="adminEncomendaTitle">Nova encomenda</h3>
+    <form id="adminEncomendaForm" class="form-grid">
+      <input type="hidden" name="id">
+      <label class="form-field">Referência (opcional, pra identificar a encomenda)<input type="text" name="referencia" placeholder="Ex: Encomenda outubro/26"></label>
+
+      <div style="grid-column:1/-1">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="font-size:12.5px;color:var(--gray);font-weight:600">Produtos dessa encomenda</span>
+          <button type="button" class="btn btn-outline btn-sm" id="adminEncomendaAddProductBtn">+ Produto</button>
+        </div>
+        <div id="adminEncomendaProductsList" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+
+      <label class="form-field">Total pago em dólar (soma dos produtos acima)<input type="text" id="adminEncomendaTotalDolarDisplay" disabled value="US$ 0,00" style="opacity:.7"></label>
+      <label class="form-field">Total pago em reais (o valor final que saiu do seu cartão/conta, já com a conversão)<input type="number" name="totalRealPago" min="0" step="0.01" value="0" required></label>
+      <label class="form-field">Taxa alfandegária em reais (opcional — deixe em branco se ainda não souber)<input type="number" name="taxaAlfandega" min="0" step="0.01" placeholder="Ainda não sei"></label>
+      <label class="form-field">Observações (opcional)<textarea name="observacoes" rows="2" style="background:var(--black);border:1px solid rgba(247,247,244,.18);color:var(--off);padding:11px 12px;font-family:var(--font-body);font-size:14px;border-radius:2px;resize:vertical"></textarea></label>
+
+      <button type="submit" class="btn btn-primary btn-block">Salvar encomenda</button>
     </form>
   </div>
 </div>
@@ -3032,6 +3094,10 @@ p{ margin:0; }
     orderStatus:"orderstatus", trackingCode:"trackingcode", source:"source", productId:"productid"
   };
   var CUSTOMER_FIELD_MAP = { name:"name", phone:"phone", city:"city", orderId:"orderid", date:"date", vip:"vip" };
+  var ENCOMENDA_FIELD_MAP = {
+    id:"id", data:"data", referencia:"referencia", produtos:"produtos",
+    totalDolar:"totaldolar", totalRealPago:"totalrealpago", taxaAlfandega:"taxaalfandega", observacoes:"observacoes"
+  };
 
   function mapToDb(obj, fieldMap){
     var out = {};
@@ -3097,6 +3163,32 @@ p{ margin:0; }
       if(action === "addCustomer"){
         var addCustRes = await sb.from("clientes").insert(mapToDb(params, CUSTOMER_FIELD_MAP));
         if(addCustRes.error) return { ok:false, error: addCustRes.error.message };
+        return { ok:true };
+      }
+
+      if(action === "getEncomendas"){
+        var ge = await sb.from("encomendas_custo").select("*").order("data", { ascending:false });
+        if(ge.error) return { ok:false, error: ge.error.message };
+        return { ok:true, rows: ge.data.map(function(r){ return mapFromDb(r, ENCOMENDA_FIELD_MAP); }) };
+      }
+
+      if(action === "addEncomenda"){
+        var addEncRes = await sb.from("encomendas_custo").insert(mapToDb(params, ENCOMENDA_FIELD_MAP));
+        if(addEncRes.error) return { ok:false, error: addEncRes.error.message };
+        return { ok:true };
+      }
+
+      if(action === "updateEncomenda"){
+        var updEncObj = mapToDb(params, ENCOMENDA_FIELD_MAP);
+        delete updEncObj.id;
+        var updEncRes = await sb.from("encomendas_custo").update(updEncObj).eq("id", params.id);
+        if(updEncRes.error) return { ok:false, error: updEncRes.error.message };
+        return { ok:true };
+      }
+
+      if(action === "deleteEncomenda"){
+        var delEncRes = await sb.from("encomendas_custo").delete().eq("id", params.id);
+        if(delEncRes.error) return { ok:false, error: delEncRes.error.message };
         return { ok:true };
       }
 
@@ -3385,6 +3477,19 @@ p{ margin:0; }
   });
   document.querySelectorAll("[data-close-modal]").forEach(function(el){
     el.addEventListener("click", function(){ closeModal(el.getAttribute("data-close-modal")); });
+  });
+
+  // Clique numa foto de produto abre ela ampliada, sempre na versão de
+  // melhor qualidade disponível (o "src" original, não a miniatura menor
+  // que o navegador pode ter escolhido pra exibir no card pequeno).
+  document.addEventListener("click", function(e){
+    var img = e.target.closest(".product-media img");
+    if(!img) return;
+    var full = img.getAttribute("src");
+    if(!full) return;
+    document.getElementById("photoLightboxImg").src = full;
+    document.getElementById("photoLightboxImg").alt = img.alt || "";
+    openModal("photoLightbox");
   });
 
   var POLICY_TITLES = {
@@ -4286,6 +4391,7 @@ p{ margin:0; }
   var adminPanel = document.getElementById("adminPanel");
   var adminSales = [];
   var adminCustomers = [];
+  var adminEncomendas = [];
   var adminAuth = null; // { username, password } — usados na sessão do Supabase Auth
 
   function authParams(){
@@ -4397,6 +4503,7 @@ p{ margin:0; }
   async function loadAdminData(){
     var salesRes = await callBackend("getSales", authParams());
     var custRes = await callBackend("getCustomers", authParams());
+    var encRes = await callBackend("getEncomendas", authParams());
     if(!salesRes.ok || !custRes.ok){
       hideAdmin();
       alert("Não foi possível carregar os dados. A sessão pode ter expirado — entre novamente.");
@@ -4404,9 +4511,12 @@ p{ margin:0; }
     }
     adminSales = salesRes.rows || [];
     adminCustomers = custRes.rows || [];
+    adminEncomendas = encRes.ok ? (encRes.rows || []) : [];
+    renderMetricsPeriodTabs();
     renderAdminMetrics();
     renderAdminSalesTable();
     renderAdminCustomersTable();
+    renderAdminEncomendas();
     renderAdminProducts();
     renderAdminLeagues();
     renderAdminFaq();
@@ -4484,16 +4594,64 @@ p{ margin:0; }
     return adminSales.filter(function(s){ return (s.orderStatus || "Pendente") === "Concluído"; });
   }
 
+  /* ---------- Estatísticas por período (semana / mês / ano) ---------- */
+  var METRICS_PERIODS = [
+    { key:"todos", label:"Tudo" },
+    { key:"semana", label:"Esta semana" },
+    { key:"mes", label:"Este mês" },
+    { key:"ano", label:"Este ano" }
+  ];
+  var currentMetricsPeriod = "todos";
+  function periodStartDate(key){
+    var now = new Date();
+    if(key === "semana"){
+      var day = now.getDay(); // 0=domingo
+      var diffToMonday = (day === 0) ? 6 : day - 1;
+      var start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - diffToMonday);
+      return start;
+    }
+    if(key === "mes"){ return new Date(now.getFullYear(), now.getMonth(), 1); }
+    if(key === "ano"){ return new Date(now.getFullYear(), 0, 1); }
+    return null; // "todos" — sem filtro
+  }
+  function filterSalesByPeriod(sales, key){
+    var start = periodStartDate(key);
+    if(!start) return sales;
+    return sales.filter(function(s){
+      if(!s.date) return false;
+      var d = new Date(s.date);
+      return !isNaN(d) && d >= start;
+    });
+  }
+  function renderMetricsPeriodTabs(){
+    var wrap = document.getElementById("adminMetricsPeriodTabs");
+    if(!wrap) return;
+    wrap.innerHTML = METRICS_PERIODS.map(function(p){
+      return '<button type="button" class="filter-btn js-metrics-period' + (p.key === currentMetricsPeriod ? ' is-active' : '') + '" data-period="' + p.key + '">' + escapeHtml(p.label) + '</button>';
+    }).join("");
+    wrap.querySelectorAll(".js-metrics-period").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        currentMetricsPeriod = btn.getAttribute("data-period");
+        renderMetricsPeriodTabs();
+        renderAdminMetrics();
+      });
+    });
+  }
+
   function renderAdminMetrics(){
-    var concluded = concludedSales();
+    var periodSales = filterSalesByPeriod(adminSales, currentMetricsPeriod);
+    var concluded = periodSales.filter(function(s){ return (s.orderStatus || "Pendente") === "Concluído"; });
     var faturamentoTotal = concluded.reduce(function(sum, s){ return sum + (Number(s.saleValue) || 0); }, 0);
     var lucroTotal = concluded.reduce(function(sum, s){
       var v = Number(s.saleValue) || 0, c = Number(s.costValue) || 0;
       return sum + (v - c);
     }, 0);
+    var ticketMedio = concluded.length ? faturamentoTotal / concluded.length : 0;
     var uniqueCustomers = {};
-    adminCustomers.forEach(function(c){ uniqueCustomers[normalizePhone(c.phone)] = true; });
-    adminSales.forEach(function(s){
+    if(currentMetricsPeriod === "todos"){
+      adminCustomers.forEach(function(c){ uniqueCustomers[normalizePhone(c.phone)] = true; });
+    }
+    periodSales.forEach(function(s){
       var key = normalizePhone(s.customerPhone);
       if(key) uniqueCustomers[key] = true;
     });
@@ -4502,14 +4660,17 @@ p{ margin:0; }
       check: '<path d="M20 6 9 17l-5-5"></path>',
       users: '<circle cx="9" cy="8" r="3.2"></circle><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 8.5c1.4.4 2.5 1.7 2.5 3.3M21 20c0-2.8-2-5.1-4.6-5.8"></path>',
       money: '<circle cx="12" cy="12" r="9"></circle><path d="M9.5 15c0 1.1 1.1 2 2.5 2s2.5-.9 2.5-2-1.1-1.7-2.5-2-2.5-.9-2.5-2 1.1-2 2.5-2 2.5.9 2.5 2M12 6.5v1M12 16.5v1"></path>',
-      profit: '<path d="M3 17 9 11l4 4 8-8M17 7h4v4"></path>'
+      profit: '<path d="M3 17 9 11l4 4 8-8M17 7h4v4"></path>',
+      ticket: '<rect x="3" y="6" width="18" height="12" rx="2"></rect><path d="M3 10h18M7 15h4"></path>'
     };
+    var clientesLabel = currentMetricsPeriod === "todos" ? "Total de clientes" : "Clientes no período";
     var metrics = [
-      { label:"Total de vendas", value: String(adminSales.length), icon: ICONS.sales },
+      { label:"Total de vendas", value: String(periodSales.length), icon: ICONS.sales },
       { label:"Vendas concluídas", value: String(concluded.length), icon: ICONS.check },
-      { label:"Total de clientes", value: String(Object.keys(uniqueCustomers).length), icon: ICONS.users },
+      { label: clientesLabel, value: String(Object.keys(uniqueCustomers).length), icon: ICONS.users },
       { label:"Faturamento (concluídas)", value: formatBRL(faturamentoTotal), icon: ICONS.money },
-      { label:"Lucro total estimado", value: formatBRL(lucroTotal), icon: ICONS.profit }
+      { label:"Lucro total estimado", value: formatBRL(lucroTotal), icon: ICONS.profit },
+      { label:"Ticket médio", value: formatBRL(ticketMedio), icon: ICONS.ticket }
     ];
     document.getElementById("adminMetrics").innerHTML = metrics.map(function(m){
       return '<div class="admin-metric-card">' +
@@ -4665,6 +4826,71 @@ p{ margin:0; }
 
   function normalizePhone(str){
     return String(str || "").replace(/\D/g, "");
+  }
+
+  /* ---------- Custo de importação ---------- */
+  function calcEncomendaCustos(enc){
+    var produtos = enc.produtos || [];
+    var totalDolar = produtos.reduce(function(sum, p){ return sum + (Number(p.custoDolar) || 0); }, 0);
+    var totalReal = Number(enc.totalRealPago) || 0;
+    var taxaCambio = totalDolar > 0 ? (totalReal / totalDolar) : 0;
+    var temAlfandega = enc.taxaAlfandega !== null && enc.taxaAlfandega !== undefined && enc.taxaAlfandega !== "";
+    var taxaAlfandega = temAlfandega ? Number(enc.taxaAlfandega) : 0;
+
+    var itens = produtos.map(function(p){
+      var custoDolar = Number(p.custoDolar) || 0;
+      var custoRealBase = custoDolar * taxaCambio;
+      var parcelaAlfandega = (temAlfandega && totalDolar > 0) ? (custoDolar / totalDolar) * taxaAlfandega : 0;
+      return {
+        nome: p.nome, custoDolar: custoDolar, custoRealBase: custoRealBase,
+        parcelaAlfandega: parcelaAlfandega, custoFinal: custoRealBase + parcelaAlfandega
+      };
+    });
+    return { totalDolar: totalDolar, taxaCambio: taxaCambio, temAlfandega: temAlfandega, taxaAlfandega: taxaAlfandega, itens: itens };
+  }
+
+  function renderAdminEncomendas(){
+    var wrap = document.getElementById("adminEncomendasList");
+    if(!wrap) return;
+    if(!adminEncomendas.length){
+      wrap.innerHTML = '<p style="color:var(--gray);font-size:13px">Nenhuma encomenda cadastrada ainda.</p>';
+      return;
+    }
+    wrap.innerHTML = adminEncomendas.map(function(enc){
+      var calc = calcEncomendaCustos(enc);
+      var dataFmt = enc.data ? new Date(enc.data).toLocaleDateString("pt-BR") : "—";
+      var titulo = enc.referencia && enc.referencia.trim() ? enc.referencia : ("Encomenda de " + dataFmt);
+      var itensHtml = calc.itens.map(function(it){
+        return '<tr><td>' + escapeHtml(it.nome || "—") + '</td><td>US$ ' + it.custoDolar.toFixed(2).replace(".", ",") + '</td><td>' + formatBRL(it.custoFinal) + '</td></tr>';
+      }).join("");
+      return '<div class="admin-metric-card" style="text-align:left;align-items:stretch;padding:18px">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px">' +
+          '<div><div style="font-weight:700;font-size:14.5px">' + escapeHtml(titulo) + '</div>' +
+          '<div style="color:var(--gray);font-size:12px;margin-top:2px">' + dataFmt + ' · Cotação efetiva: ' +
+            (calc.taxaCambio ? "R$ " + calc.taxaCambio.toFixed(3).replace(".", ",") : "—") + ' · ' +
+            (calc.temAlfandega ? "Taxa alfandegária: " + formatBRL(calc.taxaAlfandega) : '<span style="color:var(--danger)">Taxa alfandegária ainda não informada</span>') +
+          '</div></div>' +
+          '<div style="display:flex;gap:8px;flex-shrink:0">' +
+            '<button type="button" class="btn btn-outline btn-sm js-edit-encomenda" data-id="' + escapeHtml(enc.id) + '">Editar</button>' +
+            '<button type="button" class="btn btn-outline btn-sm js-delete-encomenda" data-id="' + escapeHtml(enc.id) + '" style="border-color:rgba(255,138,128,.4);color:var(--danger)">Excluir</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Produto</th><th>Custo (US$)</th><th>Custo final (R$)</th></tr></thead><tbody>' + itensHtml + '</tbody></table></div>' +
+      '</div>';
+    }).join("");
+
+    wrap.querySelectorAll(".js-edit-encomenda").forEach(function(btn){
+      btn.addEventListener("click", function(){ openEncomendaModal(btn.getAttribute("data-id")); });
+    });
+    wrap.querySelectorAll(".js-delete-encomenda").forEach(function(btn){
+      btn.addEventListener("click", async function(){
+        if(!confirm("Excluir essa encomenda? Essa ação não pode ser desfeita.")) return;
+        var res = await callBackend("deleteEncomenda", Object.assign({ id: btn.getAttribute("data-id") }, authParams()));
+        if(!res.ok){ alert(res.error || "Não foi possível excluir."); return; }
+        adminEncomendas = adminEncomendas.filter(function(e){ return e.id !== btn.getAttribute("data-id"); });
+        renderAdminEncomendas();
+      });
+    });
   }
 
   function renderAdminCustomersTable(){
@@ -4957,6 +5183,118 @@ p{ margin:0; }
       closeModal("adminSaleModal");
     } else {
       alert("Não foi possível adicionar a venda agora. Tente novamente.");
+    }
+  });
+
+  /* ============================================================
+     CUSTO DE IMPORTAÇÃO — modal de nova/editar encomenda
+     ============================================================ */
+  var adminEncomendaForm = document.getElementById("adminEncomendaForm");
+  var adminEncomendaProductsList = document.getElementById("adminEncomendaProductsList");
+  var editingEncomendaId = null;
+
+  function recalcEncomendaTotalDolar(){
+    var total = 0;
+    adminEncomendaProductsList.querySelectorAll(".js-enc-product-dolar").forEach(function(input){
+      total += Number(input.value) || 0;
+    });
+    document.getElementById("adminEncomendaTotalDolarDisplay").value = "US$ " + total.toFixed(2).replace(".", ",");
+  }
+
+  function addEncomendaProductRow(nome, custoDolar){
+    var row = document.createElement("div");
+    row.className = "js-enc-product-row";
+    row.style.cssText = "display:flex;gap:8px;align-items:center";
+    row.innerHTML =
+      '<input type="text" class="js-enc-product-nome" placeholder="Nome do produto" value="' + escapeHtml(nome || "") + '" style="flex:1;background:var(--black);border:1px solid rgba(247,247,244,.18);color:var(--off);padding:9px 10px;font-family:var(--font-body);font-size:13.5px;border-radius:2px">' +
+      '<input type="number" class="js-enc-product-dolar" placeholder="US$" min="0" step="0.01" value="' + (custoDolar != null ? custoDolar : "") + '" style="width:110px;background:var(--black);border:1px solid rgba(247,247,244,.18);color:var(--off);padding:9px 10px;font-family:var(--font-body);font-size:13.5px;border-radius:2px">' +
+      '<button type="button" class="icon-btn js-enc-remove-row" aria-label="Remover produto" style="flex-shrink:0"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>';
+    adminEncomendaProductsList.appendChild(row);
+    row.querySelector(".js-enc-product-dolar").addEventListener("input", recalcEncomendaTotalDolar);
+    row.querySelector(".js-enc-remove-row").addEventListener("click", function(){
+      row.remove();
+      recalcEncomendaTotalDolar();
+    });
+  }
+
+  document.getElementById("adminEncomendaAddProductBtn").addEventListener("click", function(){
+    addEncomendaProductRow("", "");
+  });
+
+  function openEncomendaModal(id){
+    adminEncomendaForm.reset();
+    adminEncomendaProductsList.innerHTML = "";
+    editingEncomendaId = id || null;
+    var titleEl = document.getElementById("adminEncomendaTitle");
+
+    if(id){
+      var enc = adminEncomendas.find(function(e){ return e.id === id; });
+      if(!enc) return;
+      titleEl.textContent = "Editar encomenda";
+      adminEncomendaForm.referencia.value = enc.referencia || "";
+      adminEncomendaForm.totalRealPago.value = enc.totalRealPago || 0;
+      adminEncomendaForm.taxaAlfandega.value = (enc.taxaAlfandega === null || enc.taxaAlfandega === undefined) ? "" : enc.taxaAlfandega;
+      adminEncomendaForm.observacoes.value = enc.observacoes || "";
+      (enc.produtos || []).forEach(function(p){ addEncomendaProductRow(p.nome, p.custoDolar); });
+      if(!(enc.produtos || []).length) addEncomendaProductRow("", "");
+    } else {
+      titleEl.textContent = "Nova encomenda";
+      addEncomendaProductRow("", "");
+    }
+    recalcEncomendaTotalDolar();
+    openModal("adminEncomendaModal");
+  }
+
+  document.getElementById("adminAddEncomendaBtn").addEventListener("click", function(){ openEncomendaModal(null); });
+
+  adminEncomendaForm.addEventListener("submit", async function(e){
+    e.preventDefault();
+    var f = adminEncomendaForm;
+    var produtos = [];
+    adminEncomendaProductsList.querySelectorAll(".js-enc-product-row").forEach(function(row){
+      var nome = row.querySelector(".js-enc-product-nome").value.trim();
+      var custoDolar = Number(row.querySelector(".js-enc-product-dolar").value) || 0;
+      if(nome) produtos.push({ nome: nome, custoDolar: custoDolar });
+    });
+    if(!produtos.length){ alert("Adicione pelo menos um produto com nome."); return; }
+    var totalDolar = produtos.reduce(function(sum, p){ return sum + p.custoDolar; }, 0);
+    var taxaAlfandegaVal = f.taxaAlfandega.value.trim();
+
+    var record = {
+      referencia: f.referencia.value.trim(),
+      produtos: produtos,
+      totalDolar: totalDolar,
+      totalRealPago: Number(f.totalRealPago.value) || 0,
+      taxaAlfandega: taxaAlfandegaVal === "" ? null : Number(taxaAlfandegaVal),
+      observacoes: f.observacoes.value.trim()
+    };
+
+    var submitBtn = f.querySelector("button[type=submit]");
+    submitBtn.disabled = true; submitBtn.textContent = "Salvando...";
+
+    if(editingEncomendaId){
+      var res = await callBackend("updateEncomenda", Object.assign({ id: editingEncomendaId }, record, authParams()));
+      submitBtn.disabled = false; submitBtn.textContent = "Salvar encomenda";
+      if(res.ok){
+        var idx = adminEncomendas.findIndex(function(e){ return e.id === editingEncomendaId; });
+        if(idx !== -1) adminEncomendas[idx] = Object.assign({ id: editingEncomendaId, data: adminEncomendas[idx].data }, record);
+        renderAdminEncomendas();
+        closeModal("adminEncomendaModal");
+      } else {
+        alert(res.error || "Não foi possível salvar as alterações.");
+      }
+    } else {
+      record.id = "enc-" + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+      record.data = new Date().toISOString();
+      var res2 = await callBackend("addEncomenda", Object.assign({}, record, authParams()));
+      submitBtn.disabled = false; submitBtn.textContent = "Salvar encomenda";
+      if(res2.ok){
+        adminEncomendas.unshift(record);
+        renderAdminEncomendas();
+        closeModal("adminEncomendaModal");
+      } else {
+        alert(res2.error || "Não foi possível salvar a encomenda agora. Tente novamente.");
+      }
     }
   });
 
