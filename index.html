@@ -249,6 +249,12 @@ p{ margin:0; }
   display:flex; align-items:center; justify-content:center; line-height:1;
 }
 .cart-badge[hidden]{ display:none; }
+.admin-tab-badge{
+  margin-left:auto; min-width:18px; height:18px; padding:0 5px;
+  background:var(--danger); color:#2b0a06; font-size:11px; font-weight:800;
+  border-radius:999px; display:flex; align-items:center; justify-content:center; line-height:1;
+}
+.admin-tab-badge[hidden]{ display:none; }
 
 .header-wa-btn{
   display:inline-flex; align-items:center; gap:8px; margin-left:10px;
@@ -1374,6 +1380,7 @@ p{ margin:0; }
         <button class="admin-tab" data-admin-tab="importcost" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"></rect><path d="M2 11h20M6 15h4"></path><path d="M7 7V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"></path></svg><span>Custo de importação</span></button>
         <button class="admin-tab" data-admin-tab="customers" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.2"></circle><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 8.5c1.4.4 2.5 1.7 2.5 3.3M21 20c0-2.8-2-5.1-4.6-5.8"></path></svg><span>Clientes</span></button>
         <button class="admin-tab" data-admin-tab="products" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3 6 7v13a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7l-3-4M6 7h12M9.5 11a2.5 2.5 0 0 0 5 0"></path></svg><span>Produtos</span></button>
+        <button class="admin-tab" data-admin-tab="drivephotos" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l8 5v8l-8 5-8-5V8l8-5Z"></path><circle cx="12" cy="12" r="3"></circle></svg><span>Fotos do Drive</span><span id="drivePhotosBadge" class="admin-tab-badge" hidden>0</span></button>
         <button class="admin-tab" data-admin-tab="teams" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.3"></circle><path d="M4 20c.4-3.6 3.6-6.4 8-6.4s7.6 2.8 8 6.4"></path></svg><span>Times e Ligas</span></button>
         <button class="admin-tab" data-admin-tab="faq" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="M9.5 9.3a2.5 2.5 0 0 1 4.8.8c0 1.7-2.3 1.9-2.3 3.6"></path><circle cx="12" cy="16.8" r=".4" fill="currentColor" stroke="none"></circle></svg><span>FAQ</span></button>
         <button class="admin-tab" data-admin-tab="discounts" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 19 19 5"></path><circle cx="7.5" cy="7.5" r="2.3"></circle><circle cx="16.5" cy="16.5" r="2.3"></circle></svg><span>Descontos</span></button>
@@ -1444,6 +1451,19 @@ p{ margin:0; }
           <tbody id="adminCustomersBody"></tbody>
         </table>
       </div>
+    </div>
+
+    <div class="admin-panel-view" data-admin-view="drivephotos">
+      <h2 class="admin-view-title">Fotos do Drive</h2>
+      <p style="color:var(--gray);font-size:13px;margin-bottom:18px">
+        Fotos novas encontradas na pasta compartilhada do Google Drive.
+        Escolha quais virar produto — nada é publicado sozinho.
+      </p>
+      <div class="admin-toolbar">
+        <button type="button" class="btn btn-outline btn-sm" id="adminDriveRefreshBtn">Buscar fotos novas</button>
+      </div>
+      <div id="adminDriveStatus" style="color:var(--gray);font-size:13px;margin:14px 0"></div>
+      <div id="adminDriveList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;margin-top:10px"></div>
     </div>
 
     <div class="admin-panel-view" data-admin-view="products">
@@ -1679,6 +1699,7 @@ p{ margin:0; }
     <form id="adminProductForm" class="form-grid">
       <input type="hidden" name="id">
       <input type="hidden" name="imageUrl">
+      <input type="hidden" name="driveFileId">
       <label class="form-field">Foto do produto
         <input type="file" name="imageFile" accept="image/*">
         <span id="adminProductUploadStatus" style="font-size:11.5px;color:var(--gray)"></span>
@@ -1744,6 +1765,10 @@ p{ margin:0; }
   // enviado junto (supabase-schema.sql + instruções).
   var SUPABASE_URL = "https://exacftfsuvxarzidkkaj.supabase.co";
   var SUPABASE_ANON_KEY = "sb_publishable_Oosjk_GrQ5Yd6K9_TcxZjw_lPNs817E";
+  // Integração com o Google Drive — pasta compartilhada onde chegam fotos
+  // de novos produtos, usada na aba "Fotos do Drive" do painel.
+  var DRIVE_API_KEY = "AIzaSyB8UWbaYurfStdDQAF9y97nl3ULxifHFIc";
+  var DRIVE_FOLDER_ID = "1R1uPR5tBmSrjUi2sOfS19rZ2G5thy435";
 
   var STATUS_STAGES = ["Pedido recebido", "Em preparação", "Enviado", "Entregue"];
   var ORDER_STATUS_STAGES = ["Pendente", "Concluído", "Cancelado"];
@@ -4440,6 +4465,7 @@ p{ margin:0; }
       document.querySelectorAll(".admin-panel-view").forEach(function(v){
         v.classList.toggle("is-active", v.dataset.adminView === target);
       });
+      if(target === "drivephotos") loadDrivePhotos();
     });
   });
 
@@ -4837,6 +4863,69 @@ p{ margin:0; }
         renderAdminEncomendas();
       });
     });
+  }
+
+  /* ============================================================
+     FOTOS DO GOOGLE DRIVE
+     ============================================================ */
+  async function loadDrivePhotos(){
+    var statusEl = document.getElementById("adminDriveStatus");
+    var listEl = document.getElementById("adminDriveList");
+    statusEl.textContent = "Buscando fotos novas...";
+    listEl.innerHTML = "";
+    try{
+      var q = encodeURIComponent("'" + DRIVE_FOLDER_ID + "' in parents and trashed=false");
+      var url = "https://www.googleapis.com/drive/v3/files?q=" + q + "&key=" + DRIVE_API_KEY + "&fields=files(id,name,thumbnailLink,mimeType)&pageSize=200";
+      var res = await fetch(url);
+      if(!res.ok) throw new Error("Falha ao consultar o Drive (código " + res.status + ")");
+      var data = await res.json();
+      var files = (data.files || []).filter(function(f){ return f.mimeType && f.mimeType.indexOf("image/") === 0; });
+
+      var importedIds = {};
+      PRODUCTS.forEach(function(p){ if(p.driveFileId) importedIds[p.driveFileId] = true; });
+      var pending = files.filter(function(f){ return !importedIds[f.id]; });
+
+      var badge = document.getElementById("drivePhotosBadge");
+      if(pending.length){ badge.textContent = String(pending.length); badge.hidden = false; } else { badge.hidden = true; }
+
+      if(!pending.length){
+        statusEl.textContent = files.length ? "Nenhuma foto nova — todas já foram importadas." : "Nenhuma foto encontrada na pasta.";
+        return;
+      }
+      statusEl.textContent = pending.length + " foto(s) nova(s) encontrada(s).";
+      listEl.innerHTML = pending.map(function(f){
+        return '<div class="admin-metric-card" style="padding:10px;text-align:left;align-items:stretch">' +
+          '<img src="' + escapeHtml(f.thumbnailLink || "") + '" alt="" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:2px;background:var(--graphite)" onerror="this.style.display=\'none\'">' +
+          '<div style="font-size:12px;margin:8px 0;word-break:break-word">' + escapeHtml(f.name) + '</div>' +
+          '<button type="button" class="btn btn-primary btn-sm js-drive-import" data-id="' + escapeHtml(f.id) + '" data-name="' + escapeHtml(f.name) + '" style="width:100%">Importar</button>' +
+        '</div>';
+      }).join("");
+      listEl.querySelectorAll(".js-drive-import").forEach(function(btn){
+        btn.addEventListener("click", function(){ importDrivePhoto(btn.getAttribute("data-id"), btn.getAttribute("data-name")); });
+      });
+    } catch(err){
+      statusEl.textContent = "Não foi possível buscar as fotos agora (" + err.message + ").";
+    }
+  }
+  document.getElementById("adminDriveRefreshBtn").addEventListener("click", loadDrivePhotos);
+
+  async function importDrivePhoto(fileId, fileName){
+    var btn = document.querySelector('.js-drive-import[data-id="' + fileId + '"]');
+    if(btn){ btn.disabled = true; btn.textContent = "Importando..."; }
+    try{
+      var url = "https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media&key=" + DRIVE_API_KEY;
+      var res = await fetch(url);
+      if(!res.ok) throw new Error("falha ao baixar (código " + res.status + ")");
+      var blob = await res.blob();
+      var file = new File([blob], fileName, { type: blob.type || "image/jpeg" });
+      var uploadRes = await uploadProductPhoto(file);
+      if(!uploadRes.ok) throw new Error(uploadRes.error || "falha ao processar a foto");
+      var cleanName = fileName.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim();
+      openProductForm({ name: cleanName, imageUrl: uploadRes.url, driveFileId: fileId });
+    } catch(err){
+      alert("Não foi possível importar essa foto: " + err.message);
+      if(btn){ btn.disabled = false; btn.textContent = "Importar"; }
+    }
   }
 
   function renderAdminCustomersTable(){
@@ -5508,9 +5597,9 @@ p{ margin:0; }
   function openProductForm(product){
     var form = adminProductForm;
     form.reset();
-    document.getElementById("adminProductTitle").textContent = product ? "Editar produto" : "Adicionar produto";
+    document.getElementById("adminProductTitle").textContent = (product && product.id) ? "Editar produto" : "Adicionar produto";
     adminProductUploadStatus.textContent = "";
-    if(product){
+    if(product && product.id){
       form.id.value = product.id;
       form.imageUrl.value = product.imageUrl || "";
       form.name.value = product.name;
@@ -5526,6 +5615,7 @@ p{ margin:0; }
       form.prontaEntrega.checked = !!product.prontaEntrega;
       form.isFeatured.checked = !!product.isFeatured;
       form.ativo.checked = product.ativo !== false;
+      form.driveFileId.value = product.driveFileId || "";
       document.getElementById("adminProntaSizesWrap").hidden = !product.prontaEntrega;
       if(product.prontaEntrega) renderProntaSizesCheckboxes(product.prontaEntregaSizes || product.sizes || []);
       form.prontaEntregaPrice.value = product.prontaEntregaPrice || "";
@@ -5533,13 +5623,16 @@ p{ margin:0; }
       else{ adminProductPreview.style.display = "none"; }
     } else {
       form.id.value = "";
-      form.imageUrl.value = "";
+      form.imageUrl.value = (product && product.imageUrl) || "";
+      form.name.value = (product && product.name) || "";
+      form.driveFileId.value = (product && product.driveFileId) || "";
       form.ativo.checked = true;
       populateLigaSelect(form.category.value, "");
       populateTimeSelect(form.category.value, "", "");
       document.getElementById("adminProntaSizesWrap").hidden = true;
       form.prontaEntregaPrice.value = "";
-      adminProductPreview.style.display = "none";
+      if(product && product.imageUrl){ adminProductPreview.src = product.imageUrl; adminProductPreview.style.display = "block"; }
+      else{ adminProductPreview.style.display = "none"; }
     }
     openModal("adminProductModal");
   }
@@ -5586,6 +5679,7 @@ p{ margin:0; }
     };
     if(f.imageUrl.value.trim()) data.imageUrl = f.imageUrl.value.trim();
     if(f.originalPrice.value.trim()) data.originalPrice = f.originalPrice.value.trim();
+    if(f.driveFileId.value.trim()) data.driveFileId = f.driveFileId.value.trim();
     if(!data.name) return;
 
     var existingIndex = PRODUCTS.findIndex(function(p){ return p.id === data.id; });
@@ -5598,6 +5692,7 @@ p{ margin:0; }
     closeModal("adminProductModal");
     var ok = await saveSiteConfig();
     if(!ok){ alert("Produto salvo na página, mas não sincronizou com o backend agora. Tente novamente."); }
+    if(data.driveFileId) loadDrivePhotos();
   });
 
   /* ---------- Times e Ligas ---------- */
