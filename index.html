@@ -4963,14 +4963,13 @@ p{ margin:0; }
       function cardHtml(f, isRejected){
         var folderInfo = f.folderPath ? '<div style="font-size:11px;color:var(--gray);margin-bottom:4px">📁 ' + escapeHtml(f.folderPath) + '</div>' : "";
         var dupInfo = f.duplicateCount ? '<div style="font-size:11px;color:var(--gray);margin-bottom:4px">🗐 igual a mais ' + f.duplicateCount + ' arquivo(s) em outra(s) pasta(s)</div>' : "";
-        var deleteBtn = '<button type="button" class="btn btn-outline btn-sm js-drive-delete" data-id="' + escapeHtml(f.id) + '" title="Excluir definitivamente — não aparece mais em nenhuma lista" style="flex-shrink:0;border-color:rgba(255,138,128,.4);color:var(--danger)">✕</button>';
+        var deleteLink = '<button type="button" class="js-drive-delete" data-id="' + escapeHtml(f.id) + '" style="width:100%;margin-top:6px;background:none;border:none;padding:2px;font-size:11px;color:var(--danger);text-decoration:underline;cursor:pointer">Excluir definitivamente</button>';
         var actionBtn = isRejected
-          ? '<div style="display:flex;gap:6px"><button type="button" class="btn btn-outline btn-sm js-drive-unreject" data-id="' + escapeHtml(f.id) + '" style="flex:1">Reconsiderar</button>' + deleteBtn + '</div>'
+          ? '<button type="button" class="btn btn-outline btn-sm js-drive-unreject" data-id="' + escapeHtml(f.id) + '" style="width:100%">Reconsiderar</button>' + deleteLink
           : '<div style="display:flex;gap:6px">' +
-              '<button type="button" class="btn btn-primary btn-sm js-drive-import" data-id="' + escapeHtml(f.id) + '" data-name="' + escapeHtml(f.name) + '" style="flex:1">Importar</button>' +
+              '<button type="button" class="btn btn-primary btn-sm js-drive-import" data-id="' + escapeHtml(f.id) + '" data-name="' + escapeHtml(f.name) + '" style="flex:1;min-width:0">Importar</button>' +
               '<button type="button" class="btn btn-outline btn-sm js-drive-reject" data-id="' + escapeHtml(f.id) + '" title="Pular por enquanto" style="flex-shrink:0">Pular</button>' +
-              deleteBtn +
-            '</div>';
+            '</div>' + deleteLink;
         return '<div class="admin-metric-card js-drive-card" id="drive-card-' + escapeHtml(f.id) + '" data-name="' + escapeHtml(f.name) + '" data-thumb="' + escapeHtml(f.thumbnailLink || "") + '" data-folder="' + escapeHtml(f.folderPath || "") + '" style="padding:10px;text-align:left;align-items:stretch">' +
           '<img src="' + escapeHtml(f.thumbnailLink || "") + '" alt="" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:2px;background:var(--graphite)" onerror="this.style.display=\'none\'">' +
           folderInfo + dupInfo +
