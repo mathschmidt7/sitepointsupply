@@ -3424,30 +3424,35 @@ p{ margin:0; }
 
     var safeBaseName = file.name.replace(/\.[^.]+$/, "") || "foto";
     var sharedBasePath = Date.now() + "-" + Math.random().toString(36).slice(2,8);
-    var mainUrl = null;
+    var variants = SRCSET_WIDTHS.concat([MAX_UPLOAD_SIDE]).map(function(targetW, i){
+      return { targetW: targetW, isFull: i === SRCSET_WIDTHS.length };
+    });
 
-    for(var i = 0; i < SRCSET_WIDTHS.length + 1; i++){
-      var isFull = i === SRCSET_WIDTHS.length;
-      var targetW = isFull ? MAX_UPLOAD_SIDE : SRCSET_WIDTHS[i];
+    // Processa (redimensiona + sobe) as 4 versões ao mesmo tempo, em vez de
+    // uma por vez — acelera bastante o processo de importar uma foto.
+    var results = await Promise.all(variants.map(async function(v){
       // Qualidade mais alta nas versões maiores (usadas no desktop), onde
       // detalhe fino (tipo escudos com estampa clara) fica mais visível.
-      var quality = targetW >= 800 ? 0.92 : (targetW >= 640 ? 0.86 : 0.82);
-      var blob = await resizeImageToWidth(img, targetW, quality);
-      if(!blob) return { ok:false, error:"Não foi possível processar essa imagem (tamanho " + targetW + "px)." };
-      var variantFile = new File([blob], isFull ? (safeBaseName + ".jpg") : (safeBaseName + "-" + targetW + "w.jpg"), { type:"image/jpeg" });
+      var quality = v.targetW >= 800 ? 0.92 : (v.targetW >= 640 ? 0.86 : 0.82);
+      var blob = await resizeImageToWidth(img, v.targetW, quality);
+      if(!blob) return { ok:false, error:"Não foi possível processar essa imagem (tamanho " + v.targetW + "px).", isFull: v.isFull, targetW: v.targetW };
+      var variantFile = new File([blob], v.isFull ? (safeBaseName + ".jpg") : (safeBaseName + "-" + v.targetW + "w.jpg"), { type:"image/jpeg" });
       var base64 = await readFileAsBase64(variantFile);
       var res = await callBackend("uploadImage", Object.assign({ data: base64, filename: variantFile.name, mimeType: "image/jpeg", basePath: sharedBasePath }, authParams()));
-      // Verifica TODAS as versões (não só a principal) — se qualquer uma
-      // falhar, o conjunto inteiro fica incompleto e o navegador do
-      // cliente pode tentar buscar uma versão que não existe (foto
-      // quebrada). Por isso, qualquer falha aqui cancela o envio inteiro.
-      if(!res.ok){ return { ok:false, error: (res.error || "Não foi possível enviar a imagem") + " (versão " + (isFull ? "completa" : targetW + "px") + ")." }; }
-      if(isFull){
-        mainUrl = res.url;
-      }
+      return Object.assign({}, res, { isFull: v.isFull, targetW: v.targetW });
+    }));
+
+    // Verifica TODAS as versões (não só a principal) — se qualquer uma
+    // falhar, o conjunto inteiro fica incompleto e o navegador do
+    // cliente pode tentar buscar uma versão que não existe (foto
+    // quebrada). Por isso, qualquer falha aqui cancela o envio inteiro.
+    var failed = results.find(function(r){ return !r.ok; });
+    if(failed){
+      return { ok:false, error: (failed.error || "Não foi possível enviar a imagem") + " (versão " + (failed.isFull ? "completa" : failed.targetW + "px") + ")." };
     }
-    if(!mainUrl) return { ok:false, error:"Não foi possível enviar a imagem." };
-    return { ok:true, url: mainUrl };
+    var fullResult = results.find(function(r){ return r.isFull; });
+    if(!fullResult || !fullResult.url) return { ok:false, error:"Não foi possível enviar a imagem." };
+    return { ok:true, url: fullResult.url };
   }
 
   /* ============================================================
@@ -4906,11 +4911,14 @@ p{ margin:0; }
     var images = items.filter(function(f){ return f.mimeType && f.mimeType.indexOf("image/") === 0; })
       .map(function(f){ return Object.assign({}, f, { folderPath: path }); });
     var subfolders = items.filter(function(f){ return f.mimeType === "application/vnd.google-apps.folder"; });
-    for(var i = 0; i < subfolders.length; i++){
-      var childPath = path ? (path + " / " + subfolders[i].name) : subfolders[i].name;
-      var subImages = await listDriveImagesRecursive(subfolders[i].id, childPath, depth + 1);
-      images = images.concat(subImages);
-    }
+    // Busca todas as subpastas ao mesmo tempo (em paralelo), em vez de uma
+    // de cada vez — com várias pastas (uma por time, por exemplo), isso
+    // reduz bastante o tempo total de espera.
+    var subResults = await Promise.all(subfolders.map(function(sub){
+      var childPath = path ? (path + " / " + sub.name) : sub.name;
+      return listDriveImagesRecursive(sub.id, childPath, depth + 1);
+    }));
+    subResults.forEach(function(subImages){ images = images.concat(subImages); });
     return images;
   }
 
@@ -5014,29 +5022,29 @@ p{ margin:0; }
     });
     scope.querySelectorAll(".js-drive-reject").forEach(function(btn){
       btn.addEventListener("click", async function(){
-        btn.disabled = true;
+        btn.disabled = true; var originalText = btn.textContent; btn.textContent = "Pulando...";
         var fileId = btn.getAttribute("data-id");
         var res = await callBackend("addRejectedDrive", Object.assign({ fileId: fileId }, authParams()));
-        if(!res.ok){ alert(res.error || "Não foi possível pular essa foto agora."); btn.disabled = false; return; }
+        if(!res.ok){ alert(res.error || "Não foi possível pular essa foto agora."); btn.disabled = false; btn.textContent = originalText; return; }
         moveDriveCard(fileId, true);
       });
     });
     scope.querySelectorAll(".js-drive-unreject").forEach(function(btn){
       btn.addEventListener("click", async function(){
-        btn.disabled = true;
+        btn.disabled = true; var originalText = btn.textContent; btn.textContent = "Reconsiderando...";
         var fileId = btn.getAttribute("data-id");
         var res = await callBackend("removeRejectedDrive", Object.assign({ fileId: fileId }, authParams()));
-        if(!res.ok){ alert(res.error || "Não foi possível reconsiderar essa foto agora."); btn.disabled = false; return; }
+        if(!res.ok){ alert(res.error || "Não foi possível reconsiderar essa foto agora."); btn.disabled = false; btn.textContent = originalText; return; }
         moveDriveCard(fileId, false);
       });
     });
     scope.querySelectorAll(".js-drive-delete").forEach(function(btn){
       btn.addEventListener("click", async function(){
         if(!confirm("Excluir essa foto de vez? Ela não vai mais aparecer em nenhuma lista (nem pendentes, nem puladas).")) return;
-        btn.disabled = true;
+        btn.disabled = true; var originalText = btn.textContent; btn.textContent = "Excluindo...";
         var fileId = btn.getAttribute("data-id");
         var res = await callBackend("addRejectedDrive", Object.assign({ fileId: fileId, permanent: true }, authParams()));
-        if(!res.ok){ alert(res.error || "Não foi possível excluir essa foto agora."); btn.disabled = false; return; }
+        if(!res.ok){ alert(res.error || "Não foi possível excluir essa foto agora."); btn.disabled = false; btn.textContent = originalText; return; }
         var card = document.getElementById("drive-card-" + fileId);
         if(card) card.remove();
         var pendingGrid = document.getElementById("adminDrivePendingGrid");
