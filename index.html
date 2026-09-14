@@ -1769,6 +1769,8 @@ p{ margin:0; }
   // de novos produtos, usada na aba "Fotos do Drive" do painel.
   var DRIVE_API_KEY = "AIzaSyB8UWbaYurfStdDQAF9y97nl3ULxifHFIc";
   var DRIVE_FOLDER_ID = "1R1uPR5tBmSrjUi2sOfS19rZ2G5thy435";
+  var REJECTED_DRIVE_IDS = []; // fotos que o lojista decidiu não usar por enquanto
+  var DEFAULT_PRICES_BY_TYPE = {}; // preço padrão por tipo, usado em produtos novos
 
   var STATUS_STAGES = ["Pedido recebido", "Em preparação", "Enviado", "Entregue"];
   var ORDER_STATUS_STAGES = ["Pendente", "Concluído", "Cancelado"];
@@ -4868,8 +4870,9 @@ p{ margin:0; }
   /* ============================================================
      FOTOS DO GOOGLE DRIVE
      ============================================================ */
-  async function listDriveImagesRecursive(folderId, depth){
+  async function listDriveImagesRecursive(folderId, path, depth){
     depth = depth || 0;
+    path = path || "";
     if(depth > 6) return []; // limite de segurança contra recursão excessiva
     var q = encodeURIComponent("'" + folderId + "' in parents and trashed=false");
     var url = "https://www.googleapis.com/drive/v3/files?q=" + q + "&key=" + DRIVE_API_KEY + "&fields=files(id,name,thumbnailLink,mimeType)&pageSize=1000";
@@ -4877,10 +4880,12 @@ p{ margin:0; }
     if(!res.ok) throw new Error("Falha ao consultar o Drive (código " + res.status + ")");
     var data = await res.json();
     var items = data.files || [];
-    var images = items.filter(function(f){ return f.mimeType && f.mimeType.indexOf("image/") === 0; });
+    var images = items.filter(function(f){ return f.mimeType && f.mimeType.indexOf("image/") === 0; })
+      .map(function(f){ return Object.assign({}, f, { folderPath: path }); });
     var subfolders = items.filter(function(f){ return f.mimeType === "application/vnd.google-apps.folder"; });
     for(var i = 0; i < subfolders.length; i++){
-      var subImages = await listDriveImagesRecursive(subfolders[i].id, depth + 1);
+      var childPath = path ? (path + " / " + subfolders[i].name) : subfolders[i].name;
+      var subImages = await listDriveImagesRecursive(subfolders[i].id, childPath, depth + 1);
       images = images.concat(subImages);
     }
     return images;
@@ -4896,26 +4901,65 @@ p{ margin:0; }
 
       var importedIds = {};
       PRODUCTS.forEach(function(p){ if(p.driveFileId) importedIds[p.driveFileId] = true; });
-      var pending = files.filter(function(f){ return !importedIds[f.id]; });
+      var rejectedSet = {};
+      REJECTED_DRIVE_IDS.forEach(function(id){ rejectedSet[id] = true; });
+
+      var notImported = files.filter(function(f){ return !importedIds[f.id]; });
+      var pending = notImported.filter(function(f){ return !rejectedSet[f.id]; });
+      var rejected = notImported.filter(function(f){ return rejectedSet[f.id]; });
 
       var badge = document.getElementById("drivePhotosBadge");
       if(pending.length){ badge.textContent = String(pending.length); badge.hidden = false; } else { badge.hidden = true; }
 
-      if(!pending.length){
+      function cardHtml(f, isRejected){
+        var folderInfo = f.folderPath ? '<div style="font-size:11px;color:var(--gray);margin-bottom:4px">📁 ' + escapeHtml(f.folderPath) + '</div>' : "";
+        var actionBtn = isRejected
+          ? '<button type="button" class="btn btn-outline btn-sm js-drive-unreject" data-id="' + escapeHtml(f.id) + '" style="width:100%">Reconsiderar</button>'
+          : '<div style="display:flex;gap:6px">' +
+              '<button type="button" class="btn btn-primary btn-sm js-drive-import" data-id="' + escapeHtml(f.id) + '" data-name="' + escapeHtml(f.name) + '" style="flex:1">Importar</button>' +
+              '<button type="button" class="btn btn-outline btn-sm js-drive-reject" data-id="' + escapeHtml(f.id) + '" title="Pular por enquanto" style="flex-shrink:0">Pular</button>' +
+            '</div>';
+        return '<div class="admin-metric-card" style="padding:10px;text-align:left;align-items:stretch">' +
+          '<img src="' + escapeHtml(f.thumbnailLink || "") + '" alt="" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:2px;background:var(--graphite)" onerror="this.style.display=\'none\'">' +
+          folderInfo +
+          '<div style="font-size:12px;margin:4px 0 8px;word-break:break-word">' + escapeHtml(f.name) + '</div>' +
+          actionBtn +
+        '</div>';
+      }
+
+      if(!pending.length && !rejected.length){
         statusEl.textContent = files.length ? "Nenhuma foto nova — todas já foram importadas." : "Nenhuma foto encontrada na pasta.";
         return;
       }
       statusEl.textContent = pending.length + " foto(s) nova(s) encontrada(s).";
-      listEl.innerHTML = pending.map(function(f){
-        return '<div class="admin-metric-card" style="padding:10px;text-align:left;align-items:stretch">' +
-          '<img src="' + escapeHtml(f.thumbnailLink || "") + '" alt="" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:2px;background:var(--graphite)" onerror="this.style.display=\'none\'">' +
-          '<div style="font-size:12px;margin:8px 0;word-break:break-word">' + escapeHtml(f.name) + '</div>' +
-          '<button type="button" class="btn btn-primary btn-sm js-drive-import" data-id="' + escapeHtml(f.id) + '" data-name="' + escapeHtml(f.name) + '" style="width:100%">Importar</button>' +
-        '</div>';
-      }).join("");
+      listEl.innerHTML = pending.map(function(f){ return cardHtml(f, false); }).join("");
       listEl.querySelectorAll(".js-drive-import").forEach(function(btn){
         btn.addEventListener("click", function(){ importDrivePhoto(btn.getAttribute("data-id"), btn.getAttribute("data-name")); });
       });
+      listEl.querySelectorAll(".js-drive-reject").forEach(function(btn){
+        btn.addEventListener("click", async function(){
+          REJECTED_DRIVE_IDS.push(btn.getAttribute("data-id"));
+          await saveSiteConfig();
+          loadDrivePhotos();
+        });
+      });
+
+      if(rejected.length){
+        var rejectedWrap = document.createElement("div");
+        rejectedWrap.style.cssText = "grid-column:1/-1;margin-top:24px";
+        rejectedWrap.innerHTML = '<h3 style="font-size:14px;margin-bottom:12px;color:var(--gray)">Puladas (' + rejected.length + ')</h3>' +
+          '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px">' +
+            rejected.map(function(f){ return cardHtml(f, true); }).join("") +
+          '</div>';
+        listEl.appendChild(rejectedWrap);
+        rejectedWrap.querySelectorAll(".js-drive-unreject").forEach(function(btn){
+          btn.addEventListener("click", async function(){
+            REJECTED_DRIVE_IDS = REJECTED_DRIVE_IDS.filter(function(id){ return id !== btn.getAttribute("data-id"); });
+            await saveSiteConfig();
+            loadDrivePhotos();
+          });
+        });
+      }
     } catch(err){
       statusEl.textContent = "Não foi possível buscar as fotos agora (" + err.message + ").";
     }
@@ -5382,6 +5426,8 @@ p{ margin:0; }
   async function saveSiteConfig(){
     var payload = {
       products: PRODUCTS,
+      rejectedDriveIds: REJECTED_DRIVE_IDS,
+      defaultPricesByType: DEFAULT_PRICES_BY_TYPE,
       teamGroups: TEAM_GROUPS,
       faq: FAQ_ITEMS,
       discounts: PROGRESSIVE_DISCOUNTS,
@@ -5461,15 +5507,26 @@ p{ margin:0; }
     adminProductForm.tipo.innerHTML = TIPOS.map(function(t){ return '<option value="' + t + '">' + t + '</option>'; }).join("");
   })();
 
+  // Ao escolher o tipo, preenche o preço sozinho com o padrão definido em
+  // "Preço em massa por tipo" — só quando o campo ainda estiver vazio/zerado,
+  // pra nunca sobrescrever um valor que o lojista já tenha digitado.
+  adminProductForm.tipo.addEventListener("change", function(){
+    var def = DEFAULT_PRICES_BY_TYPE[adminProductForm.tipo.value];
+    if(def && (!adminProductForm.price.value || !adminProductForm.price.value.trim())){
+      adminProductForm.price.value = def;
+    }
+  });
+
   var adminSortKey = null;
   var adminSortDir = 1;
 
   function renderBulkPriceRows(){
     var wrap = document.getElementById("bulkPriceRows");
     wrap.innerHTML = TIPOS.map(function(tipo){
+      var savedDefault = DEFAULT_PRICES_BY_TYPE[tipo] || "";
       return '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">' +
         '<span style="width:110px;font-size:13px">' + escapeHtml(tipo) + '</span>' +
-        '<input type="text" class="bulk-price-input" data-tipo="' + escapeHtml(tipo) + '" placeholder="Ex: R$ 199,90" style="flex:1;min-width:140px;background:var(--black);border:1px solid rgba(247,247,244,.15);color:var(--off);padding:8px 10px;font-size:13px">' +
+        '<input type="text" class="bulk-price-input" data-tipo="' + escapeHtml(tipo) + '" placeholder="Ex: R$ 199,90" value="' + escapeHtml(savedDefault) + '" style="flex:1;min-width:140px;background:var(--black);border:1px solid rgba(247,247,244,.15);color:var(--off);padding:8px 10px;font-size:13px">' +
         '<button type="button" class="btn btn-outline btn-sm bulk-price-apply" data-tipo="' + escapeHtml(tipo) + '">Aplicar a todos</button>' +
       '</div>';
     }).join("");
@@ -5480,17 +5537,21 @@ p{ margin:0; }
         var input = wrap.querySelector('.bulk-price-input[data-tipo="' + CSS.escape(tipo) + '"]');
         var value = input.value.trim();
         if(!value) return;
+        DEFAULT_PRICES_BY_TYPE[tipo] = value; // também vira o padrão de produtos novos desse tipo
         var count = 0;
         PRODUCTS.forEach(function(p){
           if(p.tipo === tipo){ p.price = value; count++; }
         });
-        if(!count){ window.alert("Nenhum produto do tipo \"" + tipo + "\" encontrado."); return; }
         renderProducts();
         renderProntaEntrega();
         renderFeatured();
         renderAdminProducts();
         await saveSiteConfig();
-        window.alert("Preço aplicado a " + count + " produto(s) do tipo \"" + tipo + "\".");
+        if(count){
+          window.alert("Preço aplicado a " + count + " produto(s) do tipo \"" + tipo + "\", e salvo como padrão para novos produtos desse tipo.");
+        } else {
+          window.alert("Nenhum produto existente do tipo \"" + tipo + "\" — mas o valor foi salvo como padrão para quando você adicionar produtos novos desse tipo.");
+        }
       });
     });
   }
@@ -5644,6 +5705,8 @@ p{ margin:0; }
       populateTimeSelect(form.category.value, "", "");
       document.getElementById("adminProntaSizesWrap").hidden = true;
       form.prontaEntregaPrice.value = "";
+      var initialDefault = DEFAULT_PRICES_BY_TYPE[form.tipo.value];
+      if(initialDefault) form.price.value = initialDefault;
       if(product && product.imageUrl){ adminProductPreview.src = product.imageUrl; adminProductPreview.style.display = "block"; }
       else{ adminProductPreview.style.display = "none"; }
     }
@@ -6318,6 +6381,8 @@ p{ margin:0; }
     if(!res.ok || !res.config) return;
     var cfg = res.config;
     if(cfg.products){ PRODUCTS = cfg.products; }
+    if(cfg.rejectedDriveIds){ REJECTED_DRIVE_IDS = cfg.rejectedDriveIds; }
+    if(cfg.defaultPricesByType){ DEFAULT_PRICES_BY_TYPE = cfg.defaultPricesByType; }
     if(cfg.teamGroups){ TEAM_GROUPS = cfg.teamGroups; }
     if(cfg.faq){ FAQ_ITEMS = cfg.faq; }
     if(cfg.discounts){ PROGRESSIVE_DISCOUNTS = cfg.discounts; }
