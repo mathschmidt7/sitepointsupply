@@ -3221,13 +3221,13 @@ p{ margin:0; }
       }
 
       if(action === "getRejectedDrive"){
-        var gRej = await sb.from("drive_rejected").select("file_id");
+        var gRej = await sb.from("drive_rejected").select("file_id,permanent");
         if(gRej.error) return { ok:false, error: gRej.error.message };
-        return { ok:true, ids: gRej.data.map(function(r){ return r.file_id; }) };
+        return { ok:true, ids: gRej.data.map(function(r){ return r.file_id; }), permanentIds: gRej.data.filter(function(r){ return r.permanent; }).map(function(r){ return r.file_id; }) };
       }
 
       if(action === "addRejectedDrive"){
-        var aRej = await sb.from("drive_rejected").insert({ file_id: params.fileId });
+        var aRej = await sb.from("drive_rejected").upsert({ file_id: params.fileId, permanent: !!params.permanent });
         if(aRej.error) return { ok:false, error: aRej.error.message };
         return { ok:true };
       }
@@ -4898,7 +4898,7 @@ p{ margin:0; }
     path = path || "";
     if(depth > 6) return []; // limite de segurança contra recursão excessiva
     var q = encodeURIComponent("'" + folderId + "' in parents and trashed=false");
-    var url = "https://www.googleapis.com/drive/v3/files?q=" + q + "&key=" + DRIVE_API_KEY + "&fields=files(id,name,thumbnailLink,mimeType)&pageSize=1000";
+    var url = "https://www.googleapis.com/drive/v3/files?q=" + q + "&key=" + DRIVE_API_KEY + "&fields=files(id,name,thumbnailLink,mimeType,md5Checksum)&pageSize=1000";
     var res = await fetch(url);
     if(!res.ok) throw new Error("Falha ao consultar o Drive (código " + res.status + ")");
     var data = await res.json();
@@ -4914,6 +4914,7 @@ p{ margin:0; }
     return images;
   }
 
+  var PERMANENT_DRIVE_IDS = [];
   async function loadDrivePhotos(){
     var statusEl = document.getElementById("adminDriveStatus");
     var listEl = document.getElementById("adminDriveList");
@@ -4922,7 +4923,7 @@ p{ margin:0; }
     try{
       var filesPromise = listDriveImagesRecursive(DRIVE_FOLDER_ID);
       var rejRes = await callBackend("getRejectedDrive", authParams());
-      if(rejRes.ok) REJECTED_DRIVE_IDS = rejRes.ids || [];
+      if(rejRes.ok){ REJECTED_DRIVE_IDS = rejRes.ids || []; PERMANENT_DRIVE_IDS = rejRes.permanentIds || []; }
       var files = await filesPromise;
 
       var importedIds = {};
@@ -4930,24 +4931,49 @@ p{ margin:0; }
       var rejectedSet = {};
       REJECTED_DRIVE_IDS.forEach(function(id){ rejectedSet[id] = true; });
 
-      var notImported = files.filter(function(f){ return !importedIds[f.id]; });
+      // Agrupa por conteúdo da imagem (md5) — a mesma foto enviada em mais
+      // de uma pasta aparece só uma vez aqui, mesmo com nomes diferentes.
+      // Se qualquer uma das cópias já foi importada ou pulada, o grupo
+      // inteiro conta como resolvido.
+      var groups = {};
+      var noHash = [];
+      files.forEach(function(f){
+        if(!f.md5Checksum){ noHash.push(f); return; }
+        if(!groups[f.md5Checksum]) groups[f.md5Checksum] = [];
+        groups[f.md5Checksum].push(f);
+      });
+      var deduped = noHash.slice();
+      Object.keys(groups).forEach(function(hash){
+        var group = groups[hash];
+        var handled = group.find(function(f){ return importedIds[f.id] || rejectedSet[f.id]; });
+        var rep = handled || group[0];
+        if(group.length > 1) rep = Object.assign({}, rep, { duplicateCount: group.length - 1 });
+        deduped.push(rep);
+      });
+
+      var notImported = deduped.filter(function(f){ return !importedIds[f.id]; });
       var pending = notImported.filter(function(f){ return !rejectedSet[f.id]; });
-      var rejected = notImported.filter(function(f){ return rejectedSet[f.id]; });
+      var permanentSet = {};
+      PERMANENT_DRIVE_IDS.forEach(function(id){ permanentSet[id] = true; });
+      var rejected = notImported.filter(function(f){ return rejectedSet[f.id] && !permanentSet[f.id]; });
 
       var badge = document.getElementById("drivePhotosBadge");
       if(pending.length){ badge.textContent = String(pending.length); badge.hidden = false; } else { badge.hidden = true; }
 
       function cardHtml(f, isRejected){
         var folderInfo = f.folderPath ? '<div style="font-size:11px;color:var(--gray);margin-bottom:4px">📁 ' + escapeHtml(f.folderPath) + '</div>' : "";
+        var dupInfo = f.duplicateCount ? '<div style="font-size:11px;color:var(--gray);margin-bottom:4px">🗐 igual a mais ' + f.duplicateCount + ' arquivo(s) em outra(s) pasta(s)</div>' : "";
+        var deleteBtn = '<button type="button" class="btn btn-outline btn-sm js-drive-delete" data-id="' + escapeHtml(f.id) + '" title="Excluir definitivamente — não aparece mais em nenhuma lista" style="flex-shrink:0;border-color:rgba(255,138,128,.4);color:var(--danger)">✕</button>';
         var actionBtn = isRejected
-          ? '<button type="button" class="btn btn-outline btn-sm js-drive-unreject" data-id="' + escapeHtml(f.id) + '" style="width:100%">Reconsiderar</button>'
+          ? '<div style="display:flex;gap:6px"><button type="button" class="btn btn-outline btn-sm js-drive-unreject" data-id="' + escapeHtml(f.id) + '" style="flex:1">Reconsiderar</button>' + deleteBtn + '</div>'
           : '<div style="display:flex;gap:6px">' +
               '<button type="button" class="btn btn-primary btn-sm js-drive-import" data-id="' + escapeHtml(f.id) + '" data-name="' + escapeHtml(f.name) + '" style="flex:1">Importar</button>' +
               '<button type="button" class="btn btn-outline btn-sm js-drive-reject" data-id="' + escapeHtml(f.id) + '" title="Pular por enquanto" style="flex-shrink:0">Pular</button>' +
+              deleteBtn +
             '</div>';
         return '<div class="admin-metric-card js-drive-card" id="drive-card-' + escapeHtml(f.id) + '" data-name="' + escapeHtml(f.name) + '" data-thumb="' + escapeHtml(f.thumbnailLink || "") + '" data-folder="' + escapeHtml(f.folderPath || "") + '" style="padding:10px;text-align:left;align-items:stretch">' +
           '<img src="' + escapeHtml(f.thumbnailLink || "") + '" alt="" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:2px;background:var(--graphite)" onerror="this.style.display=\'none\'">' +
-          folderInfo +
+          folderInfo + dupInfo +
           '<div style="font-size:12px;margin:4px 0 8px;word-break:break-word">' + escapeHtml(f.name) + '</div>' +
           actionBtn +
         '</div>';
@@ -5003,6 +5029,29 @@ p{ margin:0; }
         var res = await callBackend("removeRejectedDrive", Object.assign({ fileId: fileId }, authParams()));
         if(!res.ok){ alert(res.error || "Não foi possível reconsiderar essa foto agora."); btn.disabled = false; return; }
         moveDriveCard(fileId, false);
+      });
+    });
+    scope.querySelectorAll(".js-drive-delete").forEach(function(btn){
+      btn.addEventListener("click", async function(){
+        if(!confirm("Excluir essa foto de vez? Ela não vai mais aparecer em nenhuma lista (nem pendentes, nem puladas).")) return;
+        btn.disabled = true;
+        var fileId = btn.getAttribute("data-id");
+        var res = await callBackend("addRejectedDrive", Object.assign({ fileId: fileId, permanent: true }, authParams()));
+        if(!res.ok){ alert(res.error || "Não foi possível excluir essa foto agora."); btn.disabled = false; return; }
+        var card = document.getElementById("drive-card-" + fileId);
+        if(card) card.remove();
+        var pendingGrid = document.getElementById("adminDrivePendingGrid");
+        var rejectedGrid = document.getElementById("adminDriveRejectedGrid");
+        var rejectedSection = document.getElementById("adminDriveRejectedSection");
+        if(rejectedSection && rejectedGrid){
+          var count = rejectedGrid.children.length;
+          document.getElementById("adminDriveRejectedCount").textContent = String(count);
+          rejectedSection.hidden = !count;
+        }
+        var pendingCount = pendingGrid ? pendingGrid.children.length : 0;
+        var badge = document.getElementById("drivePhotosBadge");
+        if(pendingCount){ badge.textContent = String(pendingCount); badge.hidden = false; } else { badge.hidden = true; }
+        document.getElementById("adminDriveStatus").textContent = pendingCount ? (pendingCount + " foto(s) nova(s) encontrada(s).") : "Nenhuma foto nova — todas já foram importadas.";
       });
     });
   }
