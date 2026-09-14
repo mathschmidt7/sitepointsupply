@@ -4945,7 +4945,7 @@ p{ margin:0; }
               '<button type="button" class="btn btn-primary btn-sm js-drive-import" data-id="' + escapeHtml(f.id) + '" data-name="' + escapeHtml(f.name) + '" style="flex:1">Importar</button>' +
               '<button type="button" class="btn btn-outline btn-sm js-drive-reject" data-id="' + escapeHtml(f.id) + '" title="Pular por enquanto" style="flex-shrink:0">Pular</button>' +
             '</div>';
-        return '<div class="admin-metric-card" style="padding:10px;text-align:left;align-items:stretch">' +
+        return '<div class="admin-metric-card js-drive-card" id="drive-card-' + escapeHtml(f.id) + '" data-name="' + escapeHtml(f.name) + '" data-thumb="' + escapeHtml(f.thumbnailLink || "") + '" data-folder="' + escapeHtml(f.folderPath || "") + '" style="padding:10px;text-align:left;align-items:stretch">' +
           '<img src="' + escapeHtml(f.thumbnailLink || "") + '" alt="" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:2px;background:var(--graphite)" onerror="this.style.display=\'none\'">' +
           folderInfo +
           '<div style="font-size:12px;margin:4px 0 8px;word-break:break-word">' + escapeHtml(f.name) + '</div>' +
@@ -4958,53 +4958,95 @@ p{ margin:0; }
         return;
       }
       statusEl.textContent = pending.length + " foto(s) nova(s) encontrada(s).";
-      listEl.innerHTML = pending.map(function(f){ return cardHtml(f, false); }).join("");
-      listEl.querySelectorAll(".js-drive-import").forEach(function(btn){
-        btn.addEventListener("click", function(){ importDrivePhoto(btn.getAttribute("data-id"), btn.getAttribute("data-name")); });
-      });
-      listEl.querySelectorAll(".js-drive-reject").forEach(function(btn){
-        btn.addEventListener("click", async function(){
-          btn.disabled = true;
-          var res = await callBackend("addRejectedDrive", Object.assign({ fileId: btn.getAttribute("data-id") }, authParams()));
-          if(!res.ok){ alert(res.error || "Não foi possível pular essa foto agora."); btn.disabled = false; return; }
-          loadDrivePhotos();
-        });
-      });
 
-      if(rejected.length){
-        var rejectedWrap = document.createElement("div");
-        rejectedWrap.style.cssText = "grid-column:1/-1;margin-top:24px";
-        rejectedWrap.innerHTML = '<h3 style="font-size:14px;margin-bottom:12px;color:var(--gray)">Puladas (' + rejected.length + ')</h3>' +
-          '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px">' +
-            rejected.map(function(f){ return cardHtml(f, true); }).join("") +
-          '</div>';
-        listEl.appendChild(rejectedWrap);
-        rejectedWrap.querySelectorAll(".js-drive-unreject").forEach(function(btn){
-          btn.addEventListener("click", async function(){
-            btn.disabled = true;
-            var res = await callBackend("removeRejectedDrive", Object.assign({ fileId: btn.getAttribute("data-id") }, authParams()));
-            if(!res.ok){ alert(res.error || "Não foi possível reconsiderar essa foto agora."); btn.disabled = false; return; }
-            loadDrivePhotos();
-          });
-        });
-      }
+      var pendingGrid = document.createElement("div");
+      pendingGrid.id = "adminDrivePendingGrid";
+      pendingGrid.style.cssText = "display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;grid-column:1/-1";
+      pendingGrid.innerHTML = pending.map(function(f){ return cardHtml(f, false); }).join("");
+      listEl.appendChild(pendingGrid);
+
+      var rejectedSection = document.createElement("div");
+      rejectedSection.id = "adminDriveRejectedSection";
+      rejectedSection.style.cssText = "grid-column:1/-1;margin-top:24px";
+      rejectedSection.hidden = !rejected.length;
+      rejectedSection.innerHTML = '<h3 style="font-size:14px;margin-bottom:12px;color:var(--gray)">Puladas (<span id="adminDriveRejectedCount">' + rejected.length + '</span>)</h3>' +
+        '<div id="adminDriveRejectedGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px">' +
+          rejected.map(function(f){ return cardHtml(f, true); }).join("") +
+        '</div>';
+      listEl.appendChild(rejectedSection);
+
+      wireDriveCardButtons(pendingGrid);
+      wireDriveCardButtons(rejectedSection);
     } catch(err){
       statusEl.textContent = "Não foi possível buscar as fotos agora (" + err.message + ").";
     }
   }
   document.getElementById("adminDriveRefreshBtn").addEventListener("click", loadDrivePhotos);
 
+  function wireDriveCardButtons(scope){
+    scope.querySelectorAll(".js-drive-import").forEach(function(btn){
+      btn.addEventListener("click", function(){ importDrivePhoto(btn.getAttribute("data-id"), btn.getAttribute("data-name")); });
+    });
+    scope.querySelectorAll(".js-drive-reject").forEach(function(btn){
+      btn.addEventListener("click", async function(){
+        btn.disabled = true;
+        var fileId = btn.getAttribute("data-id");
+        var res = await callBackend("addRejectedDrive", Object.assign({ fileId: fileId }, authParams()));
+        if(!res.ok){ alert(res.error || "Não foi possível pular essa foto agora."); btn.disabled = false; return; }
+        moveDriveCard(fileId, true);
+      });
+    });
+    scope.querySelectorAll(".js-drive-unreject").forEach(function(btn){
+      btn.addEventListener("click", async function(){
+        btn.disabled = true;
+        var fileId = btn.getAttribute("data-id");
+        var res = await callBackend("removeRejectedDrive", Object.assign({ fileId: fileId }, authParams()));
+        if(!res.ok){ alert(res.error || "Não foi possível reconsiderar essa foto agora."); btn.disabled = false; return; }
+        moveDriveCard(fileId, false);
+      });
+    });
+  }
+
+  // Move um card entre "pendentes" e "puladas" sem buscar nada de novo no
+  // Drive — usa os dados já guardados no próprio card (nome, miniatura,
+  // pasta) pra reconstruir os botões certos do outro lado.
+  function moveDriveCard(fileId, toRejected){
+    var card = document.getElementById("drive-card-" + fileId);
+    if(!card) return;
+    var f = { id: fileId, name: card.dataset.name, thumbnailLink: card.dataset.thumb, folderPath: card.dataset.folder };
+    card.remove();
+
+    var pendingGrid = document.getElementById("adminDrivePendingGrid");
+    var rejectedSection = document.getElementById("adminDriveRejectedSection");
+    var rejectedGrid = document.getElementById("adminDriveRejectedGrid");
+    var rejectedCountEl = document.getElementById("adminDriveRejectedCount");
+
+    var wrapper = document.createElement("div");
+    wrapper.innerHTML = cardHtml(f, toRejected);
+    var newCard = wrapper.firstElementChild;
+    (toRejected ? rejectedGrid : pendingGrid).appendChild(newCard);
+    wireDriveCardButtons(newCard);
+
+    if(rejectedSection){
+      var count = rejectedGrid.children.length;
+      rejectedCountEl.textContent = String(count);
+      rejectedSection.hidden = !count;
+    }
+    var pendingCount = pendingGrid ? pendingGrid.children.length : 0;
+    var badge = document.getElementById("drivePhotosBadge");
+    if(pendingCount){ badge.textContent = String(pendingCount); badge.hidden = false; } else { badge.hidden = true; }
+    document.getElementById("adminDriveStatus").textContent = pendingCount ? (pendingCount + " foto(s) nova(s) encontrada(s).") : "Nenhuma foto nova — todas já foram importadas.";
+  }
+
   // Depois de importar uma foto com sucesso, só tira ela da lista na tela
   // (sem buscar tudo de novo no Drive) — as outras fotos pendentes continuam
   // exatamente como estavam, sem precisar recarregar.
   function removeDriveCardFromList(fileId){
-    var card = document.querySelector('.js-drive-import[data-id="' + fileId + '"]');
-    if(card){
-      var cardWrap = card.closest(".admin-metric-card");
-      if(cardWrap) cardWrap.remove();
-    }
+    var card = document.getElementById("drive-card-" + fileId);
+    if(card) card.remove();
+    var pendingGrid = document.getElementById("adminDrivePendingGrid");
     var badge = document.getElementById("drivePhotosBadge");
-    var remaining = document.querySelectorAll("#adminDriveList .js-drive-import").length;
+    var remaining = pendingGrid ? pendingGrid.children.length : 0;
     if(remaining){ badge.textContent = String(remaining); badge.hidden = false; }
     else{ badge.hidden = true; }
     var statusEl = document.getElementById("adminDriveStatus");
