@@ -513,9 +513,14 @@ p{ margin:0; }
 .size-helper .size-chart-link{ font-size:12px; }
 
 .pronta-entrega-row{
-  display:flex; gap:16px; overflow-x:auto; padding-bottom:8px; scroll-snap-type:x proximity;
+  display:flex; gap:16px; overflow-x:auto; padding-bottom:16px; scroll-snap-type:x proximity;
   -webkit-overflow-scrolling:touch;
+  scrollbar-width:thin; scrollbar-color:rgba(247,247,244,.35) transparent;
 }
+.pronta-entrega-row::-webkit-scrollbar{ height:6px; }
+.pronta-entrega-row::-webkit-scrollbar-track{ background:rgba(247,247,244,.06); border-radius:999px; }
+.pronta-entrega-row::-webkit-scrollbar-thumb{ background:rgba(247,247,244,.35); border-radius:999px; }
+.pronta-entrega-row::-webkit-scrollbar-thumb:hover{ background:rgba(247,247,244,.55); }
 .pronta-entrega-row .product-card{ flex:0 0 240px; scroll-snap-align:start; }
 @media (max-width:640px){ .pronta-entrega-row .product-card{ flex-basis:200px; } }
 
@@ -3215,6 +3220,24 @@ p{ margin:0; }
         return { ok:true };
       }
 
+      if(action === "getRejectedDrive"){
+        var gRej = await sb.from("drive_rejected").select("file_id");
+        if(gRej.error) return { ok:false, error: gRej.error.message };
+        return { ok:true, ids: gRej.data.map(function(r){ return r.file_id; }) };
+      }
+
+      if(action === "addRejectedDrive"){
+        var aRej = await sb.from("drive_rejected").insert({ file_id: params.fileId });
+        if(aRej.error) return { ok:false, error: aRej.error.message };
+        return { ok:true };
+      }
+
+      if(action === "removeRejectedDrive"){
+        var rRej = await sb.from("drive_rejected").delete().eq("file_id", params.fileId);
+        if(rRej.error) return { ok:false, error: rRej.error.message };
+        return { ok:true };
+      }
+
       if(action === "trackOrder"){
         var trackRes = await sb.rpc("track_order", { p_order_id: params.orderId || "" });
         if(trackRes.error) return { ok:false, error: trackRes.error.message };
@@ -4897,7 +4920,10 @@ p{ margin:0; }
     statusEl.textContent = "Buscando fotos novas (incluindo subpastas)...";
     listEl.innerHTML = "";
     try{
-      var files = await listDriveImagesRecursive(DRIVE_FOLDER_ID);
+      var filesPromise = listDriveImagesRecursive(DRIVE_FOLDER_ID);
+      var rejRes = await callBackend("getRejectedDrive", authParams());
+      if(rejRes.ok) REJECTED_DRIVE_IDS = rejRes.ids || [];
+      var files = await filesPromise;
 
       var importedIds = {};
       PRODUCTS.forEach(function(p){ if(p.driveFileId) importedIds[p.driveFileId] = true; });
@@ -4938,8 +4964,9 @@ p{ margin:0; }
       });
       listEl.querySelectorAll(".js-drive-reject").forEach(function(btn){
         btn.addEventListener("click", async function(){
-          REJECTED_DRIVE_IDS.push(btn.getAttribute("data-id"));
-          await saveSiteConfig();
+          btn.disabled = true;
+          var res = await callBackend("addRejectedDrive", Object.assign({ fileId: btn.getAttribute("data-id") }, authParams()));
+          if(!res.ok){ alert(res.error || "Não foi possível pular essa foto agora."); btn.disabled = false; return; }
           loadDrivePhotos();
         });
       });
@@ -4954,8 +4981,9 @@ p{ margin:0; }
         listEl.appendChild(rejectedWrap);
         rejectedWrap.querySelectorAll(".js-drive-unreject").forEach(function(btn){
           btn.addEventListener("click", async function(){
-            REJECTED_DRIVE_IDS = REJECTED_DRIVE_IDS.filter(function(id){ return id !== btn.getAttribute("data-id"); });
-            await saveSiteConfig();
+            btn.disabled = true;
+            var res = await callBackend("removeRejectedDrive", Object.assign({ fileId: btn.getAttribute("data-id") }, authParams()));
+            if(!res.ok){ alert(res.error || "Não foi possível reconsiderar essa foto agora."); btn.disabled = false; return; }
             loadDrivePhotos();
           });
         });
@@ -4965,6 +4993,23 @@ p{ margin:0; }
     }
   }
   document.getElementById("adminDriveRefreshBtn").addEventListener("click", loadDrivePhotos);
+
+  // Depois de importar uma foto com sucesso, só tira ela da lista na tela
+  // (sem buscar tudo de novo no Drive) — as outras fotos pendentes continuam
+  // exatamente como estavam, sem precisar recarregar.
+  function removeDriveCardFromList(fileId){
+    var card = document.querySelector('.js-drive-import[data-id="' + fileId + '"]');
+    if(card){
+      var cardWrap = card.closest(".admin-metric-card");
+      if(cardWrap) cardWrap.remove();
+    }
+    var badge = document.getElementById("drivePhotosBadge");
+    var remaining = document.querySelectorAll("#adminDriveList .js-drive-import").length;
+    if(remaining){ badge.textContent = String(remaining); badge.hidden = false; }
+    else{ badge.hidden = true; }
+    var statusEl = document.getElementById("adminDriveStatus");
+    if(statusEl) statusEl.textContent = remaining ? (remaining + " foto(s) nova(s) encontrada(s).") : "Nenhuma foto nova — todas já foram importadas.";
+  }
 
   async function importDrivePhoto(fileId, fileName){
     var btn = document.querySelector('.js-drive-import[data-id="' + fileId + '"]');
@@ -5426,7 +5471,6 @@ p{ margin:0; }
   async function saveSiteConfig(){
     var payload = {
       products: PRODUCTS,
-      rejectedDriveIds: REJECTED_DRIVE_IDS,
       defaultPricesByType: DEFAULT_PRICES_BY_TYPE,
       teamGroups: TEAM_GROUPS,
       faq: FAQ_ITEMS,
@@ -5768,7 +5812,7 @@ p{ margin:0; }
     closeModal("adminProductModal");
     var ok = await saveSiteConfig();
     if(!ok){ alert("Produto salvo na página, mas não sincronizou com o backend agora. Tente novamente."); }
-    if(data.driveFileId) loadDrivePhotos();
+    if(data.driveFileId) removeDriveCardFromList(data.driveFileId);
   });
 
   /* ---------- Times e Ligas ---------- */
@@ -6381,7 +6425,6 @@ p{ margin:0; }
     if(!res.ok || !res.config) return;
     var cfg = res.config;
     if(cfg.products){ PRODUCTS = cfg.products; }
-    if(cfg.rejectedDriveIds){ REJECTED_DRIVE_IDS = cfg.rejectedDriveIds; }
     if(cfg.defaultPricesByType){ DEFAULT_PRICES_BY_TYPE = cfg.defaultPricesByType; }
     if(cfg.teamGroups){ TEAM_GROUPS = cfg.teamGroups; }
     if(cfg.faq){ FAQ_ITEMS = cfg.faq; }
