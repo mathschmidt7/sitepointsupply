@@ -4868,18 +4868,31 @@ p{ margin:0; }
   /* ============================================================
      FOTOS DO GOOGLE DRIVE
      ============================================================ */
+  async function listDriveImagesRecursive(folderId, depth){
+    depth = depth || 0;
+    if(depth > 6) return []; // limite de segurança contra recursão excessiva
+    var q = encodeURIComponent("'" + folderId + "' in parents and trashed=false");
+    var url = "https://www.googleapis.com/drive/v3/files?q=" + q + "&key=" + DRIVE_API_KEY + "&fields=files(id,name,thumbnailLink,mimeType)&pageSize=1000";
+    var res = await fetch(url);
+    if(!res.ok) throw new Error("Falha ao consultar o Drive (código " + res.status + ")");
+    var data = await res.json();
+    var items = data.files || [];
+    var images = items.filter(function(f){ return f.mimeType && f.mimeType.indexOf("image/") === 0; });
+    var subfolders = items.filter(function(f){ return f.mimeType === "application/vnd.google-apps.folder"; });
+    for(var i = 0; i < subfolders.length; i++){
+      var subImages = await listDriveImagesRecursive(subfolders[i].id, depth + 1);
+      images = images.concat(subImages);
+    }
+    return images;
+  }
+
   async function loadDrivePhotos(){
     var statusEl = document.getElementById("adminDriveStatus");
     var listEl = document.getElementById("adminDriveList");
-    statusEl.textContent = "Buscando fotos novas...";
+    statusEl.textContent = "Buscando fotos novas (incluindo subpastas)...";
     listEl.innerHTML = "";
     try{
-      var q = encodeURIComponent("'" + DRIVE_FOLDER_ID + "' in parents and trashed=false");
-      var url = "https://www.googleapis.com/drive/v3/files?q=" + q + "&key=" + DRIVE_API_KEY + "&fields=files(id,name,thumbnailLink,mimeType)&pageSize=200";
-      var res = await fetch(url);
-      if(!res.ok) throw new Error("Falha ao consultar o Drive (código " + res.status + ")");
-      var data = await res.json();
-      var files = (data.files || []).filter(function(f){ return f.mimeType && f.mimeType.indexOf("image/") === 0; });
+      var files = await listDriveImagesRecursive(DRIVE_FOLDER_ID);
 
       var importedIds = {};
       PRODUCTS.forEach(function(p){ if(p.driveFileId) importedIds[p.driveFileId] = true; });
