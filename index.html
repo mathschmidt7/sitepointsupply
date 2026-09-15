@@ -3078,6 +3078,12 @@ p{ margin:0; }
     });
   }
 
+  // Tira acentos e deixa minúsculo — usado na busca, pra "retro" encontrar
+  // "Retrô" e "camisa" encontrar "Camisa" independente de maiúsculas.
+  function normalizeSearchText(str){
+    return String(str == null ? "" : str).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  }
+
   // Monta o atributo "srcset" a partir de uma foto só — cada tamanho
   // (420/640/800px) é gerado com esse mesmo nome + sufixo, tanto no lote
   // de fotos dos produtos quanto em fotos enviadas manualmente pelo painel
@@ -3527,7 +3533,18 @@ p{ margin:0; }
     });
   });
   document.querySelectorAll("[data-close-modal]").forEach(function(el){
-    el.addEventListener("click", function(){ closeModal(el.getAttribute("data-close-modal")); });
+    el.addEventListener("click", function(){
+      var target = el.getAttribute("data-close-modal");
+      closeModal(target);
+      // Se o modal de produto foi fechado (cancelado) no meio de uma
+      // importação do Drive, sem ter sido salvo, o botão "Importando..."
+      // fica travado pra sempre — isso destrava ele.
+      if(target === "adminProductModal" && driveImportPendingBtn){
+        driveImportPendingBtn.disabled = false;
+        driveImportPendingBtn.textContent = "Importar";
+        driveImportPendingBtn = null;
+      }
+    });
   });
 
   // Clique numa foto de produto abre ela ampliada, sempre na versão de
@@ -3969,7 +3986,8 @@ p{ margin:0; }
   }
 
   function applyFilters(){
-    var query = searchInput.value.trim().toLowerCase();
+    var query = normalizeSearchText(searchInput.value.trim());
+    var queryWords = query.split(/\s+/).filter(Boolean);
     var tipo = filterTipo.value;
 
     currentFilteredProducts = PRODUCTS.filter(function(p){
@@ -3980,7 +3998,11 @@ p{ margin:0; }
         p.category === currentFilter;
       var matchesTeam = currentTeam === "todos" || p.time === currentTeam;
       var matchesTipo = tipo === "todos" || p.tipo === tipo;
-      var matchesQuery = !query || p.name.toLowerCase().indexOf(query) !== -1;
+      // Cada palavra digitada precisa aparecer em algum lugar do nome —
+      // não importa a ordem nem os acentos (ex: "torcedor flamengo" ou
+      // "retro" encontram "Camisa Flamengo Torcedor 25/26" e "Retrô").
+      var nameLower = normalizeSearchText(p.name);
+      var matchesQuery = !queryWords.length || queryWords.every(function(w){ return nameLower.indexOf(w) !== -1; });
       return matchesCategory && matchesTeam && matchesTipo && matchesQuery;
     });
 
@@ -5109,9 +5131,10 @@ p{ margin:0; }
     if(statusEl) statusEl.textContent = remaining ? (remaining + " foto(s) nova(s) encontrada(s).") : "Nenhuma foto nova — todas já foram importadas.";
   }
 
+  var driveImportPendingBtn = null;
   async function importDrivePhoto(fileId, fileName){
     var btn = document.querySelector('.js-drive-import[data-id="' + fileId + '"]');
-    if(btn){ btn.disabled = true; btn.textContent = "Importando..."; }
+    if(btn){ btn.disabled = true; btn.textContent = "Importando..."; driveImportPendingBtn = btn; }
     try{
       var url = "https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media&key=" + DRIVE_API_KEY;
       var res = await fetch(url);
@@ -5125,6 +5148,7 @@ p{ margin:0; }
     } catch(err){
       alert("Não foi possível importar essa foto: " + err.message);
       if(btn){ btn.disabled = false; btn.textContent = "Importar"; }
+      driveImportPendingBtn = null;
     }
   }
 
@@ -5649,13 +5673,21 @@ p{ margin:0; }
     adminProductForm.tipo.innerHTML = TIPOS.map(function(t){ return '<option value="' + t + '">' + t + '</option>'; }).join("");
   })();
 
-  // Ao escolher o tipo, preenche o preço sozinho com o padrão definido em
-  // "Preço em massa por tipo" — só quando o campo ainda estiver vazio/zerado,
-  // pra nunca sobrescrever um valor que o lojista já tenha digitado.
+  // O preço do campo é marcado como "preenchido automaticamente" sempre
+  // que o próprio código escreve nele — e essa marca é removida assim que
+  // o lojista digita algo manualmente. Assim, trocar de tipo várias vezes
+  // sempre atualiza o preço (mesmo que já tenha sido preenchido antes por
+  // um tipo diferente), mas nunca sobrescreve o que foi digitado à mão.
+  adminProductForm.price.addEventListener("input", function(){
+    adminProductForm.price.dataset.autofilled = "";
+  });
   adminProductForm.tipo.addEventListener("change", function(){
     var def = DEFAULT_PRICES_BY_TYPE[adminProductForm.tipo.value];
-    if(def && (!adminProductForm.price.value || !adminProductForm.price.value.trim())){
+    var priceEmpty = !adminProductForm.price.value || !adminProductForm.price.value.trim();
+    var wasAutofilled = adminProductForm.price.dataset.autofilled === "1";
+    if(def && (priceEmpty || wasAutofilled)){
       adminProductForm.price.value = def;
+      adminProductForm.price.dataset.autofilled = "1";
     }
   });
 
@@ -5734,13 +5766,13 @@ p{ margin:0; }
     var tbody = document.getElementById("adminProductsBody");
     if(!PRODUCTS.length){ tbody.innerHTML = '<tr><td colspan="8" class="admin-empty">Nenhum produto cadastrado.</td></tr>'; document.getElementById("adminProductsPager").innerHTML = ""; return; }
     var query = (document.getElementById("adminProductsSearch") || {}).value || "";
-    query = query.trim().toLowerCase();
+    query = normalizeSearchText(query.trim());
+    var queryWords = query.split(/\s+/).filter(Boolean);
     var list = PRODUCTS.slice();
-    if(query){
+    if(queryWords.length){
       list = list.filter(function(p){
-        return p.name.toLowerCase().indexOf(query) !== -1 ||
-          (p.liga || "").toLowerCase().indexOf(query) !== -1 ||
-          (p.time || "").toLowerCase().indexOf(query) !== -1;
+        var haystack = normalizeSearchText(p.name + " " + (p.liga || "") + " " + (p.time || ""));
+        return queryWords.every(function(w){ return haystack.indexOf(w) !== -1; });
       });
     }
     if(adminSortKey){
@@ -5824,6 +5856,7 @@ p{ margin:0; }
       populateTimeSelect(product.category, product.liga, product.time && product.time !== "—" ? product.time : "");
       form.tipo.value = product.tipo;
       form.price.value = product.price;
+      form.price.dataset.autofilled = "";
       form.originalPrice.value = product.originalPrice || "";
       form.installment.value = product.installment || "";
       form.sizes.value = (product.sizes || []).join(",");
@@ -5848,6 +5881,7 @@ p{ margin:0; }
       document.getElementById("adminProntaSizesWrap").hidden = true;
       form.prontaEntregaPrice.value = "";
       var initialDefault = DEFAULT_PRICES_BY_TYPE[form.tipo.value];
+      form.price.dataset.autofilled = initialDefault ? "1" : "";
       if(initialDefault) form.price.value = initialDefault;
       if(product && product.imageUrl){ adminProductPreview.src = product.imageUrl; adminProductPreview.style.display = "block"; }
       else{ adminProductPreview.style.display = "none"; }
@@ -5910,7 +5944,7 @@ p{ margin:0; }
     closeModal("adminProductModal");
     var ok = await saveSiteConfig();
     if(!ok){ alert("Produto salvo na página, mas não sincronizou com o backend agora. Tente novamente."); }
-    if(data.driveFileId) removeDriveCardFromList(data.driveFileId);
+    if(data.driveFileId){ removeDriveCardFromList(data.driveFileId); driveImportPendingBtn = null; }
   });
 
   /* ---------- Times e Ligas ---------- */
