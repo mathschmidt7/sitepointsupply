@@ -1776,6 +1776,7 @@ p{ margin:0; }
   var DRIVE_FOLDER_ID = "1R1uPR5tBmSrjUi2sOfS19rZ2G5thy435";
   var REJECTED_DRIVE_IDS = []; // fotos que o lojista decidiu não usar por enquanto
   var DEFAULT_PRICES_BY_TYPE = {}; // preço padrão por tipo, usado em produtos novos
+  var lastAutoFilledPrice = null; // último valor que o próprio código colocou no campo de preço
 
   var STATUS_STAGES = ["Pedido recebido", "Em preparação", "Enviado", "Entregue"];
   var ORDER_STATUS_STAGES = ["Pendente", "Concluído", "Cancelado"];
@@ -5673,21 +5674,18 @@ p{ margin:0; }
     adminProductForm.tipo.innerHTML = TIPOS.map(function(t){ return '<option value="' + t + '">' + t + '</option>'; }).join("");
   })();
 
-  // O preço do campo é marcado como "preenchido automaticamente" sempre
-  // que o próprio código escreve nele — e essa marca é removida assim que
-  // o lojista digita algo manualmente. Assim, trocar de tipo várias vezes
-  // sempre atualiza o preço (mesmo que já tenha sido preenchido antes por
-  // um tipo diferente), mas nunca sobrescreve o que foi digitado à mão.
-  adminProductForm.price.addEventListener("input", function(){
-    adminProductForm.price.dataset.autofilled = "";
-  });
+  // Ao trocar o tipo, atualiza o preço pro padrão daquele tipo — mas só se
+  // o campo estiver vazio, ou se o valor nele for exatamente o que o
+  // próprio código colocou da última vez (ou seja, o lojista não mexeu
+  // manualmente desde então). Comparar o valor direto, em vez de usar uma
+  // marcação escondida, evita qualquer inconsistência.
   adminProductForm.tipo.addEventListener("change", function(){
     var def = DEFAULT_PRICES_BY_TYPE[adminProductForm.tipo.value];
-    var priceEmpty = !adminProductForm.price.value || !adminProductForm.price.value.trim();
-    var wasAutofilled = adminProductForm.price.dataset.autofilled === "1";
-    if(def && (priceEmpty || wasAutofilled)){
+    var currentValue = adminProductForm.price.value.trim();
+    var safeToUpdate = !currentValue || currentValue === lastAutoFilledPrice;
+    if(def && safeToUpdate){
       adminProductForm.price.value = def;
-      adminProductForm.price.dataset.autofilled = "1";
+      lastAutoFilledPrice = def;
     }
   });
 
@@ -5856,7 +5854,7 @@ p{ margin:0; }
       populateTimeSelect(product.category, product.liga, product.time && product.time !== "—" ? product.time : "");
       form.tipo.value = product.tipo;
       form.price.value = product.price;
-      form.price.dataset.autofilled = "";
+      lastAutoFilledPrice = null;
       form.originalPrice.value = product.originalPrice || "";
       form.installment.value = product.installment || "";
       form.sizes.value = (product.sizes || []).join(",");
@@ -5881,7 +5879,7 @@ p{ margin:0; }
       document.getElementById("adminProntaSizesWrap").hidden = true;
       form.prontaEntregaPrice.value = "";
       var initialDefault = DEFAULT_PRICES_BY_TYPE[form.tipo.value];
-      form.price.dataset.autofilled = initialDefault ? "1" : "";
+      lastAutoFilledPrice = initialDefault || null;
       if(initialDefault) form.price.value = initialDefault;
       if(product && product.imageUrl){ adminProductPreview.src = product.imageUrl; adminProductPreview.style.display = "block"; }
       else{ adminProductPreview.style.display = "none"; }
