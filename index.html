@@ -490,13 +490,13 @@ p{ margin:0; }
 .team-chip:hover{ border-color:rgba(247,247,244,.35); transform:translateY(-2px); }
 .team-chip.is-active{ background:var(--off); color:var(--black); border-color:var(--off); }
 .team-badge{
-  display:flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:7px;
   background:rgba(247,247,244,.1); color:var(--off); font-size:10.5px; font-weight:800; flex-shrink:0;
-  font-family:var(--font-display); object-fit:cover;
+  font-family:var(--font-display); object-fit:contain; padding:2px; box-sizing:border-box;
 }
 .team-chip.is-active .team-badge{ background:var(--black); color:var(--off); }
-.team-badge--lg{ width:48px; height:48px; font-size:15px; background:var(--graphite); border:1px solid rgba(247,247,244,.15); }
-.league-row-logo{ width:22px; height:22px; border-radius:50%; object-fit:cover; margin-right:8px; vertical-align:middle; display:inline-block; }
+.team-badge--lg{ width:48px; height:48px; font-size:15px; background:var(--graphite); border:1px solid rgba(247,247,244,.15); border-radius:10px; padding:4px; }
+.league-row-logo{ width:22px; height:22px; border-radius:5px; object-fit:contain; margin-right:8px; vertical-align:middle; display:inline-block; }
 
 .team-header{ display:flex; flex-direction:column; gap:14px; margin-bottom:22px; }
 .team-header[hidden]{ display:none; }
@@ -3857,6 +3857,7 @@ p{ margin:0; }
         '<div class="product-price-row">' + priceHtml + '</div>' +
         '<span class="product-installment">' + escapeHtml(p.installment) + '</span>' +
         '<div class="product-sizes">' + sizeChips + '</div>' +
+        '<p class="size-error" hidden style="font-size:12px;color:var(--danger);margin:2px 0 0">Escolha um tamanho antes de continuar.</p>' +
         '<p class="size-helper">Não sabe seu tamanho? <button type="button" class="size-chart-link" data-id="' + p.id + '" data-open-modal="sizeChartModal">Ver tabela de medidas</button></p>' +
         '<p class="size-surcharge-note" hidden style="font-size:12px;color:var(--gray);margin:2px 0 0"></p>' +
         personalizeHtml +
@@ -3877,6 +3878,8 @@ p{ margin:0; }
         var already = chip.classList.contains("is-selected");
         siblings.forEach(function(s){ s.classList.remove("is-selected"); });
         if(!already){ chip.classList.add("is-selected"); }
+        var sizeErrorEl = card.querySelector(".size-error");
+        if(sizeErrorEl && !already) sizeErrorEl.hidden = true;
         var sizeNow = !already ? chip.dataset.size : null;
         var extra = sizeNow && EXTRA_SIZE_SURCHARGES[sizeNow] !== undefined ? EXTRA_SIZE_SURCHARGES[sizeNow] : null;
         if(extra !== null){
@@ -3900,13 +3903,21 @@ p{ margin:0; }
     card.querySelector(".js-buy-now").addEventListener("click", function(e){
       e.preventDefault();
       var selected = card.querySelector(".size-chip.is-selected");
+      var errorEl = card.querySelector(".size-error");
+      if(!selected){
+        if(errorEl) errorEl.hidden = false;
+        var sizesWrap = card.querySelector(".product-sizes");
+        if(sizesWrap) sizesWrap.scrollIntoView({ behavior:"smooth", block:"center" });
+        return;
+      }
+      if(errorEl) errorEl.hidden = true;
       var personalization = null;
       if(personalizeCheck && personalizeCheck.checked){
         var pname = card.querySelector(".js-personalize-name").value.trim();
         var pnumber = card.querySelector(".js-personalize-number").value.trim();
         if(pname || pnumber){ personalization = { name: pname, number: pnumber }; }
       }
-      addToCart(p, selected ? selected.dataset.size : null, personalization);
+      addToCart(p, selected.dataset.size, personalization);
       openCart();
     });
 
