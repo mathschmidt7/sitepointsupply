@@ -5376,7 +5376,20 @@ img.team-badge{ background:transparent; }
   })(); // persiste no navegador — depois da primeira vez, só analisa fotos novas
   var productImageSigCacheDirty = false;
   var productImageSigFailedThisSession = {};
-  var driveFileSigCache = {};
+  var DRIVE_SIG_STORAGE_KEY = "spsAdminDriveImageSig_v1";
+  var driveFileSigCache = (function(){
+    try{
+      var raw = localStorage.getItem(DRIVE_SIG_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch(e){ return {}; }
+  })(); // persiste no navegador — o conteúdo de um arquivo do Drive não muda, então uma vez lido não precisa baixar de novo
+  var driveFileSigCacheDirty = false;
+
+  function persistDriveFileSigCache(){
+    if(!driveFileSigCacheDirty) return;
+    try{ localStorage.setItem(DRIVE_SIG_STORAGE_KEY, JSON.stringify(driveFileSigCache)); } catch(e){}
+    driveFileSigCacheDirty = false;
+  }
 
   function persistProductImageSigCache(){
     if(!productImageSigCacheDirty) return;
@@ -5481,18 +5494,34 @@ img.team-badge{ background:transparent; }
     }
   }
 
-  async function getDriveFileSignature(fileId){
+  async function getDriveFileSignature(fileId, thumbnailUrl){
     if(Object.prototype.hasOwnProperty.call(driveFileSigCache, fileId)) return driveFileSigCache[fileId];
+    // A miniatura que o Drive já gera é bem mais leve que o arquivo original —
+    // tenta ela primeiro, e só baixa o arquivo completo se não der certo
+    // (miniatura ainda não gerada, bloqueio de rede, etc).
+    if(thumbnailUrl){
+      try{
+        var tRes = await fetch(thumbnailUrl);
+        if(tRes.ok){
+          var tBlob = await tRes.blob();
+          driveFileSigCache[fileId] = await computeImageSignatureFromBlob(tBlob);
+          driveFileSigCacheDirty = true;
+          return driveFileSigCache[fileId];
+        }
+      } catch(e){ /* cai pro download completo abaixo */ }
+    }
     try{
       var url = "https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media&key=" + DRIVE_API_KEY;
       var res = await fetch(url);
       if(!res.ok) throw new Error("http " + res.status);
       var blob = await res.blob();
       driveFileSigCache[fileId] = await computeImageSignatureFromBlob(blob);
+      driveFileSigCacheDirty = true;
     } catch(e){
-      driveFileSigCache[fileId] = null;
+      // Não guarda falha no cache persistente — pode ter sido instabilidade
+      // pontual de rede; só evita repetir a tentativa dentro desta mesma sessão.
     }
-    return driveFileSigCache[fileId];
+    return driveFileSigCache[fileId] || null;
   }
 
   // Mostra o aviso de possível duplicata dentro do próprio card, sem deixar
@@ -5512,11 +5541,11 @@ img.team-badge{ background:transparent; }
       '<div style="font-size:11px;color:var(--danger);font-weight:700;margin-bottom:6px">⚠ Pode já estar cadastrada — compare as fotos:</div>' +
       '<div style="display:flex;gap:6px;margin-bottom:6px">' +
         '<div style="flex:1;min-width:0;text-align:center">' +
-          '<img src="' + escapeHtml(driveThumb) + '" alt="" style="width:100%;aspect-ratio:1;object-fit:contain;border-radius:2px;background:var(--black)">' +
+          '<img src="' + escapeHtml(driveThumb) + '" alt="" style="width:100%;aspect-ratio:1;object-fit:contain;border-radius:2px;background:var(--black)" onerror="this.style.display=\'none\'">' +
           '<div style="font-size:10px;color:var(--gray);margin-top:2px">Foto do Drive</div>' +
         '</div>' +
         '<div style="flex:1;min-width:0;text-align:center">' +
-          '<img src="' + escapeHtml(product.imageUrl) + '" alt="" style="width:100%;aspect-ratio:1;object-fit:contain;border-radius:2px;background:var(--black)">' +
+          '<img src="' + escapeHtml(product.imageUrl) + '" alt="" style="width:100%;aspect-ratio:1;object-fit:contain;border-radius:2px;background:var(--black)" onerror="this.style.display=\'none\'">' +
           '<div style="font-size:10px;color:var(--off);margin-top:2px;word-break:break-word">' + escapeHtml(product.name) + '</div>' +
         '</div>' +
       '</div>';
@@ -5559,7 +5588,7 @@ img.team-badge{ background:transparent; }
       await mapWithConcurrency(cards, 10, function(card){
         return (async function(){
           var fileId = card.id.replace("drive-card-", "");
-          var driveSig = await getDriveFileSignature(fileId);
+          var driveSig = await getDriveFileSignature(fileId, card.dataset.thumb);
           if(!driveSig) return;
           for(var j=0;j<productSigs.length;j++){
             if(signaturesLookAlike(driveSig, productSigs[j].sig)){
@@ -5572,6 +5601,7 @@ img.team-badge{ background:transparent; }
       }, function(done, total){
         btn.textContent = "Comparando (" + done + "/" + total + ")...";
       });
+      persistDriveFileSigCache();
       statusEl.textContent = foundCount
         ? (foundCount + " foto(s) pendente(s) parecem já estar cadastradas — confira o aviso em cada card.")
         : "Nenhuma foto pendente parece bater com produtos já cadastrados.";
