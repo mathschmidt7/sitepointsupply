@@ -1820,6 +1820,12 @@ img.team-badge{ background:transparent; }
   var DRIVE_FOLDER_ID = "1R1uPR5tBmSrjUi2sOfS19rZ2G5thy435";
   var REJECTED_DRIVE_IDS = []; // fotos que o lojista decidiu não usar por enquanto
   var DEFAULT_PRICES_BY_TYPE = {}; // preço padrão por tipo, usado em produtos novos
+  // Fica true se a configuração salva não puder ser lida do banco no
+  // carregamento da página (ex: falha de rede). Enquanto estiver true,
+  // saveSiteConfig() se recusa a salvar — sem essa trava, um "Salvar"
+  // feito com os dados em branco/desatualizados sobrescreve TUDO no banco
+  // (times, ligas, preços, pronta entrega, produtos) com os valores padrão.
+  var CONFIG_LOAD_FAILED = false;
   var lastAutoFilledPrice = null; // último valor que o próprio código colocou no campo de preço
 
   var STATUS_STAGES = ["Pedido recebido", "Em preparação", "Enviado", "Entregue"];
@@ -6226,6 +6232,10 @@ img.team-badge{ background:transparent; }
      configuração no backend (tabela site_config no Supabase).
      ============================================================ */
   async function saveSiteConfig(){
+    if(CONFIG_LOAD_FAILED){
+      window.alert("Não é possível salvar agora: os dados do site não carregaram corretamente nesta sessão (provavelmente uma falha de internet). Salvar agora apagaria informações já cadastradas. RECARREGUE a página (F5) e tente de novo.");
+      return false;
+    }
     var payload = {
       products: PRODUCTS,
       defaultPricesByType: DEFAULT_PRICES_BY_TYPE,
@@ -7186,7 +7196,14 @@ img.team-badge{ background:transparent; }
   (async function loadSiteConfig(){
     if(!hasBackend()) return;
     var res = await callBackend("getConfig", {});
-    if(!res.ok || !res.config) return;
+    if(!res.ok || !res.config){
+      CONFIG_LOAD_FAILED = true;
+      var adminPanelEl = document.getElementById("adminPanel");
+      if(adminPanelEl && !adminPanelEl.hidden){
+        window.alert("Não foi possível carregar os dados salvos do site agora (falha de conexão). Por segurança, salvar qualquer alteração foi bloqueado nesta sessão até recarregar a página. Recarregue (F5) antes de continuar editando.");
+      }
+      return;
+    }
     var cfg = res.config;
     if(cfg.products){ PRODUCTS = cfg.products; }
     if(cfg.defaultPricesByType){ DEFAULT_PRICES_BY_TYPE = cfg.defaultPricesByType; }
