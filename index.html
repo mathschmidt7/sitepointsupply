@@ -5480,12 +5480,21 @@ img.team-badge{ background:transparent; }
       && colorDistance(sigA.avgColor, sigB.avgColor) <= DUP_COLOR_THRESHOLD;
   }
 
+  // Sem limite de tempo, uma única foto que trave de carregar (rede lenta,
+  // link fora do ar) prende o processo inteiro pra sempre. Isso desiste
+  // dessa foto específica depois de alguns segundos e segue pras outras.
+  function fetchWithTimeout(url, ms){
+    var controller = new AbortController();
+    var timer = setTimeout(function(){ controller.abort(); }, ms || 12000);
+    return fetch(url, { signal: controller.signal }).finally(function(){ clearTimeout(timer); });
+  }
+
   async function getProductImageSignature(product){
     if(!product.imageUrl) return null;
     if(Object.prototype.hasOwnProperty.call(productImageSigCache, product.imageUrl)) return productImageSigCache[product.imageUrl];
     if(productImageSigFailedThisSession[product.imageUrl]) return null;
     try{
-      var res = await fetch(product.imageUrl);
+      var res = await fetchWithTimeout(product.imageUrl);
       if(!res.ok) throw new Error("http " + res.status);
       var blob = await res.blob();
       var sig = await computeImageSignatureFromBlob(blob);
@@ -5507,7 +5516,7 @@ img.team-badge{ background:transparent; }
     // (miniatura ainda não gerada, bloqueio de rede, etc).
     if(thumbnailUrl){
       try{
-        var tRes = await fetch(thumbnailUrl);
+        var tRes = await fetchWithTimeout(thumbnailUrl);
         if(tRes.ok){
           var tBlob = await tRes.blob();
           driveFileSigCache[fileId] = await computeImageSignatureFromBlob(tBlob);
@@ -5518,7 +5527,7 @@ img.team-badge{ background:transparent; }
     }
     try{
       var url = "https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media&key=" + DRIVE_API_KEY;
-      var res = await fetch(url);
+      var res = await fetchWithTimeout(url, 20000);
       if(!res.ok) throw new Error("http " + res.status);
       var blob = await res.blob();
       driveFileSigCache[fileId] = await computeImageSignatureFromBlob(blob);
