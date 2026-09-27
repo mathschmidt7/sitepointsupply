@@ -5365,8 +5365,8 @@ img.team-badge{ background:transparent; }
      forma E cor parecidas ao mesmo tempo, camisas de times diferentes (cores
      diferentes) deixam de bater, mas a mesma foto recomprimida continua
      batendo (cor e forma mudam muito pouco nesse processo). */
-  var DUP_HASH_THRESHOLD = 10;   // de 90 bits (grade 10x10) — estrutura/forma
-  var DUP_COLOR_THRESHOLD = 25;  // distância euclidiana de cor média (0–441)
+  var DUP_HASH_THRESHOLD = 6;    // de 90 bits (grade 10x10) — estrutura/forma
+  var DUP_COLOR_THRESHOLD = 15;  // distância euclidiana de cor média (0–441)
   var PRODUCT_SIG_STORAGE_KEY = "spsAdminProductImageSig_v2";
   var productImageSigCache = (function(){
     try{
@@ -5539,7 +5539,7 @@ img.team-badge{ background:transparent; }
     var originalText = btn.textContent;
     try{
       var candidates = PRODUCTS.filter(function(p){ return p.imageUrl && !p.driveFileId; });
-      var sigResults = await mapWithConcurrency(candidates, 8, function(p){ return getProductImageSignature(p); }, function(done, total){
+      var sigResults = await mapWithConcurrency(candidates, 12, function(p){ return getProductImageSignature(p); }, function(done, total){
         btn.textContent = "Lendo fotos já cadastradas (" + done + "/" + total + ")...";
       });
       persistProductImageSigCache();
@@ -5549,7 +5549,7 @@ img.team-badge{ background:transparent; }
       }
 
       var foundCount = 0;
-      await mapWithConcurrency(cards, 6, function(card){
+      await mapWithConcurrency(cards, 10, function(card){
         return (async function(){
           var fileId = card.id.replace("drive-card-", "");
           var driveSig = await getDriveFileSignature(fileId);
