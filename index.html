@@ -1505,8 +1505,10 @@ img.team-badge{ background:transparent; }
       </p>
       <div class="admin-toolbar">
         <button type="button" class="btn btn-outline btn-sm" id="adminDriveRefreshBtn">Buscar fotos novas</button>
+        <button type="button" class="btn btn-outline btn-sm" id="adminDriveCheckDupBtn" title="Compara cada foto pendente com as fotos dos produtos já cadastrados, pra avisar quando uma foto pendente já é de um produto existente (evita cadastrar duplicado)">Comparar com fotos já cadastradas</button>
       </div>
       <div id="adminDriveStatus" style="color:var(--gray);font-size:13px;margin:14px 0"></div>
+      <div id="adminDriveDupStatus" style="color:var(--gray);font-size:12px;margin:-8px 0 14px"></div>
       <div id="adminDriveList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;margin-top:10px"></div>
     </div>
 
@@ -5351,6 +5353,161 @@ img.team-badge{ background:transparent; }
     }
   }
   document.getElementById("adminDriveRefreshBtn").addEventListener("click", loadDrivePhotos);
+
+  /* ---------- Comparação de fotos por similaridade (evita cadastrar produto duplicado) ----------
+     Toda foto enviada pelo admin passa por redimensionamento/recompressão
+     (uploadProductPhoto) antes de ser salva — então o arquivo salvo nunca é
+     byte-idêntico ao original do Drive, e comparar por MD5 não funciona.
+     Em vez disso, calculamos um hash perceptual (dHash) a partir dos pixels
+     de cada imagem: ele muda pouco com recompressão/redimensionamento, então
+     a "mesma" foto continua batendo mesmo depois de passar pelo pipeline de
+     upload do site. */
+  var DUPLICATE_HASH_THRESHOLD = 10; // de 64 bits — quanto menor, mais rígido
+  var productImageHashCache = {};
+  var driveFileHashCache = {};
+
+  function computeDHashFromBlob(blob){
+    return new Promise(function(resolve, reject){
+      var url = URL.createObjectURL(blob);
+      var img = new Image();
+      img.onload = function(){
+        try{
+          var w = 9, h = 8;
+          var canvas = document.createElement("canvas");
+          canvas.width = w; canvas.height = h;
+          var ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, w, h);
+          var data = ctx.getImageData(0, 0, w, h).data;
+          var gray = [];
+          for(var i=0;i<data.length;i+=4){ gray.push(0.299*data[i] + 0.587*data[i+1] + 0.114*data[i+2]); }
+          var bits = "";
+          for(var row=0; row<h; row++){
+            for(var col=0; col<w-1; col++){
+              bits += (gray[row*w+col] < gray[row*w+col+1]) ? "1" : "0";
+            }
+          }
+          var hex = "";
+          for(var b=0; b<bits.length; b+=4){ hex += parseInt(bits.substr(b,4), 2).toString(16); }
+          URL.revokeObjectURL(url);
+          resolve(hex);
+        } catch(e){ URL.revokeObjectURL(url); reject(e); }
+      };
+      img.onerror = function(){ URL.revokeObjectURL(url); reject(new Error("Falha ao carregar imagem")); };
+      img.src = url;
+    });
+  }
+
+  function hammingDistanceHex(hexA, hexB){
+    if(!hexA || !hexB || hexA.length !== hexB.length) return 999;
+    var dist = 0;
+    for(var i=0;i<hexA.length;i++){
+      var xorVal = parseInt(hexA[i],16) ^ parseInt(hexB[i],16);
+      while(xorVal){ dist += xorVal & 1; xorVal = xorVal >> 1; }
+    }
+    return dist;
+  }
+
+  async function getProductImageHash(product){
+    if(!product.imageUrl) return null;
+    if(Object.prototype.hasOwnProperty.call(productImageHashCache, product.imageUrl)) return productImageHashCache[product.imageUrl];
+    try{
+      var res = await fetch(product.imageUrl);
+      if(!res.ok) throw new Error("http " + res.status);
+      var blob = await res.blob();
+      productImageHashCache[product.imageUrl] = await computeDHashFromBlob(blob);
+    } catch(e){
+      productImageHashCache[product.imageUrl] = null;
+    }
+    return productImageHashCache[product.imageUrl];
+  }
+
+  async function getDriveFileHash(fileId){
+    if(Object.prototype.hasOwnProperty.call(driveFileHashCache, fileId)) return driveFileHashCache[fileId];
+    try{
+      var url = "https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media&key=" + DRIVE_API_KEY;
+      var res = await fetch(url);
+      if(!res.ok) throw new Error("http " + res.status);
+      var blob = await res.blob();
+      driveFileHashCache[fileId] = await computeDHashFromBlob(blob);
+    } catch(e){
+      driveFileHashCache[fileId] = null;
+    }
+    return driveFileHashCache[fileId];
+  }
+
+  function markDriveCardAsPossibleDuplicate(card, product, distance){
+    if(card.querySelector(".js-drive-dup-warning")) return;
+    card.style.outline = "2px solid var(--danger)";
+    var warn = document.createElement("div");
+    warn.className = "js-drive-dup-warning";
+    warn.style.cssText = "font-size:11px;color:var(--danger);margin-bottom:4px;font-weight:700";
+    warn.textContent = "⚠ Parece já cadastrada em: " + product.name;
+    card.insertBefore(warn, card.firstChild);
+
+    var attachBtn = document.createElement("button");
+    attachBtn.type = "button";
+    attachBtn.className = "btn btn-outline btn-sm js-drive-attach-existing";
+    attachBtn.style.cssText = "width:100%;margin-top:6px";
+    attachBtn.textContent = "Não é foto nova — já é do produto acima";
+    attachBtn.addEventListener("click", async function(){
+      attachBtn.disabled = true; attachBtn.textContent = "Vinculando...";
+      var fileId = card.id.replace("drive-card-", "");
+      product.driveFileId = fileId;
+      var ok = await saveSiteConfig();
+      if(ok) removeDriveCardFromList(fileId);
+      else { attachBtn.disabled = false; attachBtn.textContent = "Não é foto nova — já é do produto acima"; }
+    });
+    card.appendChild(attachBtn);
+  }
+
+  async function checkPendingForDuplicates(){
+    var btn = document.getElementById("adminDriveCheckDupBtn");
+    var statusEl = document.getElementById("adminDriveDupStatus");
+    var pendingGrid = document.getElementById("adminDrivePendingGrid");
+    var cards = pendingGrid ? Array.prototype.slice.call(pendingGrid.querySelectorAll(".js-drive-card")) : [];
+    if(!cards.length){
+      statusEl.textContent = "Não há fotos pendentes para comparar.";
+      return;
+    }
+    btn.disabled = true;
+    var originalText = btn.textContent;
+    try{
+      var candidates = PRODUCTS.filter(function(p){ return p.imageUrl && !p.driveFileId; });
+      var productHashes = [];
+      for(var i=0;i<candidates.length;i++){
+        btn.textContent = "Lendo fotos já cadastradas (" + (i+1) + "/" + candidates.length + ")...";
+        var h = await getProductImageHash(candidates[i]);
+        if(h) productHashes.push({ product: candidates[i], hash: h });
+      }
+
+      var foundCount = 0;
+      for(var c=0;c<cards.length;c++){
+        btn.textContent = "Comparando (" + (c+1) + "/" + cards.length + ")...";
+        var card = cards[c];
+        var fileId = card.id.replace("drive-card-", "");
+        var driveHash = await getDriveFileHash(fileId);
+        if(!driveHash) continue;
+        var best = null, bestDist = 999;
+        for(var j=0;j<productHashes.length;j++){
+          var d = hammingDistanceHex(driveHash, productHashes[j].hash);
+          if(d < bestDist){ bestDist = d; best = productHashes[j].product; }
+        }
+        if(best && bestDist <= DUPLICATE_HASH_THRESHOLD){
+          markDriveCardAsPossibleDuplicate(card, best, bestDist);
+          foundCount++;
+        }
+      }
+      statusEl.textContent = foundCount
+        ? (foundCount + " foto(s) pendente(s) parecem já estar cadastradas — veja o aviso vermelho nos cards.")
+        : "Nenhuma foto pendente parece bater com produtos já cadastrados.";
+    } catch(err){
+      statusEl.textContent = "Não foi possível concluir a comparação (" + err.message + ").";
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  }
+  document.getElementById("adminDriveCheckDupBtn").addEventListener("click", checkPendingForDuplicates);
 
   function wireDriveCardButtons(scope){
     scope.querySelectorAll(".js-drive-import").forEach(function(btn){
