@@ -4875,13 +4875,14 @@ img.team-badge{ background:transparent; }
     var temAlfandega = enc.taxaAlfandega !== null && enc.taxaAlfandega !== undefined && enc.taxaAlfandega !== "";
     var taxaAlfandega = temAlfandega ? Number(enc.taxaAlfandega) : 0;
 
-    var itens = produtos.map(function(p){
+    var itens = produtos.map(function(p, idx){
       var custoDolar = Number(p.custoDolar) || 0;
       var custoRealBase = custoDolar * taxaCambio;
       var parcelaAlfandega = (temAlfandega && totalDolar > 0) ? (custoDolar / totalDolar) * taxaAlfandega : 0;
       return {
-        nome: p.nome, custoDolar: custoDolar, custoRealBase: custoRealBase,
-        parcelaAlfandega: parcelaAlfandega, custoFinal: custoRealBase + parcelaAlfandega
+        idx: idx, nome: p.nome, custoDolar: custoDolar, custoRealBase: custoRealBase,
+        parcelaAlfandega: parcelaAlfandega, custoFinal: custoRealBase + parcelaAlfandega,
+        status: p.status || "estoque", linkedSaleId: p.linkedSaleId || null
       };
     });
     return { totalDolar: totalDolar, taxaCambio: taxaCambio, temAlfandega: temAlfandega, taxaAlfandega: taxaAlfandega, itens: itens };
@@ -4899,7 +4900,16 @@ img.team-badge{ background:transparent; }
       var dataFmt = enc.data ? new Date(enc.data).toLocaleDateString("pt-BR") : "—";
       var titulo = enc.referencia && enc.referencia.trim() ? enc.referencia : ("Encomenda de " + dataFmt);
       var itensHtml = calc.itens.map(function(it){
-        return '<tr><td>' + escapeHtml(it.nome || "—") + '</td><td>US$ ' + it.custoDolar.toFixed(2).replace(".", ",") + '</td><td>' + formatBRL(it.custoFinal) + '</td></tr>';
+        var linkedSale = it.linkedSaleId ? adminSales.find(function(s){ return s.id === it.linkedSaleId; }) : null;
+        var statusCell = '<select class="js-enc-item-status" data-enc="' + escapeHtml(enc.id) + '" data-idx="' + it.idx + '" style="background:var(--black);border:1px solid rgba(247,247,244,.15);color:var(--off);font-size:12px;padding:4px 6px">' +
+          '<option value="estoque"' + (it.status === "estoque" ? " selected" : "") + '>Em estoque</option>' +
+          '<option value="vendido"' + (it.status === "vendido" ? " selected" : "") + '>Vendido</option>' +
+        '</select>';
+        var linkCell = it.status !== "vendido" ? "—" :
+          linkedSale ? ('<span style="color:var(--gray);font-size:12px">' + escapeHtml(linkedSale.customerName || "—") + " · " + (linkedSale.date ? new Date(linkedSale.date).toLocaleDateString("pt-BR") : "—") + '</span> <button type="button" class="js-enc-unlink-sale" data-enc="' + escapeHtml(enc.id) + '" data-idx="' + it.idx + '" style="background:none;border:none;color:var(--danger);text-decoration:underline;font-size:11px;cursor:pointer">desvincular</button>')
+          : ('<input type="text" class="js-enc-link-sale-input" list="adminEncSaleList-' + escapeHtml(enc.id) + '-' + it.idx + '" data-enc="' + escapeHtml(enc.id) + '" data-idx="' + it.idx + '" placeholder="Buscar venda..." style="width:100%;background:var(--black);border:1px solid rgba(247,247,244,.15);color:var(--off);font-size:12px;padding:4px 6px">' +
+             '<datalist id="adminEncSaleList-' + escapeHtml(enc.id) + '-' + it.idx + '"></datalist>');
+        return '<tr><td>' + escapeHtml(it.nome || "—") + '</td><td>US$ ' + it.custoDolar.toFixed(2).replace(".", ",") + '</td><td>' + formatBRL(it.custoFinal) + '</td><td>' + statusCell + '</td><td style="min-width:170px">' + linkCell + '</td></tr>';
       }).join("");
       return '<div class="admin-metric-card" style="text-align:left;align-items:stretch;padding:18px">' +
         '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px">' +
@@ -4913,7 +4923,7 @@ img.team-badge{ background:transparent; }
             '<button type="button" class="btn btn-outline btn-sm js-delete-encomenda" data-id="' + escapeHtml(enc.id) + '" style="border-color:rgba(255,138,128,.4);color:var(--danger)">Excluir</button>' +
           '</div>' +
         '</div>' +
-        '<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Produto</th><th>Custo (US$)</th><th>Custo final (R$)</th></tr></thead><tbody>' + itensHtml + '</tbody></table></div>' +
+        '<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Produto</th><th>Custo (US$)</th><th>Custo final (R$)</th><th>Situação</th><th>Vínculo com venda</th></tr></thead><tbody>' + itensHtml + '</tbody></table></div>' +
       '</div>';
     }).join("");
 
@@ -4927,6 +4937,76 @@ img.team-badge{ background:transparent; }
         if(!res.ok){ alert(res.error || "Não foi possível excluir."); return; }
         adminEncomendas = adminEncomendas.filter(function(e){ return e.id !== btn.getAttribute("data-id"); });
         renderAdminEncomendas();
+      });
+    });
+
+    // Salva uma mudança num produto específico dentro de uma encomenda
+    // (status de estoque, vínculo com venda) — atualiza o item, envia a
+    // encomenda inteira pro backend (é como ela é guardada) e re-renderiza.
+    async function saveEncomendaItemChange(encId, idx, changes){
+      var enc = adminEncomendas.find(function(e){ return e.id === encId; });
+      if(!enc || !enc.produtos || !enc.produtos[idx]) return false;
+      Object.assign(enc.produtos[idx], changes);
+      var res = await callBackend("updateEncomenda", Object.assign({
+        id: enc.id, referencia: enc.referencia, produtos: enc.produtos, totalDolar: enc.totalDolar,
+        totalRealPago: enc.totalRealPago, taxaAlfandega: enc.taxaAlfandega, observacoes: enc.observacoes
+      }, authParams()));
+      if(!res.ok){ alert(res.error || "Não foi possível salvar essa alteração agora."); return false; }
+      return true;
+    }
+
+    wrap.querySelectorAll(".js-enc-item-status").forEach(function(sel){
+      sel.addEventListener("change", async function(){
+        var encId = sel.getAttribute("data-enc"), idx = Number(sel.getAttribute("data-idx"));
+        var newStatus = sel.value;
+        var changes = { status: newStatus };
+        if(newStatus === "estoque") changes.linkedSaleId = null; // volta pro estoque solta o vinculo
+        var ok = await saveEncomendaItemChange(encId, idx, changes);
+        if(ok) renderAdminEncomendas();
+      });
+    });
+
+    // Autocomplete de vendas: monta o datalist com "produto · cliente ·
+    // data" pra cada campo de busca, e guarda um mapa desse texto pro id
+    // da venda correspondente, já que o datalist não carrega dados extras.
+    var saleLabelToId = {};
+    function saleLabel(s){
+      var d = s.date ? new Date(s.date).toLocaleDateString("pt-BR") : "—";
+      return s.product + " · " + (s.customerName || "—") + " · " + d;
+    }
+    wrap.querySelectorAll(".js-enc-link-sale-input").forEach(function(input){
+      var listEl = document.getElementById(input.getAttribute("list"));
+      if(listEl){
+        listEl.innerHTML = adminSales.map(function(s){
+          var label = saleLabel(s);
+          saleLabelToId[label] = s.id;
+          return '<option value="' + escapeHtml(label) + '">';
+        }).join("");
+      }
+      input.addEventListener("change", async function(){
+        var saleId = saleLabelToId[input.value];
+        if(!saleId){ return; } // não bateu com nenhuma venda da lista — ignora
+        var encId = input.getAttribute("data-enc"), idx = Number(input.getAttribute("data-idx"));
+        var enc = adminEncomendas.find(function(e){ return e.id === encId; });
+        var item = enc && enc.produtos[idx];
+        if(!item) return;
+        var custoFinal = calcEncomendaCustos(enc).itens[idx].custoFinal;
+        var ok = await saveEncomendaItemChange(encId, idx, { linkedSaleId: saleId });
+        if(ok){
+          // também atualiza o custo da venda vinculada com o valor real calculado
+          await callBackend("updateSale", Object.assign({ id: saleId, field: "costValue", value: custoFinal.toFixed(2) }, authParams()));
+          var saleRow = adminSales.find(function(s){ return s.id === saleId; });
+          if(saleRow) saleRow.costValue = custoFinal.toFixed(2);
+          renderAdminEncomendas();
+          renderAdminSalesTable();
+        }
+      });
+    });
+    wrap.querySelectorAll(".js-enc-unlink-sale").forEach(function(btn){
+      btn.addEventListener("click", async function(){
+        var encId = btn.getAttribute("data-enc"), idx = Number(btn.getAttribute("data-idx"));
+        var ok = await saveEncomendaItemChange(encId, idx, { linkedSaleId: null });
+        if(ok) renderAdminEncomendas();
       });
     });
   }
@@ -5216,9 +5296,32 @@ img.team-badge{ background:transparent; }
         '<td><input type="text" data-field="phone" value="' + escapeHtml(c.phone) + '" style="width:130px"></td>' +
         '<td><button type="button" class="admin-vip-toggle" data-vip="' + (c.vip ? "true" : "false") + '" aria-pressed="' + (c.vip ? "true" : "false") + '">VIP</button></td>' +
         "<td>" + formatBRL(c.revenue) + "</td>" +
-        "<td>" + lastFmt + "</td>" +
+        '<td><button type="button" class="admin-history-toggle" style="background:none;border:none;color:var(--off);text-decoration:underline;cursor:pointer;font-size:13px;padding:0">' + lastFmt + " ▾</button></td>" +
         "<td>" + c.orderCount + "</td>" +
         '<td><button type="button" class="admin-row-delete admin-customer-delete" aria-label="Excluir cliente">&times;</button></td>';
+
+      var historyRow = document.createElement("tr");
+      historyRow.className = "admin-history-row";
+      historyRow.hidden = true;
+      var historyTd = document.createElement("td");
+      historyTd.colSpan = 7;
+      historyTd.style.cssText = "background:rgba(247,247,244,.03);padding:14px 16px";
+      var custSales = adminSales.filter(function(s){ return normalizePhone(s.customerPhone) === c.phoneKey; })
+        .sort(function(a, b){ return new Date(b.date) - new Date(a.date); });
+      historyTd.innerHTML = custSales.length
+        ? '<div style="font-size:12px;color:var(--gray);margin-bottom:8px;font-weight:600">HISTÓRICO DE COMPRAS</div>' +
+          '<table style="width:100%;font-size:13px;border-collapse:collapse">' +
+          '<thead><tr style="color:var(--gray);text-align:left"><th style="padding:4px 8px 4px 0">Data</th><th style="padding:4px 8px">Produto</th><th style="padding:4px 8px">Tam.</th><th style="padding:4px 8px">Valor</th><th style="padding:4px 8px">Status</th></tr></thead>' +
+          '<tbody>' + custSales.map(function(s){
+            var d = s.date ? new Date(s.date).toLocaleDateString("pt-BR") : "—";
+            return '<tr><td style="padding:4px 8px 4px 0">' + d + '</td><td style="padding:4px 8px">' + escapeHtml(s.product) + '</td><td style="padding:4px 8px">' + escapeHtml(s.size || "—") + '</td><td style="padding:4px 8px">' + formatBRL(Number(s.saleValue) || 0) + '</td><td style="padding:4px 8px">' + escapeHtml(s.orderStatus || "Pendente") + '</td></tr>';
+          }).join('') + '</tbody></table>'
+        : '<div style="font-size:13px;color:var(--gray)">Nenhuma compra registrada ainda.</div>';
+      historyRow.appendChild(historyTd);
+
+      tr.querySelector(".admin-history-toggle").addEventListener("click", function(){
+        historyRow.hidden = !historyRow.hidden;
+      });
 
       tr.querySelectorAll("[data-field]").forEach(function(input){
         input.addEventListener("change", async function(){
@@ -5288,6 +5391,7 @@ img.team-badge{ background:transparent; }
         }
       });
       tbody.appendChild(tr);
+      tbody.appendChild(historyRow);
     });
   }
 
