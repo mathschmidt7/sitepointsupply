@@ -5509,6 +5509,11 @@ img.team-badge{ background:transparent; }
     }
   }
 
+  // Contadores só pra diagnóstico — zerados a cada rodada de comparação e
+  // mostrados no resultado final, pra dar pra entender o que travou/falhou
+  // numa conexão que eu não consigo ver diretamente.
+  var DUP_STATS = { productOk:0, productFail:0, driveThumbOk:0, driveFullOk:0, driveFail:0 };
+
   async function getDriveFileSignature(fileId, thumbnailUrl){
     if(Object.prototype.hasOwnProperty.call(driveFileSigCache, fileId)) return driveFileSigCache[fileId];
     // A miniatura que o Drive já gera é bem mais leve que o arquivo original —
@@ -5521,6 +5526,7 @@ img.team-badge{ background:transparent; }
           var tBlob = await tRes.blob();
           driveFileSigCache[fileId] = await computeImageSignatureFromBlob(tBlob);
           driveFileSigCacheDirty = true;
+          DUP_STATS.driveThumbOk++;
           return driveFileSigCache[fileId];
         }
       } catch(e){ /* cai pro download completo abaixo */ }
@@ -5532,9 +5538,11 @@ img.team-badge{ background:transparent; }
       var blob = await res.blob();
       driveFileSigCache[fileId] = await computeImageSignatureFromBlob(blob);
       driveFileSigCacheDirty = true;
+      DUP_STATS.driveFullOk++;
     } catch(e){
       // Não guarda falha no cache persistente — pode ter sido instabilidade
       // pontual de rede; só evita repetir a tentativa dentro desta mesma sessão.
+      DUP_STATS.driveFail++;
     }
     return driveFileSigCache[fileId] || null;
   }
@@ -5588,6 +5596,8 @@ img.team-badge{ background:transparent; }
     }
     btn.disabled = true;
     var originalText = btn.textContent;
+    DUP_STATS.productOk = 0; DUP_STATS.productFail = 0;
+    DUP_STATS.driveThumbOk = 0; DUP_STATS.driveFullOk = 0; DUP_STATS.driveFail = 0;
     try{
       var candidates = PRODUCTS.filter(function(p){ return p.imageUrl && !p.driveFileId; });
       var sigResults = await mapWithConcurrency(candidates, 6, function(p){ return getProductImageSignature(p); }, function(done, total){
@@ -5596,7 +5606,8 @@ img.team-badge{ background:transparent; }
       persistProductImageSigCache();
       var productSigs = [];
       for(var i=0;i<candidates.length;i++){
-        if(sigResults[i]) productSigs.push({ product: candidates[i], sig: sigResults[i] });
+        if(sigResults[i]){ productSigs.push({ product: candidates[i], sig: sigResults[i] }); DUP_STATS.productOk++; }
+        else{ DUP_STATS.productFail++; }
       }
 
       var foundCount = 0;
@@ -5617,9 +5628,12 @@ img.team-badge{ background:transparent; }
         btn.textContent = "Comparando (" + done + "/" + total + ")...";
       });
       persistDriveFileSigCache();
-      statusEl.textContent = foundCount
+      var diag = "[diagnóstico: produtos lidos " + DUP_STATS.productOk + ", falharam " + DUP_STATS.productFail +
+        " | Drive por miniatura " + DUP_STATS.driveThumbOk + ", por arquivo completo " + DUP_STATS.driveFullOk +
+        ", falharam " + DUP_STATS.driveFail + "]";
+      statusEl.textContent = (foundCount
         ? (foundCount + " foto(s) pendente(s) parecem já estar cadastradas — confira o aviso em cada card.")
-        : "Nenhuma foto pendente parece bater com produtos já cadastrados.";
+        : "Nenhuma foto pendente parece bater com produtos já cadastrados.") + " " + diag;
     } catch(err){
       statusEl.textContent = "Não foi possível concluir a comparação (" + err.message + ").";
     } finally {
