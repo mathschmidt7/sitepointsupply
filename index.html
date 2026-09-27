@@ -5485,7 +5485,7 @@ img.team-badge{ background:transparent; }
   // dessa foto específica depois de alguns segundos e segue pras outras.
   function fetchWithTimeout(url, ms){
     var controller = new AbortController();
-    var timer = setTimeout(function(){ controller.abort(); }, ms || 12000);
+    var timer = setTimeout(function(){ controller.abort(); }, ms || 30000);
     return fetch(url, { signal: controller.signal }).finally(function(){ clearTimeout(timer); });
   }
 
@@ -5527,7 +5527,7 @@ img.team-badge{ background:transparent; }
     }
     try{
       var url = "https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media&key=" + DRIVE_API_KEY;
-      var res = await fetchWithTimeout(url, 20000);
+      var res = await fetchWithTimeout(url, 40000);
       if(!res.ok) throw new Error("http " + res.status);
       var blob = await res.blob();
       driveFileSigCache[fileId] = await computeImageSignatureFromBlob(blob);
@@ -5590,7 +5590,7 @@ img.team-badge{ background:transparent; }
     var originalText = btn.textContent;
     try{
       var candidates = PRODUCTS.filter(function(p){ return p.imageUrl && !p.driveFileId; });
-      var sigResults = await mapWithConcurrency(candidates, 12, function(p){ return getProductImageSignature(p); }, function(done, total){
+      var sigResults = await mapWithConcurrency(candidates, 6, function(p){ return getProductImageSignature(p); }, function(done, total){
         btn.textContent = "Lendo fotos já cadastradas (" + done + "/" + total + ")...";
       });
       persistProductImageSigCache();
@@ -5600,7 +5600,7 @@ img.team-badge{ background:transparent; }
       }
 
       var foundCount = 0;
-      await mapWithConcurrency(cards, 10, function(card){
+      await mapWithConcurrency(cards, 5, function(card){
         return (async function(){
           var fileId = card.id.replace("drive-card-", "");
           var driveSig = await getDriveFileSignature(fileId, card.dataset.thumb);
