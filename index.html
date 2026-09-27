@@ -745,6 +745,10 @@ img.team-badge{ background:transparent; }
 .admin-table{ width:100%; border-collapse:collapse; font-size:12.5px; min-width:860px; }
 .admin-table th, .admin-table td{ padding:12px 14px; border-bottom:1px solid rgba(247,247,244,.08); text-align:left; white-space:nowrap; }
 .admin-table th{ color:var(--gray); text-transform:uppercase; font-size:10.5px; letter-spacing:.05em; background:var(--graphite); position:sticky; top:0; }
+.admin-table th.admin-sortable{ cursor:pointer; user-select:none; }
+.admin-table th.admin-sortable:hover{ color:var(--off); }
+.admin-table th.admin-sortable.is-sorted{ color:var(--off); }
+.admin-table th .sort-arrow{ display:inline-block; margin-left:4px; font-size:9px; opacity:.8; }
 .admin-table tbody tr{ transition:background .12s var(--ease); }
 .admin-table tbody tr:hover{ background:rgba(247,247,244,.03); }
 .admin-table tbody tr:last-child td{ border-bottom:none; }
@@ -1424,8 +1428,21 @@ img.team-badge{ background:transparent; }
         <button type="button" class="btn btn-outline btn-sm" id="adminClearBtn" style="border-color:rgba(255,138,128,.4);color:var(--danger)">Apagar todos os dados</button>
       </div>
       <div class="admin-table-wrap">
-        <table class="admin-table">
-          <thead><tr><th>Produto</th><th>Tam.</th><th>Cliente</th><th>Valor (R$)</th><th>Custo (R$)</th><th>Lucro (R$)</th><th>Status envio</th><th>Status pedido</th><th>Rastreio</th><th>Origem</th><th></th></tr></thead>
+        <table class="admin-table" id="adminSalesTable">
+          <thead><tr>
+            <th data-sort="date" class="admin-sortable">Data<span class="sort-arrow"></span></th>
+            <th data-sort="product" class="admin-sortable">Produto<span class="sort-arrow"></span></th>
+            <th>Tam.</th>
+            <th data-sort="customerName" class="admin-sortable">Cliente<span class="sort-arrow"></span></th>
+            <th data-sort="saleValue" class="admin-sortable">Valor (R$)<span class="sort-arrow"></span></th>
+            <th data-sort="costValue" class="admin-sortable">Custo (R$)<span class="sort-arrow"></span></th>
+            <th data-sort="profit" class="admin-sortable">Lucro (R$)<span class="sort-arrow"></span></th>
+            <th data-sort="status" class="admin-sortable">Status envio<span class="sort-arrow"></span></th>
+            <th data-sort="orderStatus" class="admin-sortable">Status pedido<span class="sort-arrow"></span></th>
+            <th>Rastreio</th>
+            <th data-sort="source" class="admin-sortable">Origem<span class="sort-arrow"></span></th>
+            <th></th>
+          </tr></thead>
           <tbody id="adminSalesBody"></tbody>
         </table>
       </div>
@@ -4795,17 +4812,79 @@ img.team-badge{ background:transparent; }
     }).join("");
   }
 
+  var adminSalesSortField = "date";
+  var adminSalesSortDir = "desc";
+  var ADMIN_SALES_NUMERIC_FIELDS = { saleValue:true, costValue:true, profit:true };
+  var ADMIN_SALES_DEFAULT_DESC_FIELDS = { date:true, saleValue:true, costValue:true, profit:true };
+
+  function sortAdminSales(){
+    var field = adminSalesSortField;
+    var dir = adminSalesSortDir === "asc" ? 1 : -1;
+    adminSales.sort(function(a, b){
+      var av, bv;
+      if(field === "profit"){
+        av = (Number(a.saleValue) || 0) - (Number(a.costValue) || 0);
+        bv = (Number(b.saleValue) || 0) - (Number(b.costValue) || 0);
+      } else if(ADMIN_SALES_NUMERIC_FIELDS[field]){
+        av = Number(a[field]) || 0;
+        bv = Number(b[field]) || 0;
+      } else if(field === "date"){
+        av = a.date ? new Date(a.date).getTime() : 0;
+        bv = b.date ? new Date(b.date).getTime() : 0;
+      } else {
+        av = String(a[field] || "").toLowerCase();
+        bv = String(b[field] || "").toLowerCase();
+      }
+      if(av < bv) return -1 * dir;
+      if(av > bv) return 1 * dir;
+      return 0;
+    });
+  }
+
+  function updateAdminSalesSortIndicators(){
+    document.querySelectorAll('#adminSalesTable th[data-sort]').forEach(function(th){
+      var arrow = th.querySelector(".sort-arrow");
+      if(th.dataset.sort === adminSalesSortField){
+        th.classList.add("is-sorted");
+        arrow.textContent = adminSalesSortDir === "asc" ? "▲" : "▼";
+      } else {
+        th.classList.remove("is-sorted");
+        arrow.textContent = "";
+      }
+    });
+  }
+
+  document.querySelectorAll('#adminSalesTable th[data-sort]').forEach(function(th){
+    th.addEventListener("click", function(){
+      var field = th.dataset.sort;
+      if(adminSalesSortField === field){
+        adminSalesSortDir = adminSalesSortDir === "asc" ? "desc" : "asc";
+      } else {
+        adminSalesSortField = field;
+        adminSalesSortDir = ADMIN_SALES_DEFAULT_DESC_FIELDS[field] ? "desc" : "asc";
+      }
+      renderAdminSalesTable();
+    });
+  });
+
   function renderAdminSalesTable(){
     var tbody = document.getElementById("adminSalesBody");
+    updateAdminSalesSortIndicators();
     if(!adminSales.length){
-      tbody.innerHTML = '<tr><td colspan="12" class="admin-empty">Nenhuma venda registrada ainda.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="13" class="admin-empty">Nenhuma venda registrada ainda.</td></tr>';
       return;
     }
+    sortAdminSales();
     tbody.innerHTML = "";
     adminSales.forEach(function(sale){
       var tr = document.createElement("tr");
       var profit = (Number(sale.saleValue) || 0) - (Number(sale.costValue) || 0);
+      var saleDate = sale.date ? new Date(sale.date) : null;
+      var saleDateHtml = saleDate
+        ? escapeHtml(saleDate.toLocaleDateString("pt-BR")) + '<br><span style="color:var(--gray);font-size:11px">' + escapeHtml(saleDate.toLocaleTimeString("pt-BR", { hour:"2-digit", minute:"2-digit" })) + '</span>'
+        : "—";
       tr.innerHTML =
+        '<td style="white-space:nowrap">' + saleDateHtml + "</td>" +
         "<td>" + escapeHtml(sale.product) + "</td>" +
         "<td>" + escapeHtml(sale.size || "—") + "</td>" +
         "<td>" + escapeHtml(sale.customerName || "—") + "</td>" +
@@ -4824,7 +4903,7 @@ img.team-badge{ background:transparent; }
           var previous = sale[field];
           sale[field] = input.value;
           if(field === "saleValue" || field === "costValue"){
-            var profitCell = tr.children[5];
+            var profitCell = tr.children[6];
             profitCell.textContent = formatBRL((Number(sale.saleValue) || 0) - (Number(sale.costValue) || 0));
           }
           renderAdminMetrics();
