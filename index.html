@@ -5363,8 +5363,42 @@ img.team-badge{ background:transparent; }
      a "mesma" foto continua batendo mesmo depois de passar pelo pipeline de
      upload do site. */
   var DUPLICATE_HASH_THRESHOLD = 10; // de 64 bits — quanto menor, mais rígido
-  var productImageHashCache = {};
+  var PRODUCT_HASH_STORAGE_KEY = "spsAdminProductImageHashes_v1";
+  var productImageHashCache = (function(){
+    try{
+      var raw = localStorage.getItem(PRODUCT_HASH_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch(e){ return {}; }
+  })(); // persiste no navegador — depois da primeira vez, só analisa fotos novas
+  var productImageHashCacheDirty = false;
+  var productImageHashFailedThisSession = {};
   var driveFileHashCache = {};
+
+  function persistProductImageHashCache(){
+    if(!productImageHashCacheDirty) return;
+    try{ localStorage.setItem(PRODUCT_HASH_STORAGE_KEY, JSON.stringify(productImageHashCache)); } catch(e){}
+    productImageHashCacheDirty = false;
+  }
+
+  // Roda até `limit` chamadas de `worker` ao mesmo tempo, em vez de uma de
+  // cada vez — com centenas/milhares de produtos, isso é a diferença entre
+  // minutos e segundos, já que a maior parte do tempo é espera de rede.
+  async function mapWithConcurrency(items, limit, worker, onProgress){
+    var results = new Array(items.length);
+    var next = 0, done = 0;
+    async function runOne(){
+      while(next < items.length){
+        var idx = next++;
+        results[idx] = await worker(items[idx], idx);
+        done++;
+        if(onProgress) onProgress(done, items.length);
+      }
+    }
+    var runners = [];
+    for(var i=0;i<Math.min(limit, items.length);i++) runners.push(runOne());
+    await Promise.all(runners);
+    return results;
+  }
 
   function computeDHashFromBlob(blob){
     return new Promise(function(resolve, reject){
@@ -5410,15 +5444,21 @@ img.team-badge{ background:transparent; }
   async function getProductImageHash(product){
     if(!product.imageUrl) return null;
     if(Object.prototype.hasOwnProperty.call(productImageHashCache, product.imageUrl)) return productImageHashCache[product.imageUrl];
+    if(productImageHashFailedThisSession[product.imageUrl]) return null;
     try{
       var res = await fetch(product.imageUrl);
       if(!res.ok) throw new Error("http " + res.status);
       var blob = await res.blob();
-      productImageHashCache[product.imageUrl] = await computeDHashFromBlob(blob);
+      var hash = await computeDHashFromBlob(blob);
+      productImageHashCache[product.imageUrl] = hash;
+      productImageHashCacheDirty = true;
+      return hash;
     } catch(e){
-      productImageHashCache[product.imageUrl] = null;
+      // Não guarda falha no cache persistente — pode ter sido instabilidade
+      // pontual de rede; só evita repetir a tentativa dentro desta mesma sessão.
+      productImageHashFailedThisSession[product.imageUrl] = true;
+      return null;
     }
-    return productImageHashCache[product.imageUrl];
   }
 
   async function getDriveFileHash(fileId){
@@ -5473,30 +5513,34 @@ img.team-badge{ background:transparent; }
     var originalText = btn.textContent;
     try{
       var candidates = PRODUCTS.filter(function(p){ return p.imageUrl && !p.driveFileId; });
+      var hashResults = await mapWithConcurrency(candidates, 8, function(p){ return getProductImageHash(p); }, function(done, total){
+        btn.textContent = "Lendo fotos já cadastradas (" + done + "/" + total + ")...";
+      });
+      persistProductImageHashCache();
       var productHashes = [];
       for(var i=0;i<candidates.length;i++){
-        btn.textContent = "Lendo fotos já cadastradas (" + (i+1) + "/" + candidates.length + ")...";
-        var h = await getProductImageHash(candidates[i]);
-        if(h) productHashes.push({ product: candidates[i], hash: h });
+        if(hashResults[i]) productHashes.push({ product: candidates[i], hash: hashResults[i] });
       }
 
       var foundCount = 0;
-      for(var c=0;c<cards.length;c++){
-        btn.textContent = "Comparando (" + (c+1) + "/" + cards.length + ")...";
-        var card = cards[c];
-        var fileId = card.id.replace("drive-card-", "");
-        var driveHash = await getDriveFileHash(fileId);
-        if(!driveHash) continue;
-        var best = null, bestDist = 999;
-        for(var j=0;j<productHashes.length;j++){
-          var d = hammingDistanceHex(driveHash, productHashes[j].hash);
-          if(d < bestDist){ bestDist = d; best = productHashes[j].product; }
-        }
-        if(best && bestDist <= DUPLICATE_HASH_THRESHOLD){
-          markDriveCardAsPossibleDuplicate(card, best, bestDist);
-          foundCount++;
-        }
-      }
+      await mapWithConcurrency(cards, 6, function(card){
+        return (async function(){
+          var fileId = card.id.replace("drive-card-", "");
+          var driveHash = await getDriveFileHash(fileId);
+          if(!driveHash) return;
+          var best = null, bestDist = 999;
+          for(var j=0;j<productHashes.length;j++){
+            var d = hammingDistanceHex(driveHash, productHashes[j].hash);
+            if(d < bestDist){ bestDist = d; best = productHashes[j].product; }
+          }
+          if(best && bestDist <= DUPLICATE_HASH_THRESHOLD){
+            markDriveCardAsPossibleDuplicate(card, best, bestDist);
+            foundCount++;
+          }
+        })();
+      }, function(done, total){
+        btn.textContent = "Comparando (" + done + "/" + total + ")...";
+      });
       statusEl.textContent = foundCount
         ? (foundCount + " foto(s) pendente(s) parecem já estar cadastradas — veja o aviso vermelho nos cards.")
         : "Nenhuma foto pendente parece bater com produtos já cadastrados.";
