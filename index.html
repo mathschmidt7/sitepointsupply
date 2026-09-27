@@ -5504,14 +5504,21 @@ img.team-badge{ background:transparent; }
     if(card.querySelector(".js-drive-dup-warning")) return;
     card.style.outline = "2px solid var(--danger)";
 
+    var driveThumb = card.dataset.thumb || "";
     var box = document.createElement("div");
     box.className = "js-drive-dup-warning";
     box.style.cssText = "margin-bottom:8px;padding:8px;border:1px solid rgba(255,138,128,.4);border-radius:4px;background:rgba(255,138,128,.08);box-sizing:border-box;max-width:100%;overflow:hidden";
     box.innerHTML =
-      '<div style="font-size:11px;color:var(--danger);font-weight:700;margin-bottom:6px">⚠ Pode já estar cadastrada</div>' +
-      '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">' +
-        '<img src="' + escapeHtml(product.imageUrl) + '" alt="" style="width:36px;height:36px;object-fit:cover;border-radius:2px;flex-shrink:0;background:var(--black)">' +
-        '<div style="font-size:11px;color:var(--off);word-break:break-word;min-width:0">' + escapeHtml(product.name) + '</div>' +
+      '<div style="font-size:11px;color:var(--danger);font-weight:700;margin-bottom:6px">⚠ Pode já estar cadastrada — compare as fotos:</div>' +
+      '<div style="display:flex;gap:6px;margin-bottom:6px">' +
+        '<div style="flex:1;min-width:0;text-align:center">' +
+          '<img src="' + escapeHtml(driveThumb) + '" alt="" style="width:100%;aspect-ratio:1;object-fit:contain;border-radius:2px;background:var(--black)">' +
+          '<div style="font-size:10px;color:var(--gray);margin-top:2px">Foto do Drive</div>' +
+        '</div>' +
+        '<div style="flex:1;min-width:0;text-align:center">' +
+          '<img src="' + escapeHtml(product.imageUrl) + '" alt="" style="width:100%;aspect-ratio:1;object-fit:contain;border-radius:2px;background:var(--black)">' +
+          '<div style="font-size:10px;color:var(--off);margin-top:2px;word-break:break-word">' + escapeHtml(product.name) + '</div>' +
+        '</div>' +
       '</div>';
 
     var confirmBtn = document.createElement("button");
