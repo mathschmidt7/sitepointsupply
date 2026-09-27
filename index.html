@@ -5371,8 +5371,8 @@ img.team-badge{ background:transparent; }
      forma E cor parecidas ao mesmo tempo, camisas de times diferentes (cores
      diferentes) deixam de bater, mas a mesma foto recomprimida continua
      batendo (cor e forma mudam muito pouco nesse processo). */
-  var DUP_HASH_THRESHOLD = 6;    // de 90 bits (grade 10x10) — estrutura/forma
-  var DUP_COLOR_THRESHOLD = 15;  // distância euclidiana de cor média (0–441)
+  var DUP_HASH_THRESHOLD = 9;    // de 90 bits (grade 10x10) — estrutura/forma
+  var DUP_COLOR_THRESHOLD = 20;  // distância euclidiana de cor média (0–441)
   var PRODUCT_SIG_STORAGE_KEY = "spsAdminProductImageSig_v2";
   var productImageSigCache = (function(){
     try{
@@ -5512,10 +5512,13 @@ img.team-badge{ background:transparent; }
   // Contadores só pra diagnóstico — zerados a cada rodada de comparação e
   // mostrados no resultado final, pra dar pra entender o que travou/falhou
   // numa conexão que eu não consigo ver diretamente.
-  var DUP_STATS = { productOk:0, productFail:0, driveThumbOk:0, driveFullOk:0, driveFail:0 };
+  var DUP_STATS = { productOk:0, productFail:0, driveThumbOk:0, driveFullOk:0, driveFail:0, driveCacheHit:0 };
 
   async function getDriveFileSignature(fileId, thumbnailUrl){
-    if(Object.prototype.hasOwnProperty.call(driveFileSigCache, fileId)) return driveFileSigCache[fileId];
+    if(Object.prototype.hasOwnProperty.call(driveFileSigCache, fileId)){
+      DUP_STATS.driveCacheHit++;
+      return driveFileSigCache[fileId];
+    }
     // A miniatura que o Drive já gera é bem mais leve que o arquivo original —
     // tenta ela primeiro, e só baixa o arquivo completo se não der certo
     // (miniatura ainda não gerada, bloqueio de rede, etc).
@@ -5597,7 +5600,7 @@ img.team-badge{ background:transparent; }
     btn.disabled = true;
     var originalText = btn.textContent;
     DUP_STATS.productOk = 0; DUP_STATS.productFail = 0;
-    DUP_STATS.driveThumbOk = 0; DUP_STATS.driveFullOk = 0; DUP_STATS.driveFail = 0;
+    DUP_STATS.driveThumbOk = 0; DUP_STATS.driveFullOk = 0; DUP_STATS.driveFail = 0; DUP_STATS.driveCacheHit = 0;
     try{
       var candidates = PRODUCTS.filter(function(p){ return p.imageUrl && !p.driveFileId; });
       var sigResults = await mapWithConcurrency(candidates, 6, function(p){ return getProductImageSignature(p); }, function(done, total){
@@ -5629,8 +5632,8 @@ img.team-badge{ background:transparent; }
       });
       persistDriveFileSigCache();
       var diag = "[diagnóstico: produtos lidos " + DUP_STATS.productOk + ", falharam " + DUP_STATS.productFail +
-        " | Drive por miniatura " + DUP_STATS.driveThumbOk + ", por arquivo completo " + DUP_STATS.driveFullOk +
-        ", falharam " + DUP_STATS.driveFail + "]";
+        " | Drive já em cache " + DUP_STATS.driveCacheHit + ", por miniatura " + DUP_STATS.driveThumbOk +
+        ", por arquivo completo " + DUP_STATS.driveFullOk + ", falharam " + DUP_STATS.driveFail + "]";
       statusEl.textContent = (foundCount
         ? (foundCount + " foto(s) pendente(s) parecem já estar cadastradas — confira o aviso em cada card.")
         : "Nenhuma foto pendente parece bater com produtos já cadastrados.") + " " + diag;
