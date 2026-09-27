@@ -1505,8 +1505,10 @@ img.team-badge{ background:transparent; }
       </p>
       <div class="admin-toolbar">
         <button type="button" class="btn btn-outline btn-sm" id="adminDriveRefreshBtn">Buscar fotos novas</button>
+        <button type="button" class="btn btn-outline btn-sm" id="adminDriveCheckDupBtn" title="Compara cada foto pendente com as fotos dos produtos já cadastrados (forma + cor), só pra te avisar quando uma foto parece já existir — nada é salvo sem você confirmar na tela de editar produto">Comparar com fotos já cadastradas</button>
       </div>
       <div id="adminDriveStatus" style="color:var(--gray);font-size:13px;margin:14px 0"></div>
+      <div id="adminDriveDupStatus" style="color:var(--gray);font-size:12px;margin:-8px 0 14px"></div>
       <div id="adminDriveList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;margin-top:10px"></div>
     </div>
 
@@ -5351,6 +5353,229 @@ img.team-badge{ background:transparent; }
     }
   }
   document.getElementById("adminDriveRefreshBtn").addEventListener("click", loadDrivePhotos);
+
+  /* ---------- Comparação de fotos por similaridade (evita cadastrar produto duplicado) ----------
+     Toda foto enviada pelo admin passa por redimensionamento/recompressão
+     (uploadProductPhoto) antes de ser salva — então o arquivo salvo nunca é
+     byte-idêntico ao original do Drive, e comparar por MD5 não funciona.
+     Usamos um hash perceptual (forma/gradiente, em preto-e-branco) JUNTO
+     com a cor média da imagem. Só a forma não basta: duas camisas de times
+     diferentes, mas com o mesmo corte/pose, ficam quase idênticas em
+     preto-e-branco — foi isso que causou falsos positivos antes. Exigindo
+     forma E cor parecidas ao mesmo tempo, camisas de times diferentes (cores
+     diferentes) deixam de bater, mas a mesma foto recomprimida continua
+     batendo (cor e forma mudam muito pouco nesse processo). */
+  var DUP_HASH_THRESHOLD = 10;   // de 90 bits (grade 10x10) — estrutura/forma
+  var DUP_COLOR_THRESHOLD = 25;  // distância euclidiana de cor média (0–441)
+  var PRODUCT_SIG_STORAGE_KEY = "spsAdminProductImageSig_v2";
+  var productImageSigCache = (function(){
+    try{
+      var raw = localStorage.getItem(PRODUCT_SIG_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch(e){ return {}; }
+  })(); // persiste no navegador — depois da primeira vez, só analisa fotos novas
+  var productImageSigCacheDirty = false;
+  var productImageSigFailedThisSession = {};
+  var driveFileSigCache = {};
+
+  function persistProductImageSigCache(){
+    if(!productImageSigCacheDirty) return;
+    try{ localStorage.setItem(PRODUCT_SIG_STORAGE_KEY, JSON.stringify(productImageSigCache)); } catch(e){}
+    productImageSigCacheDirty = false;
+  }
+
+  // Roda até `limit` chamadas de `worker` ao mesmo tempo, em vez de uma de
+  // cada vez — com centenas/milhares de produtos, isso é a diferença entre
+  // minutos e segundos, já que a maior parte do tempo é espera de rede.
+  async function mapWithConcurrency(items, limit, worker, onProgress){
+    var results = new Array(items.length);
+    var next = 0, done = 0;
+    async function runOne(){
+      while(next < items.length){
+        var idx = next++;
+        results[idx] = await worker(items[idx], idx);
+        done++;
+        if(onProgress) onProgress(done, items.length);
+      }
+    }
+    var runners = [];
+    for(var i=0;i<Math.min(limit, items.length);i++) runners.push(runOne());
+    await Promise.all(runners);
+    return results;
+  }
+
+  function computeImageSignatureFromBlob(blob){
+    return new Promise(function(resolve, reject){
+      var url = URL.createObjectURL(blob);
+      var img = new Image();
+      img.onload = function(){
+        try{
+          var w = 10, h = 10;
+          var canvas = document.createElement("canvas");
+          canvas.width = w; canvas.height = h;
+          var ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, w, h);
+          var data = ctx.getImageData(0, 0, w, h).data;
+          var gray = [];
+          var sumR = 0, sumG = 0, sumB = 0, n = 0;
+          for(var i=0;i<data.length;i+=4){
+            var r = data[i], g = data[i+1], bch = data[i+2];
+            gray.push(0.299*r + 0.587*g + 0.114*bch);
+            sumR += r; sumG += g; sumB += bch; n++;
+          }
+          var bits = "";
+          for(var row=0; row<h; row++){
+            for(var col=0; col<w-1; col++){
+              bits += (gray[row*w+col] < gray[row*w+col+1]) ? "1" : "0";
+            }
+          }
+          var hex = "";
+          for(var b=0; b<bits.length; b+=4){ hex += parseInt(bits.substr(b,4), 2).toString(16); }
+          URL.revokeObjectURL(url);
+          resolve({ hash: hex, avgColor: [sumR/n, sumG/n, sumB/n] });
+        } catch(e){ URL.revokeObjectURL(url); reject(e); }
+      };
+      img.onerror = function(){ URL.revokeObjectURL(url); reject(new Error("Falha ao carregar imagem")); };
+      img.src = url;
+    });
+  }
+
+  function hammingDistanceHex(hexA, hexB){
+    if(!hexA || !hexB || hexA.length !== hexB.length) return 999;
+    var dist = 0;
+    for(var i=0;i<hexA.length;i++){
+      var xorVal = parseInt(hexA[i],16) ^ parseInt(hexB[i],16);
+      while(xorVal){ dist += xorVal & 1; xorVal = xorVal >> 1; }
+    }
+    return dist;
+  }
+
+  function colorDistance(a, b){
+    var dr = a[0]-b[0], dg = a[1]-b[1], db = a[2]-b[2];
+    return Math.sqrt(dr*dr + dg*dg + db*db);
+  }
+
+  function signaturesLookAlike(sigA, sigB){
+    if(!sigA || !sigB) return false;
+    return hammingDistanceHex(sigA.hash, sigB.hash) <= DUP_HASH_THRESHOLD
+      && colorDistance(sigA.avgColor, sigB.avgColor) <= DUP_COLOR_THRESHOLD;
+  }
+
+  async function getProductImageSignature(product){
+    if(!product.imageUrl) return null;
+    if(Object.prototype.hasOwnProperty.call(productImageSigCache, product.imageUrl)) return productImageSigCache[product.imageUrl];
+    if(productImageSigFailedThisSession[product.imageUrl]) return null;
+    try{
+      var res = await fetch(product.imageUrl);
+      if(!res.ok) throw new Error("http " + res.status);
+      var blob = await res.blob();
+      var sig = await computeImageSignatureFromBlob(blob);
+      productImageSigCache[product.imageUrl] = sig;
+      productImageSigCacheDirty = true;
+      return sig;
+    } catch(e){
+      // Não guarda falha no cache persistente — pode ter sido instabilidade
+      // pontual de rede; só evita repetir a tentativa dentro desta mesma sessão.
+      productImageSigFailedThisSession[product.imageUrl] = true;
+      return null;
+    }
+  }
+
+  async function getDriveFileSignature(fileId){
+    if(Object.prototype.hasOwnProperty.call(driveFileSigCache, fileId)) return driveFileSigCache[fileId];
+    try{
+      var url = "https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media&key=" + DRIVE_API_KEY;
+      var res = await fetch(url);
+      if(!res.ok) throw new Error("http " + res.status);
+      var blob = await res.blob();
+      driveFileSigCache[fileId] = await computeImageSignatureFromBlob(blob);
+    } catch(e){
+      driveFileSigCache[fileId] = null;
+    }
+    return driveFileSigCache[fileId];
+  }
+
+  // Mostra o aviso de possível duplicata dentro do próprio card, sem deixar
+  // nada vazar pra fora (texto quebra normalmente, botão contido). Não salva
+  // nada sozinho — abre a tela de editar produto já com a foto do Drive
+  // marcada, pro admin comparar visualmente e confirmar clicando em Salvar,
+  // do jeito que já funciona pro resto do cadastro.
+  function markDriveCardAsPossibleDuplicate(card, product, fileId){
+    if(card.querySelector(".js-drive-dup-warning")) return;
+    card.style.outline = "2px solid var(--danger)";
+
+    var box = document.createElement("div");
+    box.className = "js-drive-dup-warning";
+    box.style.cssText = "margin-bottom:8px;padding:8px;border:1px solid rgba(255,138,128,.4);border-radius:4px;background:rgba(255,138,128,.08);box-sizing:border-box;max-width:100%;overflow:hidden";
+    box.innerHTML =
+      '<div style="font-size:11px;color:var(--danger);font-weight:700;margin-bottom:6px">⚠ Pode já estar cadastrada</div>' +
+      '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">' +
+        '<img src="' + escapeHtml(product.imageUrl) + '" alt="" style="width:36px;height:36px;object-fit:cover;border-radius:2px;flex-shrink:0;background:var(--black)">' +
+        '<div style="font-size:11px;color:var(--off);word-break:break-word;min-width:0">' + escapeHtml(product.name) + '</div>' +
+      '</div>';
+
+    var confirmBtn = document.createElement("button");
+    confirmBtn.type = "button";
+    confirmBtn.className = "btn btn-outline btn-sm";
+    confirmBtn.style.cssText = "width:100%;box-sizing:border-box;white-space:normal;height:auto;line-height:1.3;padding:8px 10px";
+    confirmBtn.textContent = "Comparar e confirmar";
+    confirmBtn.addEventListener("click", function(){
+      openProductForm(Object.assign({}, product, { driveFileId: fileId }));
+    });
+    box.appendChild(confirmBtn);
+    card.insertBefore(box, card.firstChild);
+  }
+
+  async function checkPendingForDuplicates(){
+    var btn = document.getElementById("adminDriveCheckDupBtn");
+    var statusEl = document.getElementById("adminDriveDupStatus");
+    var pendingGrid = document.getElementById("adminDrivePendingGrid");
+    var cards = pendingGrid ? Array.prototype.slice.call(pendingGrid.querySelectorAll(".js-drive-card")) : [];
+    if(!cards.length){
+      statusEl.textContent = "Não há fotos pendentes para comparar.";
+      return;
+    }
+    btn.disabled = true;
+    var originalText = btn.textContent;
+    try{
+      var candidates = PRODUCTS.filter(function(p){ return p.imageUrl && !p.driveFileId; });
+      var sigResults = await mapWithConcurrency(candidates, 8, function(p){ return getProductImageSignature(p); }, function(done, total){
+        btn.textContent = "Lendo fotos já cadastradas (" + done + "/" + total + ")...";
+      });
+      persistProductImageSigCache();
+      var productSigs = [];
+      for(var i=0;i<candidates.length;i++){
+        if(sigResults[i]) productSigs.push({ product: candidates[i], sig: sigResults[i] });
+      }
+
+      var foundCount = 0;
+      await mapWithConcurrency(cards, 6, function(card){
+        return (async function(){
+          var fileId = card.id.replace("drive-card-", "");
+          var driveSig = await getDriveFileSignature(fileId);
+          if(!driveSig) return;
+          for(var j=0;j<productSigs.length;j++){
+            if(signaturesLookAlike(driveSig, productSigs[j].sig)){
+              markDriveCardAsPossibleDuplicate(card, productSigs[j].product, fileId);
+              foundCount++;
+              break;
+            }
+          }
+        })();
+      }, function(done, total){
+        btn.textContent = "Comparando (" + done + "/" + total + ")...";
+      });
+      statusEl.textContent = foundCount
+        ? (foundCount + " foto(s) pendente(s) parecem já estar cadastradas — confira o aviso em cada card.")
+        : "Nenhuma foto pendente parece bater com produtos já cadastrados.";
+    } catch(err){
+      statusEl.textContent = "Não foi possível concluir a comparação (" + err.message + ").";
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  }
+  document.getElementById("adminDriveCheckDupBtn").addEventListener("click", checkPendingForDuplicates);
 
   function wireDriveCardButtons(scope){
     scope.querySelectorAll(".js-drive-import").forEach(function(btn){
