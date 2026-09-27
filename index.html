@@ -308,7 +308,12 @@ p{ margin:0; }
   position:relative; background:var(--graphite); border:1px solid rgba(247,247,244,.1);
   max-width:480px; width:100%; max-height:86vh; overflow-y:auto; padding:32px;
   transform:translateY(16px); opacity:0; transition:transform .3s var(--ease), opacity .3s var(--ease);
+  scrollbar-width:thin; scrollbar-color:rgba(247,247,244,.25) transparent;
 }
+.modal-box::-webkit-scrollbar{ width:6px; }
+.modal-box::-webkit-scrollbar-track{ background:transparent; }
+.modal-box::-webkit-scrollbar-thumb{ background:rgba(247,247,244,.25); border-radius:999px; }
+.modal-box::-webkit-scrollbar-thumb:hover{ background:rgba(247,247,244,.45); }
 .modal.is-open .modal-box{ transform:translateY(0); opacity:1; }
 .modal-close{ position:absolute; top:14px; right:14px; }
 .modal-title{ font-size:22px; margin-bottom:16px; padding-right:34px; }
@@ -711,7 +716,12 @@ img.team-badge{ background:transparent; }
 .admin-sidebar{
   width:240px; flex-shrink:0; background:#050505; border-right:1px solid rgba(247,247,244,.08);
   display:flex; flex-direction:column; position:fixed; top:0; left:0; bottom:0; overflow-y:auto; z-index:50;
+  scrollbar-width:thin; scrollbar-color:rgba(247,247,244,.25) transparent;
 }
+.admin-sidebar::-webkit-scrollbar{ width:6px; }
+.admin-sidebar::-webkit-scrollbar-track{ background:transparent; }
+.admin-sidebar::-webkit-scrollbar-thumb{ background:rgba(247,247,244,.25); border-radius:999px; }
+.admin-sidebar::-webkit-scrollbar-thumb:hover{ background:rgba(247,247,244,.45); }
 .admin-sidebar-brand{ padding:26px 22px 20px; border-bottom:1px solid rgba(247,247,244,.08); }
 .admin-sidebar-brand .logo-mark{ width:30px; height:25px; }
 .admin-sidebar-brand .logo-word{ font-size:15px; }
@@ -741,7 +751,14 @@ img.team-badge{ background:transparent; }
 .admin-metric-value{ font-family:var(--font-display); font-size:26px; text-transform:uppercase; }
 .admin-metric-label{ font-size:12px; color:var(--gray); margin-top:6px; }
 .admin-toolbar{ display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap; }
-.admin-table-wrap{ overflow-x:auto; border:1px solid rgba(247,247,244,.08); border-radius:8px; }
+.admin-table-wrap{
+  overflow-x:auto; border:1px solid rgba(247,247,244,.08); border-radius:8px;
+  scrollbar-width:thin; scrollbar-color:rgba(247,247,244,.25) transparent;
+}
+.admin-table-wrap::-webkit-scrollbar{ height:7px; }
+.admin-table-wrap::-webkit-scrollbar-track{ background:rgba(247,247,244,.06); border-radius:999px; }
+.admin-table-wrap::-webkit-scrollbar-thumb{ background:rgba(247,247,244,.3); border-radius:999px; }
+.admin-table-wrap::-webkit-scrollbar-thumb:hover{ background:rgba(247,247,244,.5); }
 .admin-table{ width:100%; border-collapse:collapse; font-size:12.5px; min-width:860px; }
 .admin-table th, .admin-table td{ padding:12px 14px; border-bottom:1px solid rgba(247,247,244,.08); text-align:left; white-space:nowrap; }
 .admin-table th{ color:var(--gray); text-transform:uppercase; font-size:10.5px; letter-spacing:.05em; background:var(--graphite); position:sticky; top:0; }
@@ -753,6 +770,8 @@ img.team-badge{ background:transparent; }
 .admin-table tbody tr:hover{ background:rgba(247,247,244,.03); }
 .admin-table tbody tr:last-child td{ border-bottom:none; }
 .admin-table input, .admin-table select{ background:var(--black); border:1px solid rgba(247,247,244,.15); color:var(--off); font-size:12px; padding:6px 7px; width:100%; min-width:76px; border-radius:4px; }
+.status-cell{ display:flex; align-items:center; gap:7px; }
+.status-dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; box-shadow:0 0 0 2px rgba(0,0,0,.25); }
 .admin-row-delete{ background:none; border:none; color:var(--gray); font-size:17px; line-height:1; }
 .admin-vip-toggle{
   border:1px solid rgba(247,247,244,.25); background:none; color:var(--gray); font-size:10.5px; font-weight:700;
@@ -1427,6 +1446,7 @@ img.team-badge{ background:transparent; }
         <button type="button" class="btn btn-outline btn-sm" id="adminSeedBtn">Carregar dados de exemplo</button>
         <button type="button" class="btn btn-outline btn-sm" id="adminClearBtn" style="border-color:rgba(255,138,128,.4);color:var(--danger)">Apagar todos os dados</button>
       </div>
+      <div id="adminSalesPeriodTabs" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px"></div>
       <div class="admin-table-wrap">
         <table class="admin-table" id="adminSalesTable">
           <thead><tr>
@@ -1660,6 +1680,7 @@ img.team-badge{ background:transparent; }
         <p style="color:var(--gray);margin-bottom:8px">Mais de um produto com esse nome — escolha o certo:</p>
         <div id="adminSaleProductAmbiguousList" style="display:flex;flex-direction:column;gap:6px"></div>
       </div>
+      <label class="form-field">Data da venda<input type="datetime-local" name="saleDate"></label>
       <label class="form-field">Tamanho
         <select name="size"><option>P</option><option>M</option><option>G</option><option>GG</option><option>2XL</option><option>3XL</option><option>4XL</option><option>—</option></select>
       </label>
@@ -1691,6 +1712,7 @@ img.team-badge{ background:transparent; }
     <h3 class="modal-title" id="adminEncomendaTitle">Nova encomenda</h3>
     <form id="adminEncomendaForm" class="form-grid">
       <input type="hidden" name="id">
+      <label class="form-field">Data da encomenda<input type="date" name="encData"></label>
       <label class="form-field">Referência (opcional, pra identificar a encomenda)<input type="text" name="referencia" placeholder="Ex: Encomenda outubro/26"></label>
 
       <div style="grid-column:1/-1">
@@ -1749,6 +1771,7 @@ img.team-badge{ background:transparent; }
         <input type="text" name="prontaEntregaPrice" placeholder="Ex: R$ 219,90" style="width:100%;background:var(--black);border:1px solid rgba(247,247,244,.15);color:var(--off);padding:9px 12px;font-size:13px">
       </div>
       <label class="form-field" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" name="isFeatured" style="width:auto"> Destaque (aparece na vitrine de destaques)</label>
+      <p style="grid-column:1/-1;color:var(--gray);font-size:11.5px;margin-top:-8px">Isso é sincronizado automaticamente com os 10 produtos mais vendidos (aba Vendas) — marcar/desmarcar aqui pode ser sobrescrito na próxima venda concluída.</p>
       <label class="form-field" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" name="ativo" checked style="width:auto"> Produto ativo (visível na loja)</label>
       <button type="submit" class="btn btn-primary btn-block">Salvar produto</button>
     </form>
@@ -4570,6 +4593,7 @@ img.team-badge{ background:transparent; }
     adminEncomendas = encRes.ok ? (encRes.rows || []) : [];
     renderMetricsPeriodTabs();
     renderAdminMetrics();
+    renderSalesPeriodTabs();
     renderAdminSalesTable();
     renderAdminCustomersTable();
     renderAdminEncomendas();
@@ -4694,6 +4718,22 @@ img.team-badge{ background:transparent; }
     });
   }
 
+  var currentSalesPeriod = "todos";
+  function renderSalesPeriodTabs(){
+    var wrap = document.getElementById("adminSalesPeriodTabs");
+    if(!wrap) return;
+    wrap.innerHTML = METRICS_PERIODS.map(function(p){
+      return '<button type="button" class="filter-btn js-sales-period' + (p.key === currentSalesPeriod ? ' is-active' : '') + '" data-period="' + p.key + '">' + escapeHtml(p.label) + '</button>';
+    }).join("");
+    wrap.querySelectorAll(".js-sales-period").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        currentSalesPeriod = btn.getAttribute("data-period");
+        renderSalesPeriodTabs();
+        renderAdminSalesTable();
+      });
+    });
+  }
+
   function renderAdminMetrics(){
     var periodSales = filterSalesByPeriod(adminSales, currentMetricsPeriod);
     var concluded = periodSales.filter(function(s){ return (s.orderStatus || "Pendente") === "Concluído"; });
@@ -4777,8 +4817,10 @@ img.team-badge{ background:transparent; }
         '<div class="admin-metric-card"><div class="admin-metric-value">' + escapeHtml(topProducts[0] ? topProducts[0].name : "—") + '</div><div class="admin-metric-label">Produto mais vendido</div></div>' +
       '</div>';
 
+    var topProductIds = [];
     var rowsHtml = topProducts.map(function(p, i){
       var match = findProductForSale(p);
+      if(match) topProductIds.push(match.id);
       var thumbHtml = match && match.imageUrl
         ? '<img src="' + escapeHtml(match.imageUrl) + '" style="width:32px;height:40px;object-fit:cover;vertical-align:middle;margin-right:8px">'
         : '<span style="display:inline-block;width:32px;height:40px;background:var(--graphite);vertical-align:middle;margin-right:8px"></span>';
@@ -4788,6 +4830,7 @@ img.team-badge{ background:transparent; }
     }).join('');
 
     wrap.innerHTML = summaryHtml +
+      '<p style="color:var(--gray);font-size:11.5px;margin:-6px 0 12px">Esses produtos ficam automaticamente em destaque na vitrine do site.</p>' +
       '<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>#</th><th>Produto</th><th>Qtd. vendida</th><th>Valor vendido</th></tr></thead><tbody>' + rowsHtml + '</tbody></table></div>';
 
     wrap.querySelectorAll(".admin-top-product-row").forEach(function(row){
@@ -4798,6 +4841,32 @@ img.team-badge{ background:transparent; }
         setTimeout(function(){ openProductForm(product); }, 50);
       });
     });
+
+    syncFeaturedWithTopSellers(topProductIds);
+  }
+
+  // Mantém a vitrine de "Destaques" do site sempre igual ao ranking dos 10
+  // produtos mais vendidos (qty de vendas concluídas) — roda toda vez que o
+  // ranking é recalculado, sem precisar de ação manual no painel.
+  var syncingFeatured = false;
+  async function syncFeaturedWithTopSellers(topProductIds){
+    if(syncingFeatured) return; // evita rodar em paralelo se disparar de novo antes de terminar
+    var idSet = {};
+    topProductIds.forEach(function(id){ idSet[id] = true; });
+    var changed = false;
+    PRODUCTS.forEach(function(p){
+      var shouldFeature = !!idSet[p.id];
+      if(!!p.isFeatured !== shouldFeature){
+        p.isFeatured = shouldFeature;
+        changed = true;
+      }
+    });
+    if(!changed) return;
+    renderFeatured();
+    renderAdminProducts();
+    syncingFeatured = true;
+    await saveSiteConfig();
+    syncingFeatured = false;
   }
 
   function statusOptionsHtml(selected){
@@ -4810,6 +4879,22 @@ img.team-badge{ background:transparent; }
     return ORDER_STATUS_STAGES.map(function(s){
       return '<option value="' + s + '"' + (s === selected ? " selected" : "") + '>' + s + '</option>';
     }).join("");
+  }
+
+  var STATUS_COLORS = {
+    "Pedido recebido": "#8C8C87",
+    "Em preparação": "#f2c766",
+    "Enviado": "#5b9dd9",
+    "Entregue": "#4caf7d"
+  };
+  var ORDER_STATUS_COLORS = {
+    "Pendente": "#f2c766",
+    "Concluído": "#4caf7d",
+    "Cancelado": "#ff8a80"
+  };
+
+  function statusDotHtml(color, title){
+    return '<span class="status-dot" style="background:' + color + '" title="' + escapeHtml(title) + '"></span>';
   }
 
   var adminSalesSortField = "date";
@@ -4870,13 +4955,16 @@ img.team-badge{ background:transparent; }
   function renderAdminSalesTable(){
     var tbody = document.getElementById("adminSalesBody");
     updateAdminSalesSortIndicators();
-    if(!adminSales.length){
-      tbody.innerHTML = '<tr><td colspan="13" class="admin-empty">Nenhuma venda registrada ainda.</td></tr>';
+    sortAdminSales();
+    var periodSales = filterSalesByPeriod(adminSales, currentSalesPeriod);
+    if(!periodSales.length){
+      tbody.innerHTML = '<tr><td colspan="13" class="admin-empty">' +
+        (adminSales.length ? "Nenhuma venda nesse período." : "Nenhuma venda registrada ainda.") +
+        '</td></tr>';
       return;
     }
-    sortAdminSales();
     tbody.innerHTML = "";
-    adminSales.forEach(function(sale){
+    periodSales.forEach(function(sale){
       var tr = document.createElement("tr");
       var profit = (Number(sale.saleValue) || 0) - (Number(sale.costValue) || 0);
       var saleDate = sale.date ? new Date(sale.date) : null;
@@ -4891,8 +4979,8 @@ img.team-badge{ background:transparent; }
         '<td><input type="number" step="0.01" min="0" data-field="saleValue" value="' + (Number(sale.saleValue) || 0) + '"></td>' +
         '<td><input type="number" step="0.01" min="0" data-field="costValue" value="' + (Number(sale.costValue) || 0) + '"></td>' +
         "<td>" + formatBRL(profit) + "</td>" +
-        '<td><select data-field="status">' + statusOptionsHtml(sale.status) + '</select></td>' +
-        '<td><select data-field="orderStatus">' + orderStatusOptionsHtml(sale.orderStatus || "Pendente") + '</select></td>' +
+        '<td><div class="status-cell">' + statusDotHtml(STATUS_COLORS[sale.status] || "#8C8C87", sale.status || "") + '<select data-field="status">' + statusOptionsHtml(sale.status) + '</select></div></td>' +
+        '<td><div class="status-cell">' + statusDotHtml(ORDER_STATUS_COLORS[sale.orderStatus] || "#8C8C87", sale.orderStatus || "Pendente") + '<select data-field="orderStatus">' + orderStatusOptionsHtml(sale.orderStatus || "Pendente") + '</select></div></td>' +
         '<td style="white-space:nowrap"><input type="text" data-field="trackingCode" value="' + escapeHtml(sale.trackingCode || "") + '" style="width:100px">' + (sale.trackingCode ? ' <a href="' + pacoteVicioLink(sale.trackingCode) + '" target="_blank" rel="noopener" title="Ver rastreio" style="color:var(--gray);font-size:14px">↗</a>' : '') + '</td>' +
         "<td>" + escapeHtml(sale.source || "manual") + "</td>" +
         '<td style="white-space:nowrap"><button type="button" class="btn btn-outline btn-sm admin-sale-edit">Editar</button> <button type="button" class="admin-row-delete" aria-label="Excluir venda">&times;</button></td>';
@@ -4906,12 +4994,24 @@ img.team-badge{ background:transparent; }
             var profitCell = tr.children[6];
             profitCell.textContent = formatBRL((Number(sale.saleValue) || 0) - (Number(sale.costValue) || 0));
           }
+          if(field === "status" || field === "orderStatus"){
+            var dot = input.parentElement.querySelector(".status-dot");
+            var colorMap = field === "status" ? STATUS_COLORS : ORDER_STATUS_COLORS;
+            dot.style.background = colorMap[input.value] || "#8C8C87";
+            dot.title = input.value;
+          }
           renderAdminMetrics();
           if(field === "orderStatus"){ renderAdminCustomersTable(); }
           var res = await callBackend("updateSale", Object.assign({ id: sale.id, field: field, value: input.value }, authParams()));
           if(!res.ok){
             sale[field] = previous;
             input.value = previous;
+            if(field === "status" || field === "orderStatus"){
+              var revertDot = input.parentElement.querySelector(".status-dot");
+              var revertColorMap = field === "status" ? STATUS_COLORS : ORDER_STATUS_COLORS;
+              revertDot.style.background = revertColorMap[previous] || "#8C8C87";
+              revertDot.title = previous || "";
+            }
             renderAdminMetrics();
             if(field === "orderStatus"){ renderAdminCustomersTable(); }
             window.alert("Não foi possível salvar essa alteração agora (a mudança foi desfeita aqui). Confira sua conexão e se o backend está atualizado, e tente de novo.");
@@ -5034,6 +5134,21 @@ img.team-badge{ background:transparent; }
       return true;
     }
 
+    // Acha outro item (em qualquer encomenda) já vinculado à mesma venda,
+    // pra evitar vincular a mesma venda a dois produtos por engano.
+    function findOtherLinkedItem(saleId, excludeEncId, excludeIdx){
+      for(var i = 0; i < adminEncomendas.length; i++){
+        var e = adminEncomendas[i];
+        var produtos = e.produtos || [];
+        for(var j = 0; j < produtos.length; j++){
+          if(produtos[j].linkedSaleId === saleId && !(e.id === excludeEncId && j === excludeIdx)){
+            return { enc: e, idx: j, nome: produtos[j].nome };
+          }
+        }
+      }
+      return null;
+    }
+
     wrap.querySelectorAll(".js-enc-item-status").forEach(function(sel){
       sel.addEventListener("change", async function(){
         var encId = sel.getAttribute("data-enc"), idx = Number(sel.getAttribute("data-idx"));
@@ -5069,6 +5184,13 @@ img.team-badge{ background:transparent; }
         var enc = adminEncomendas.find(function(e){ return e.id === encId; });
         var item = enc && enc.produtos[idx];
         if(!item) return;
+        var other = findOtherLinkedItem(saleId, encId, idx);
+        if(other){
+          var confirmMsg = "Essa venda já está vinculada a \"" + (other.nome || "outro produto") + "\". Vincular aqui vai desvincular de lá. Continuar?";
+          if(!window.confirm(confirmMsg)){ input.value = ""; return; }
+          var otherOk = await saveEncomendaItemChange(other.enc.id, other.idx, { linkedSaleId: null });
+          if(!otherOk){ window.alert("Não foi possível desvincular o outro produto. Tente de novo."); return; }
+        }
         var custoFinal = calcEncomendaCustos(enc).itens[idx].custoFinal;
         var ok = await saveEncomendaItemChange(encId, idx, { linkedSaleId: saleId });
         if(ok){
@@ -5084,8 +5206,27 @@ img.team-badge{ background:transparent; }
     wrap.querySelectorAll(".js-enc-unlink-sale").forEach(function(btn){
       btn.addEventListener("click", async function(){
         var encId = btn.getAttribute("data-enc"), idx = Number(btn.getAttribute("data-idx"));
+        var enc = adminEncomendas.find(function(e){ return e.id === encId; });
+        var item = enc && enc.produtos[idx];
+        var saleId = item && item.linkedSaleId;
         var ok = await saveEncomendaItemChange(encId, idx, { linkedSaleId: null });
-        if(ok) renderAdminEncomendas();
+        if(ok){
+          // se essa venda ainda tiver outro produto vinculado (ex: foi
+          // vinculada por engano a dois), recalcula o custo da venda a
+          // partir do produto que continua vinculado — em vez de deixar
+          // o custo travado no valor do item que acabou de ser desvinculado.
+          if(saleId){
+            var other = findOtherLinkedItem(saleId, encId, idx);
+            if(other){
+              var otherCustoFinal = calcEncomendaCustos(other.enc).itens[other.idx].custoFinal;
+              await callBackend("updateSale", Object.assign({ id: saleId, field: "costValue", value: otherCustoFinal.toFixed(2) }, authParams()));
+              var saleRow = adminSales.find(function(s){ return s.id === saleId; });
+              if(saleRow) saleRow.costValue = otherCustoFinal.toFixed(2);
+              renderAdminSalesTable();
+            }
+          }
+          renderAdminEncomendas();
+        }
       });
     });
   }
@@ -5484,10 +5625,24 @@ img.team-badge{ background:transparent; }
   }
   resetSaleFormSelects();
 
+  // Converte Date <-> valor de <input type="datetime-local"> (formato
+  // "AAAA-MM-DDTHH:mm", sempre em horário local, sem fuso).
+  function toDatetimeLocalValue(date){
+    var pad = function(n){ return String(n).padStart(2, "0"); };
+    return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate()) +
+      "T" + pad(date.getHours()) + ":" + pad(date.getMinutes());
+  }
+  function fromDatetimeLocalValue(str){
+    if(!str) return null;
+    var d = new Date(str);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
   document.getElementById("adminAddSaleBtn").addEventListener("click", function(){
     editingSaleId = null;
     adminSaleForm.reset();
     resetSaleFormSelects();
+    adminSaleForm.saleDate.value = toDatetimeLocalValue(new Date());
     document.getElementById("adminSaleTitle").textContent = "Adicionar venda manual";
     adminSaleForm.querySelector("button[type=submit]").textContent = "Adicionar venda";
     document.getElementById("adminSaleProductPreview").hidden = true;
@@ -5575,6 +5730,7 @@ img.team-badge{ background:transparent; }
     var f = adminSaleForm;
     f.reset();
     f.orderId.value = sale.orderId || "";
+    f.saleDate.value = sale.date ? toDatetimeLocalValue(new Date(sale.date)) : toDatetimeLocalValue(new Date());
     f.product.value = sale.product || "";
     if(![].slice.call(f.size.options).some(function(o){ return o.value === sale.size; })){
       var opt = document.createElement("option"); opt.value = sale.size; opt.textContent = sale.size;
@@ -5607,8 +5763,10 @@ img.team-badge{ background:transparent; }
     if(editingSaleId){
       var sale = adminSales.find(function(s){ return s.id === editingSaleId; });
       if(!sale) return;
+      var editedDate = fromDatetimeLocalValue(f.saleDate.value);
       var updates = {
         orderId: f.orderId.value.trim(),
+        date: (editedDate || (sale.date ? new Date(sale.date) : new Date())).toISOString(),
         product: product,
         size: f.size.value,
         time: f.time.value.trim() || "—",
@@ -5641,7 +5799,7 @@ img.team-badge{ background:transparent; }
     var record = {
       id: "manual-" + Date.now().toString(36) + Math.random().toString(36).slice(2,6),
       orderId: f.orderId.value.trim() || "",
-      date: new Date().toISOString(),
+      date: (fromDatetimeLocalValue(f.saleDate.value) || new Date()).toISOString(),
       product: product,
       productId: f.productId.value || "",
       size: f.size.value,
@@ -5702,6 +5860,19 @@ img.team-badge{ background:transparent; }
     addEncomendaProductRow("", "");
   });
 
+  // Converte Date <-> valor de <input type="date"> ("AAAA-MM-DD", local).
+  function toDateInputValue(date){
+    var pad = function(n){ return String(n).padStart(2, "0"); };
+    return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate());
+  }
+  function fromDateInputValue(str){
+    if(!str) return null;
+    var parts = str.split("-");
+    if(parts.length !== 3) return null;
+    var d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    return isNaN(d.getTime()) ? null : d;
+  }
+
   function openEncomendaModal(id){
     adminEncomendaForm.reset();
     adminEncomendaProductsList.innerHTML = "";
@@ -5715,6 +5886,7 @@ img.team-badge{ background:transparent; }
       var enc = adminEncomendas.find(function(e){ return e.id === id; });
       if(!enc) return;
       titleEl.textContent = "Editar encomenda";
+      adminEncomendaForm.encData.value = toDateInputValue(enc.data ? new Date(enc.data) : new Date());
       adminEncomendaForm.referencia.value = enc.referencia || "";
       adminEncomendaForm.totalRealPago.value = enc.totalRealPago || 0;
       adminEncomendaForm.taxaAlfandega.value = (enc.taxaAlfandega === null || enc.taxaAlfandega === undefined) ? "" : enc.taxaAlfandega;
@@ -5723,6 +5895,7 @@ img.team-badge{ background:transparent; }
       if(!(enc.produtos || []).length) addEncomendaProductRow("", "");
     } else {
       titleEl.textContent = "Nova encomenda";
+      adminEncomendaForm.encData.value = toDateInputValue(new Date());
       addEncomendaProductRow("", "");
     }
     recalcEncomendaTotalDolar();
@@ -5744,7 +5917,11 @@ img.team-badge{ background:transparent; }
     var totalDolar = produtos.reduce(function(sum, p){ return sum + p.custoDolar; }, 0);
     var taxaAlfandegaVal = f.taxaAlfandega.value.trim();
 
+    var editingEnc = editingEncomendaId ? adminEncomendas.find(function(e){ return e.id === editingEncomendaId; }) : null;
+    var chosenDate = fromDateInputValue(f.encData.value) || (editingEnc && editingEnc.data ? new Date(editingEnc.data) : new Date());
+
     var record = {
+      data: chosenDate.toISOString(),
       referencia: f.referencia.value.trim(),
       produtos: produtos,
       totalDolar: totalDolar,
@@ -5761,7 +5938,7 @@ img.team-badge{ background:transparent; }
       submitBtn.disabled = false; submitBtn.textContent = "Salvar encomenda";
       if(res.ok){
         var idx = adminEncomendas.findIndex(function(e){ return e.id === editingEncomendaId; });
-        if(idx !== -1) adminEncomendas[idx] = Object.assign({ id: editingEncomendaId, data: adminEncomendas[idx].data }, record);
+        if(idx !== -1) adminEncomendas[idx] = Object.assign({ id: editingEncomendaId }, record);
         renderAdminEncomendas();
         closeModal("adminEncomendaModal");
       } else {
@@ -5769,7 +5946,6 @@ img.team-badge{ background:transparent; }
       }
     } else {
       record.id = "enc-" + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
-      record.data = new Date().toISOString();
       var res2 = await callBackend("addEncomenda", Object.assign({}, record, authParams()));
       submitBtn.disabled = false; submitBtn.textContent = "Salvar encomenda";
       if(res2.ok){
