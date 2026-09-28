@@ -5371,9 +5371,14 @@ img.team-badge{ background:transparent; }
      forma E cor parecidas ao mesmo tempo, camisas de times diferentes (cores
      diferentes) deixam de bater, mas a mesma foto recomprimida continua
      batendo (cor e forma mudam muito pouco nesse processo). */
-  var DUP_HASH_THRESHOLD = 9;    // de 90 bits (grade 10x10) — estrutura/forma
-  var DUP_COLOR_THRESHOLD = 20;  // distância euclidiana de cor média (0–441)
-  var PRODUCT_SIG_STORAGE_KEY = "spsAdminProductImageSig_v2";
+  var DUP_HASH_THRESHOLD = 40;      // de 240 bits (grade 16x16) — estrutura/forma.
+                                     // Calibrado com fotos reais: duplicata verdadeira
+                                     // (mesma foto recomprimida) deu ~27; times
+                                     // diferentes deram 130+. 40 dá margem confortável
+                                     // sem chegar perto do que times diferentes marcam.
+  var DUP_COLORGRID_THRESHOLD = 30; // distância média de cor POR CÉLULA da mesma grade.
+                                     // Duplicata real deu ~18; times diferentes, 89+.
+  var PRODUCT_SIG_STORAGE_KEY = "spsAdminProductImageSig_v3";
   var productImageSigCache = (function(){
     try{
       var raw = localStorage.getItem(PRODUCT_SIG_STORAGE_KEY);
@@ -5382,7 +5387,7 @@ img.team-badge{ background:transparent; }
   })(); // persiste no navegador — depois da primeira vez, só analisa fotos novas
   var productImageSigCacheDirty = false;
   var productImageSigFailedThisSession = {};
-  var DRIVE_SIG_STORAGE_KEY = "spsAdminDriveImageSig_v1";
+  var DRIVE_SIG_STORAGE_KEY = "spsAdminDriveImageSig_v2";
   var driveFileSigCache = (function(){
     try{
       var raw = localStorage.getItem(DRIVE_SIG_STORAGE_KEY);
@@ -5429,18 +5434,20 @@ img.team-badge{ background:transparent; }
       var img = new Image();
       img.onload = function(){
         try{
-          var w = 10, h = 10;
+          var w = 16, h = 16;
           var canvas = document.createElement("canvas");
           canvas.width = w; canvas.height = h;
           var ctx = canvas.getContext("2d");
           ctx.drawImage(img, 0, 0, w, h);
           var data = ctx.getImageData(0, 0, w, h).data;
           var gray = [];
-          var sumR = 0, sumG = 0, sumB = 0, n = 0;
+          var colorGrid = []; // cor [r,g,b] de cada célula — dá pra notar quando
+                               // um detalhe (patrocinador, escudo) muda de lugar
+                               // mesmo com a cor média geral parecida.
           for(var i=0;i<data.length;i+=4){
             var r = data[i], g = data[i+1], bch = data[i+2];
             gray.push(0.299*r + 0.587*g + 0.114*bch);
-            sumR += r; sumG += g; sumB += bch; n++;
+            colorGrid.push([r, g, bch]);
           }
           var bits = "";
           for(var row=0; row<h; row++){
@@ -5451,7 +5458,7 @@ img.team-badge{ background:transparent; }
           var hex = "";
           for(var b=0; b<bits.length; b+=4){ hex += parseInt(bits.substr(b,4), 2).toString(16); }
           URL.revokeObjectURL(url);
-          resolve({ hash: hex, avgColor: [sumR/n, sumG/n, sumB/n] });
+          resolve({ hash: hex, colorGrid: colorGrid });
         } catch(e){ URL.revokeObjectURL(url); reject(e); }
       };
       img.onerror = function(){ URL.revokeObjectURL(url); reject(new Error("Falha ao carregar imagem")); };
@@ -5469,15 +5476,20 @@ img.team-badge{ background:transparent; }
     return dist;
   }
 
-  function colorDistance(a, b){
-    var dr = a[0]-b[0], dg = a[1]-b[1], db = a[2]-b[2];
-    return Math.sqrt(dr*dr + dg*dg + db*db);
+  function colorGridDistance(gridA, gridB){
+    if(!gridA || !gridB || gridA.length !== gridB.length) return 999999;
+    var total = 0;
+    for(var i=0;i<gridA.length;i++){
+      var dr = gridA[i][0]-gridB[i][0], dg = gridA[i][1]-gridB[i][1], db = gridA[i][2]-gridB[i][2];
+      total += Math.sqrt(dr*dr + dg*dg + db*db);
+    }
+    return total / gridA.length;
   }
 
   function signaturesLookAlike(sigA, sigB){
     if(!sigA || !sigB) return false;
     return hammingDistanceHex(sigA.hash, sigB.hash) <= DUP_HASH_THRESHOLD
-      && colorDistance(sigA.avgColor, sigB.avgColor) <= DUP_COLOR_THRESHOLD;
+      && colorGridDistance(sigA.colorGrid, sigB.colorGrid) <= DUP_COLORGRID_THRESHOLD;
   }
 
   // Sem limite de tempo, uma única foto que trave de carregar (rede lenta,
