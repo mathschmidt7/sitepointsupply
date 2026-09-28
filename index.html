@@ -5588,15 +5588,31 @@ img.team-badge{ background:transparent; }
         '</div>' +
       '</div>';
 
+    var btnRow = document.createElement("div");
+    btnRow.style.cssText = "display:flex;gap:6px";
+
     var confirmBtn = document.createElement("button");
     confirmBtn.type = "button";
     confirmBtn.className = "btn btn-outline btn-sm";
-    confirmBtn.style.cssText = "width:100%;box-sizing:border-box;white-space:normal;height:auto;line-height:1.3;padding:8px 10px";
+    confirmBtn.style.cssText = "flex:1;min-width:0;box-sizing:border-box;white-space:normal;height:auto;line-height:1.3;padding:8px 6px";
     confirmBtn.textContent = "Comparar e confirmar";
     confirmBtn.addEventListener("click", function(){
       openProductForm(Object.assign({}, product, { driveFileId: fileId }));
     });
-    box.appendChild(confirmBtn);
+
+    var dismissBtn = document.createElement("button");
+    dismissBtn.type = "button";
+    dismissBtn.className = "btn btn-outline btn-sm";
+    dismissBtn.style.cssText = "flex:1;min-width:0;box-sizing:border-box;white-space:normal;height:auto;line-height:1.3;padding:8px 6px;color:var(--gray)";
+    dismissBtn.textContent = "Não é a mesma";
+    dismissBtn.addEventListener("click", function(){
+      card.style.outline = "";
+      box.remove();
+    });
+
+    btnRow.appendChild(confirmBtn);
+    btnRow.appendChild(dismissBtn);
+    box.appendChild(btnRow);
     card.insertBefore(box, card.firstChild);
   }
 
