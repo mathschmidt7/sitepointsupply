@@ -6080,6 +6080,22 @@ img.team-badge{ background:transparent; }
     var f = adminSaleForm;
     var product = f.product.value.trim();
     if(!product) return;
+
+    // Rede de segurança: em alguns navegadores/teclados de celular, escolher
+    // uma sugestão do campo não dispara o evento que liga o nome ao ID do
+    // produto certo (ex: lista de autocompletar do teclado) — sem isso, a
+    // venda salva com o nome certo mas sem ID, e passa a não bater com o
+    // produto certo no ranking/estoque quando há nomes duplicados.
+    if(!f.productId.value){
+      var fallbackMatches = PRODUCTS.filter(function(p){ return p.name === product; });
+      if(fallbackMatches.length === 1){
+        f.productId.value = fallbackMatches[0].id;
+      } else if(fallbackMatches.length > 1){
+        alert("Esse produto tem mais de um cadastro com o mesmo nome — escolha qual é na lista que aparece abaixo do campo \"Produto\" antes de salvar.");
+        return;
+      }
+    }
+
     var submitBtn = f.querySelector("button[type=submit]");
 
     if(editingSaleId){
@@ -6090,6 +6106,7 @@ img.team-badge{ background:transparent; }
         orderId: f.orderId.value.trim(),
         date: (editedDate || (sale.date ? new Date(sale.date) : new Date())).toISOString(),
         product: product,
+        productId: f.productId.value || "",
         size: f.size.value,
         time: f.time.value.trim() || "—",
         customerName: f.customerName.value.trim() || "—",
