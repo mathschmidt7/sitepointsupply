@@ -4102,9 +4102,23 @@ img.team-badge{ background:transparent; }
     // progresso ser descartado a cada frame (nunca acumula, fica parado).
     var exactPos = null;
 
+    // Ao chegar no fim, em vez de pular direto pro início, segura um instante
+    // (pra dar tempo de ver o último item) e desliza de volta suavemente.
+    var HOLD_SECONDS = 0.5;
+    var RETURN_SPEED_MULTIPLIER = 6;
+    var RETURN_MIN_SECONDS = 0.5;
+    var RETURN_MAX_SECONDS = 1.4;
+    function easeInOutCubic(t){
+      return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
+    var phase = "scroll";
+    var phaseElapsed = 0;
+    var returnFromPos = 0;
+    var returnDurationSeconds = 0;
+
     function step(ts){
       requestAnimationFrame(step);
-      if(paused || !visible){ lastTs = ts; exactPos = null; setSnapOff(false); return; }
+      if(paused || !visible){ lastTs = ts; exactPos = null; phase = "scroll"; setSnapOff(false); return; }
       var maxScroll = row.scrollWidth - row.clientWidth;
       if(maxScroll <= 1 || row.children.length <= 1){ lastTs = ts; return; }
       if(lastTs == null){ lastTs = ts; exactPos = row.scrollLeft; return; }
@@ -4112,8 +4126,34 @@ img.team-badge{ background:transparent; }
       lastTs = ts;
       setSnapOff(true);
       if(exactPos == null) exactPos = row.scrollLeft;
+
+      if(phase === "hold"){
+        phaseElapsed += dt;
+        if(phaseElapsed >= HOLD_SECONDS){
+          phase = "return";
+          phaseElapsed = 0;
+          returnFromPos = exactPos;
+          returnDurationSeconds = Math.min(RETURN_MAX_SECONDS, Math.max(RETURN_MIN_SECONDS, returnFromPos / (pxPerSecond * RETURN_SPEED_MULTIPLIER)));
+        }
+        return;
+      }
+      if(phase === "return"){
+        phaseElapsed += dt;
+        var t = Math.min(phaseElapsed / returnDurationSeconds, 1);
+        exactPos = returnFromPos * (1 - easeInOutCubic(t));
+        row.scrollLeft = exactPos;
+        if(t >= 1){ phase = "scroll"; exactPos = 0; row.scrollLeft = 0; }
+        return;
+      }
+
       exactPos += pxPerSecond * dt;
-      if(exactPos >= maxScroll - 1) exactPos = 0;
+      if(exactPos >= maxScroll - 1){
+        exactPos = maxScroll;
+        row.scrollLeft = exactPos;
+        phase = "hold";
+        phaseElapsed = 0;
+        return;
+      }
       row.scrollLeft = exactPos;
     }
     requestAnimationFrame(step);
