@@ -482,7 +482,7 @@ p{ margin:0; }
 .team-scroll{
   display:flex; gap:10px; overflow-x:auto; padding:2px 24px 10px; scroll-snap-type:x proximity;
   -webkit-overflow-scrolling:touch; scrollbar-width:thin; scrollbar-color:rgba(247,247,244,.25) transparent;
-  min-width:0; overflow-anchor:none;
+  min-width:0; overflow-anchor:none; scroll-padding-left:24px; scroll-padding-right:24px;
 }
 .team-scroll::-webkit-scrollbar{ height:5px; }
 .team-scroll::-webkit-scrollbar-thumb{ background:rgba(247,247,244,.2); border-radius:99px; }
@@ -533,6 +533,7 @@ img.team-badge{ background:transparent; }
 
 @media (max-width:640px){
   .league-row-title, .team-scroll{ padding-left:20px; padding-right:20px; }
+  .team-scroll{ scroll-padding-left:20px; scroll-padding-right:20px; }
 }
 
 /* ============================================================
