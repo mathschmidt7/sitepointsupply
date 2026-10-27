@@ -482,7 +482,7 @@ p{ margin:0; }
 .team-scroll{
   display:flex; gap:10px; overflow-x:auto; padding:2px 24px 10px; scroll-snap-type:x proximity;
   -webkit-overflow-scrolling:touch; scrollbar-width:thin; scrollbar-color:rgba(247,247,244,.25) transparent;
-  min-width:0;
+  min-width:0; overflow-anchor:none;
 }
 .team-scroll::-webkit-scrollbar{ height:5px; }
 .team-scroll::-webkit-scrollbar-thumb{ background:rgba(247,247,244,.2); border-radius:99px; }
@@ -4102,19 +4102,13 @@ img.team-badge{ background:transparent; }
     // progresso ser descartado a cada frame (nunca acumula, fica parado).
     var exactPos = null;
 
-    // Ao chegar no fim, em vez de pular direto pro início, segura um instante
-    // (pra dar tempo de ver o último item) e desliza de volta suavemente.
+    // Vai e volta tipo "vaivém": rola pra um lado, segura um instante no fim,
+    // rola de volta na mesma velocidade, segura um instante no início, repete.
     var HOLD_SECONDS = 0.5;
-    var RETURN_SPEED_MULTIPLIER = 6;
-    var RETURN_MIN_SECONDS = 0.5;
-    var RETURN_MAX_SECONDS = 1.4;
-    function easeInOutCubic(t){
-      return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-    }
     var phase = "scroll";
     var phaseElapsed = 0;
-    var returnFromPos = 0;
-    var returnDurationSeconds = 0;
+    var direction = 1;
+    var nextDirection = 1;
 
     function step(ts){
       requestAnimationFrame(step);
@@ -4130,28 +4124,27 @@ img.team-badge{ background:transparent; }
       if(phase === "hold"){
         phaseElapsed += dt;
         if(phaseElapsed >= HOLD_SECONDS){
-          phase = "return";
-          phaseElapsed = 0;
-          returnFromPos = exactPos;
-          returnDurationSeconds = Math.min(RETURN_MAX_SECONDS, Math.max(RETURN_MIN_SECONDS, returnFromPos / (pxPerSecond * RETURN_SPEED_MULTIPLIER)));
+          phase = "scroll";
+          direction = nextDirection;
         }
         return;
       }
-      if(phase === "return"){
-        phaseElapsed += dt;
-        var t = Math.min(phaseElapsed / returnDurationSeconds, 1);
-        exactPos = returnFromPos * (1 - easeInOutCubic(t));
-        row.scrollLeft = exactPos;
-        if(t >= 1){ phase = "scroll"; exactPos = 0; row.scrollLeft = 0; }
-        return;
-      }
 
-      exactPos += pxPerSecond * dt;
-      if(exactPos >= maxScroll - 1){
+      exactPos += direction * pxPerSecond * dt;
+      if(direction > 0 && exactPos >= maxScroll - 1){
         exactPos = maxScroll;
         row.scrollLeft = exactPos;
         phase = "hold";
         phaseElapsed = 0;
+        nextDirection = -1;
+        return;
+      }
+      if(direction < 0 && exactPos <= 1){
+        exactPos = 0;
+        row.scrollLeft = exactPos;
+        phase = "hold";
+        phaseElapsed = 0;
+        nextDirection = 1;
         return;
       }
       row.scrollLeft = exactPos;
