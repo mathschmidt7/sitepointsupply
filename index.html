@@ -1407,6 +1407,7 @@ img.team-badge{ background:transparent; }
       <nav class="admin-nav" role="tablist">
         <button class="admin-tab is-active" data-admin-tab="overview" role="tab" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"></rect><rect x="14" y="3" width="7" height="5" rx="1"></rect><rect x="14" y="12" width="7" height="9" rx="1"></rect><rect x="3" y="16" width="7" height="5" rx="1"></rect></svg><span>Visão geral</span></button>
         <button class="admin-tab" data-admin-tab="sales" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 6l2 13h14l2-13M8 10v4M12 10v4M16 10v4"></path></svg><span>Vendas</span></button>
+        <button class="admin-tab" data-admin-tab="reports" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M3 20h18"></path></svg><span>Relatórios</span></button>
         <button class="admin-tab" data-admin-tab="importcost" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"></rect><path d="M2 11h20M6 15h4"></path><path d="M7 7V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"></path></svg><span>Custo de importação</span></button>
         <button class="admin-tab" data-admin-tab="customers" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.2"></circle><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 8.5c1.4.4 2.5 1.7 2.5 3.3M21 20c0-2.8-2-5.1-4.6-5.8"></path></svg><span>Clientes</span></button>
         <button class="admin-tab" data-admin-tab="products" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3 6 7v13a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7l-3-4M6 7h12M9.5 11a2.5 2.5 0 0 0 5 0"></path></svg><span>Produtos</span></button>
@@ -1464,6 +1465,24 @@ img.team-badge{ background:transparent; }
             <th></th>
           </tr></thead>
           <tbody id="adminSalesBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="admin-panel-view" data-admin-view="reports">
+      <h2 class="admin-view-title">Relatórios mensais</h2>
+      <p style="color:var(--gray);font-size:12.5px;margin-bottom:16px">Faturamento, lucro e ticket médio consideram só vendas com status de pedido "Concluído" — o mesmo critério usado na Visão geral.</p>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead><tr>
+            <th>Mês</th>
+            <th>Vendas</th>
+            <th>Concluídas</th>
+            <th>Faturamento</th>
+            <th>Lucro</th>
+            <th>Ticket médio</th>
+          </tr></thead>
+          <tbody id="adminReportsBody"></tbody>
         </table>
       </div>
     </div>
@@ -4651,6 +4670,7 @@ img.team-badge{ background:transparent; }
         v.classList.toggle("is-active", v.dataset.adminView === target);
       });
       if(target === "drivephotos") loadDrivePhotos();
+      if(target === "reports") renderAdminReports();
     });
   });
 
@@ -4853,6 +4873,52 @@ img.team-badge{ background:transparent; }
         '<div class="admin-metric-value">' + escapeHtml(m.value) + '</div><div class="admin-metric-label">' + escapeHtml(m.label) + '</div></div>';
     }).join("");
     renderTopProducts();
+  }
+
+  var REPORT_MONTH_NAMES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  function reportMonthKey(dateStr){
+    if(!dateStr) return null;
+    var d = new Date(dateStr);
+    if(isNaN(d)) return null;
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+  }
+  function reportMonthLabel(key){
+    var parts = key.split("-");
+    return REPORT_MONTH_NAMES[Number(parts[1]) - 1] + " de " + parts[0];
+  }
+  function renderAdminReports(){
+    var tbody = document.getElementById("adminReportsBody");
+    if(!tbody) return;
+    var byMonth = {};
+    adminSales.forEach(function(s){
+      var key = reportMonthKey(s.date);
+      if(!key) return;
+      if(!byMonth[key]) byMonth[key] = { total:0, concluded:0, faturamento:0, lucro:0 };
+      byMonth[key].total++;
+      if((s.orderStatus || "Pendente") === "Concluído"){
+        byMonth[key].concluded++;
+        var v = Number(s.saleValue) || 0, c = Number(s.costValue) || 0;
+        byMonth[key].faturamento += v;
+        byMonth[key].lucro += (v - c);
+      }
+    });
+    var keys = Object.keys(byMonth).sort().reverse(); // mês mais recente primeiro
+    if(!keys.length){
+      tbody.innerHTML = '<tr><td colspan="6" class="admin-empty">Nenhuma venda registrada ainda.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = keys.map(function(key){
+      var m = byMonth[key];
+      var ticket = m.concluded ? m.faturamento / m.concluded : 0;
+      return "<tr>" +
+        "<td>" + escapeHtml(reportMonthLabel(key)) + "</td>" +
+        "<td>" + m.total + "</td>" +
+        "<td>" + m.concluded + "</td>" +
+        "<td>" + formatBRL(m.faturamento) + "</td>" +
+        "<td>" + formatBRL(m.lucro) + "</td>" +
+        "<td>" + formatBRL(ticket) + "</td>" +
+      "</tr>";
+    }).join("");
   }
 
   function renderTopProducts(){
