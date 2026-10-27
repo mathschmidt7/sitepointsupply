@@ -4033,6 +4033,75 @@ img.team-badge{ background:transparent; }
     });
   }
 
+  // Rolamento automático e lento das vitrines horizontais (Destaques e Pronta
+  // Entrega) — pausa assim que a pessoa interage (mouse, toque, roda do
+  // mouse) e só volta a rolar sozinho depois de um tempinho sem interação.
+  // Respeita "reduzir movimento" do sistema e só roda com a seção visível.
+  function setupAutoScrollRow(rowId, pxPerSecond){
+    var row = document.getElementById(rowId);
+    if(!row) return;
+    if(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    var paused = false;
+    var visible = true;
+    var resumeTimer = null;
+    var lastTs = null;
+
+    function pauseThenResume(delayMs){
+      paused = true;
+      if(resumeTimer) clearTimeout(resumeTimer);
+      resumeTimer = setTimeout(function(){ paused = false; }, delayMs);
+    }
+
+    row.addEventListener("mouseenter", function(){ paused = true; });
+    row.addEventListener("mouseleave", function(){ paused = false; });
+    row.addEventListener("touchstart", function(){ paused = true; }, { passive:true });
+    row.addEventListener("touchend", function(){ pauseThenResume(2500); }, { passive:true });
+    row.addEventListener("wheel", function(){ pauseThenResume(2500); }, { passive:true });
+    row.addEventListener("pointerdown", function(){ paused = true; });
+    row.addEventListener("pointerup", function(){ pauseThenResume(2500); });
+
+    if("IntersectionObserver" in window){
+      new IntersectionObserver(function(entries){ visible = entries[0].isIntersecting; }).observe(row);
+    }
+
+    // O CSS dessa fileira usa scroll-snap (pra "encaixar" no card ao arrastar
+    // manualmente) — mas isso empurra scrollLeft de volta pro ponto de encaixe
+    // mais próximo a cada pequeno incremento programático, travando a rolagem
+    // automática. Desliga o snap só enquanto rola sozinho, e devolve assim que
+    // a pessoa interage (pra manter o encaixe no toque/arraste manual).
+    var snapOffWhileAuto = false;
+    function setSnapOff(off){
+      if(off === snapOffWhileAuto) return;
+      snapOffWhileAuto = off;
+      row.style.scrollSnapType = off ? "none" : "";
+    }
+
+    // Guarda a posição "exata" (com casas decimais) numa variável só nossa —
+    // scrollLeft do navegador arredonda pra pixel inteiro, e como o avanço
+    // por quadro é bem menor que 1px, reler sempre de scrollLeft faz o
+    // progresso ser descartado a cada frame (nunca acumula, fica parado).
+    var exactPos = null;
+
+    function step(ts){
+      requestAnimationFrame(step);
+      if(paused || !visible){ lastTs = ts; exactPos = null; setSnapOff(false); return; }
+      var maxScroll = row.scrollWidth - row.clientWidth;
+      if(maxScroll <= 1 || row.children.length <= 1){ lastTs = ts; return; }
+      if(lastTs == null){ lastTs = ts; exactPos = row.scrollLeft; return; }
+      var dt = (ts - lastTs) / 1000;
+      lastTs = ts;
+      setSnapOff(true);
+      if(exactPos == null) exactPos = row.scrollLeft;
+      exactPos += pxPerSecond * dt;
+      if(exactPos >= maxScroll - 1) exactPos = 0;
+      row.scrollLeft = exactPos;
+    }
+    requestAnimationFrame(step);
+  }
+  setupAutoScrollRow("featuredRow", 26);
+  setupAutoScrollRow("prontaEntregaRow", 26);
+
 
   function updateProductWaLink(card){
     var btn = card.querySelector(".js-wa-product");
