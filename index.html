@@ -1417,6 +1417,7 @@ img.team-badge{ background:transparent; }
         <button class="admin-tab" data-admin-tab="faq" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="M9.5 9.3a2.5 2.5 0 0 1 4.8.8c0 1.7-2.3 1.9-2.3 3.6"></path><circle cx="12" cy="16.8" r=".4" fill="currentColor" stroke="none"></circle></svg><span>FAQ</span></button>
         <button class="admin-tab" data-admin-tab="discounts" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 19 19 5"></path><circle cx="7.5" cy="7.5" r="2.3"></circle><circle cx="16.5" cy="16.5" r="2.3"></circle></svg><span>Descontos</span></button>
         <button class="admin-tab" data-admin-tab="appearance" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.6-.7 1.6-1.5 0-.4-.2-.7-.4-1-.2-.3-.4-.6-.4-1 0-.8.6-1.5 1.5-1.5H16a4.5 4.5 0 0 0 4.5-4.5C20.5 6.6 16.7 3 12 3Z"></path><circle cx="7.5" cy="11" r="1" fill="currentColor" stroke="none"></circle><circle cx="9.5" cy="7.3" r="1" fill="currentColor" stroke="none"></circle><circle cx="14.5" cy="7.3" r="1" fill="currentColor" stroke="none"></circle></svg><span>Aparência</span></button>
+        <button class="admin-tab" data-admin-tab="history" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3.5 2"></path></svg><span>Histórico</span></button>
       </nav>
       <div class="admin-sidebar-footer">
         <button type="button" class="btn btn-outline btn-sm" id="adminExitBtn" style="width:100%">Voltar à loja</button>
@@ -1676,6 +1677,15 @@ img.team-badge{ background:transparent; }
       <h2 class="admin-view-title" style="margin-top:40px">Banners das categorias</h2>
       <p style="color:var(--gray);font-size:13.5px;max-width:56ch;margin-bottom:20px">Envie uma foto pra cada categoria da tela inicial, no lugar do ícone simples. Se não enviar nada, o ícone continua aparecendo normalmente — não precisa preencher todas.</p>
       <div id="adminCategoryBanners" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px"></div>
+    </div>
+
+    <div class="admin-panel-view" data-admin-view="history">
+      <h2 class="admin-view-title">Histórico de alterações</h2>
+      <p style="color:var(--gray);font-size:12.5px;max-width:62ch;margin-bottom:16px">
+        Toda vez que qualquer alteração é salva (produtos, times, logos, preços, etc.), o site guarda sozinho uma cópia de como tudo estava <strong>um instante antes</strong> dessa alteração. Se algo salvar errado, você pode voltar pra uma dessas cópias aqui — sem precisar me chamar pra consertar na mão.
+      </p>
+      <button type="button" class="btn btn-outline btn-sm" id="adminHistoryRefreshBtn" style="margin-bottom:16px">Atualizar lista</button>
+      <div id="adminHistoryList" style="display:flex;flex-direction:column;gap:8px"></div>
     </div>
   </div>
     </div>
@@ -3408,6 +3418,18 @@ img.team-badge{ background:transparent; }
         return { ok:true };
       }
 
+      if(action === "getConfigHistory"){
+        var histRes = await sb.from("site_config_history").select("id,created_at").order("created_at", { ascending:false }).limit(30);
+        if(histRes.error) return { ok:false, error: histRes.error.message };
+        return { ok:true, rows: histRes.data };
+      }
+
+      if(action === "getConfigHistoryItem"){
+        var histItemRes = await sb.from("site_config_history").select("config").eq("id", params.id).single();
+        if(histItemRes.error) return { ok:false, error: histItemRes.error.message };
+        return { ok:true, config: histItemRes.data ? histItemRes.data.config : null };
+      }
+
       return { ok:false, error:"Ação desconhecida" };
     }catch(e){
       var detail = (e && (e.message || e.name)) ? (e.name ? e.name + ": " : "") + (e.message || "") : String(e);
@@ -3729,7 +3751,7 @@ img.team-badge{ background:transparent; }
 
   function teamBadgeHtml(team){
     var logo = TEAM_LOGOS[team];
-    return logo ? '<img class="team-badge" src="' + escapeHtml(logo) + '" alt="">' : '<span class="team-badge">' + initials(team) + '</span>';
+    return logo ? '<img class="team-badge" src="' + escapeHtml(logo) + '" alt="" loading="lazy" decoding="async">' : '<span class="team-badge">' + initials(team) + '</span>';
   }
 
   function sortTeamsAlpha(teams){
@@ -3750,7 +3772,7 @@ img.team-badge{ background:transparent; }
           return '<button type="button" class="team-chip' + active + '" data-team="' + escapeHtml(team) + '" data-liga="' + escapeHtml(group.liga) + '" data-category="' + cat + '">' + teamBadgeHtml(team) + escapeHtml(team) + '</button>';
         }).join("");
         var leagueLogo = LEAGUE_LOGOS[group.liga];
-        var leagueLogoHtml = leagueLogo ? '<img class="league-row-logo" src="' + escapeHtml(leagueLogo) + '" alt="">' : "";
+        var leagueLogoHtml = leagueLogo ? '<img class="league-row-logo" src="' + escapeHtml(leagueLogo) + '" alt="" loading="lazy" decoding="async">' : "";
         row.innerHTML = '<h3 class="league-row-title">' + leagueLogoHtml + escapeHtml(group.liga) + '</h3><div class="team-scroll">' + chipsHtml + '</div>';
         container.appendChild(row);
       });
@@ -4705,6 +4727,7 @@ img.team-badge{ background:transparent; }
       });
       if(target === "drivephotos") loadDrivePhotos();
       if(target === "reports") renderAdminReports();
+      if(target === "history") renderAdminHistory();
     });
   });
 
@@ -4953,6 +4976,60 @@ img.team-badge{ background:transparent; }
         "<td>" + formatBRL(ticket) + "</td>" +
       "</tr>";
     }).join("");
+  }
+
+  async function renderAdminHistory(){
+    var wrap = document.getElementById("adminHistoryList");
+    if(!wrap) return;
+    wrap.innerHTML = '<p style="color:var(--gray);font-size:13px">Carregando...</p>';
+    var res = await callBackend("getConfigHistory", authParams());
+    if(!res.ok){
+      wrap.innerHTML = '<p style="color:var(--danger);font-size:13px">Não foi possível carregar o histórico (' + escapeHtml(res.error || "erro desconhecido") + ').</p>';
+      return;
+    }
+    if(!res.rows || !res.rows.length){
+      wrap.innerHTML = '<p class="admin-empty">Ainda não há nenhuma cópia guardada — a primeira é criada automaticamente na próxima vez que algo for salvo.</p>';
+      return;
+    }
+    wrap.innerHTML = res.rows.map(function(row){
+      var d = new Date(row.created_at);
+      var dateLabel = isNaN(d) ? row.created_at : (d.toLocaleDateString("pt-BR") + " às " + d.toLocaleTimeString("pt-BR", { hour:"2-digit", minute:"2-digit" }));
+      return '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--graphite);border:1px solid rgba(247,247,244,.1);padding:12px 14px;border-radius:8px">' +
+        '<span style="font-size:13.5px">' + escapeHtml(dateLabel) + '</span>' +
+        '<button type="button" class="btn btn-outline btn-sm js-history-restore" data-id="' + escapeHtml(String(row.id)) + '" data-label="' + escapeHtml(dateLabel) + '">Restaurar esta versão</button>' +
+      '</div>';
+    }).join("");
+    wrap.querySelectorAll(".js-history-restore").forEach(function(btn){
+      btn.addEventListener("click", function(){ restoreConfigHistoryItem(btn.dataset.id, btn.dataset.label, btn); });
+    });
+  }
+
+  async function restoreConfigHistoryItem(id, label, btn){
+    if(CONFIG_LOAD_FAILED){
+      window.alert("Não é possível restaurar agora: os dados do site não carregaram corretamente nesta sessão. Recarregue a página (F5) e tente de novo.");
+      return;
+    }
+    var confirmed = window.confirm(
+      "Isso vai substituir TUDO que está no site agora (produtos, preços, times, logos, etc.) pela versão de " + label + ".\n\n" +
+      "O estado atual também é guardado automaticamente antes da troca, então ainda dá pra desfazer se restaurar a versão errada.\n\n" +
+      "Quer continuar?"
+    );
+    if(!confirmed) return;
+    btn.disabled = true;
+    btn.textContent = "Restaurando...";
+    var itemRes = await callBackend("getConfigHistoryItem", Object.assign({ id: id }, authParams()));
+    if(!itemRes.ok || !itemRes.config){
+      window.alert("Não foi possível buscar essa versão (" + (itemRes.error || "erro desconhecido") + "). Nada foi alterado.");
+      btn.disabled = false;
+      btn.textContent = "Restaurar esta versão";
+      return;
+    }
+    applyConfig(itemRes.config);
+    var saveOk = await saveSiteConfig();
+    if(saveOk){
+      window.alert("Versão de " + label + " restaurada com sucesso.");
+    }
+    renderAdminHistory();
   }
 
   function renderTopProducts(){
@@ -7448,18 +7525,13 @@ img.team-badge{ background:transparent; }
      CARREGA CONTEÚDO SALVO NO PAINEL (produtos, times, FAQ, descontos,
      logo) por cima dos padrões acima, se já houver algo salvo.
      ============================================================ */
-  (async function loadSiteConfig(){
-    if(!hasBackend()) return;
-    var res = await callBackend("getConfig", {});
-    if(!res.ok || !res.config){
-      CONFIG_LOAD_FAILED = true;
-      var adminPanelEl = document.getElementById("adminPanel");
-      if(adminPanelEl && !adminPanelEl.hidden){
-        window.alert("Não foi possível carregar os dados salvos do site agora (falha de conexão). Por segurança, salvar qualquer alteração foi bloqueado nesta sessão até recarregar a página. Recarregue (F5) antes de continuar editando.");
-      }
-      return;
-    }
-    var cfg = res.config;
+  // Aplica uma configuração (vinda do carregamento normal OU de uma
+  // restauração de backup) às variáveis globais do site e re-renderiza tudo.
+  // Fica numa função só pra garantir que restaurar um backup passe pelo
+  // EXATO mesmo caminho que o carregamento normal — sem duplicar a lista de
+  // campos em dois lugares, o que um dia divergiria e causaria outro bug
+  // silencioso como o que já aconteceu aqui antes.
+  function applyConfig(cfg){
     if(cfg.products){ PRODUCTS = cfg.products; }
     if(cfg.defaultPricesByType){ DEFAULT_PRICES_BY_TYPE = cfg.defaultPricesByType; }
     if(cfg.teamGroups){ TEAM_GROUPS = cfg.teamGroups; }
@@ -7509,6 +7581,20 @@ img.team-badge{ background:transparent; }
     applyFromUrl();
     renderFaq();
     renderDiscountBanner();
+  }
+
+  (async function loadSiteConfig(){
+    if(!hasBackend()) return;
+    var res = await callBackend("getConfig", {});
+    if(!res.ok || !res.config){
+      CONFIG_LOAD_FAILED = true;
+      var adminPanelEl = document.getElementById("adminPanel");
+      if(adminPanelEl && !adminPanelEl.hidden){
+        window.alert("Não foi possível carregar os dados salvos do site agora (falha de conexão). Por segurança, salvar qualquer alteração foi bloqueado nesta sessão até recarregar a página. Recarregue (F5) antes de continuar editando.");
+      }
+      return;
+    }
+    applyConfig(res.config);
   })();
 
 })();
