@@ -1350,6 +1350,7 @@ img.team-badge{ background:transparent; }
       <form id="checkoutForm" class="form-grid">
         <label class="form-field">Nome*<input type="text" name="name" required autocomplete="name"></label>
         <label class="form-field">WhatsApp / Telefone*<input type="tel" name="phone" required placeholder="(71) 9xxxx-xxxx" autocomplete="tel"></label>
+        <p class="form-note" id="checkoutPhoneError" hidden style="color:var(--danger)">Esse telefone parece incompleto — confira o DDD e o número antes de continuar.</p>
         <p class="form-note">Seus dados serão usados apenas para processar este pedido e para contato pelo WhatsApp.</p>
         <button type="submit" class="btn btn-whatsapp btn-block">Gerar pedido e continuar no WhatsApp</button>
       </form>
@@ -4430,6 +4431,10 @@ img.team-badge{ background:transparent; }
   var checkoutForm = document.getElementById("checkoutForm");
   var checkoutFormWrap = document.getElementById("checkoutFormWrap");
   var checkoutSuccess = document.getElementById("checkoutSuccess");
+  checkoutForm.phone.addEventListener("input", function(){
+    var phoneErrorEl = document.getElementById("checkoutPhoneError");
+    if(phoneErrorEl) phoneErrorEl.hidden = true;
+  });
 
   document.getElementById("cartCheckoutBtn").addEventListener("click", function(){
     if(cart.length === 0){ openCart(); return; }
@@ -4459,10 +4464,24 @@ img.team-badge{ background:transparent; }
     return msg;
   }
 
+  function isValidBrazilianPhone(phone){
+    var digits = normalizePhone(phone);
+    // 10/11 dígitos = DDD + número (fixo ou celular); 12/13 = o mesmo com o
+    // 55 do Brasil na frente, caso a pessoa digite assim.
+    return digits.length === 10 || digits.length === 11 || digits.length === 12 || digits.length === 13;
+  }
+
   checkoutForm.addEventListener("submit", async function(e){
     e.preventDefault();
     var name = checkoutForm.name.value.trim();
     var phone = checkoutForm.phone.value.trim();
+    var phoneErrorEl = document.getElementById("checkoutPhoneError");
+    if(!isValidBrazilianPhone(phone)){
+      if(phoneErrorEl) phoneErrorEl.hidden = false;
+      checkoutForm.phone.focus();
+      return;
+    }
+    if(phoneErrorEl) phoneErrorEl.hidden = true;
     if(!name || !phone || cart.length === 0) return;
 
     var submitBtn = checkoutForm.querySelector("button[type=submit]");
