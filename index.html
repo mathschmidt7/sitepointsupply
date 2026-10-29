@@ -1475,6 +1475,24 @@ img.team-badge{ background:transparent; }
     <div class="admin-panel-view" data-admin-view="reports">
       <h2 class="admin-view-title">Relatórios mensais</h2>
       <p style="color:var(--gray);font-size:12.5px;margin-bottom:16px">Faturamento, lucro e ticket médio consideram só vendas com status de pedido "Concluído" — o mesmo critério usado na Visão geral.</p>
+
+      <h3 style="margin:0 0 10px;font-size:15px">Médias mensais por ano</h3>
+      <p style="color:var(--gray);font-size:12.5px;margin-bottom:14px">Pra ter uma noção mais ampla do negócio, sem o vaivém de mês a mês — a média é calculada só com base nos meses que já tiveram alguma venda concluída naquele ano.</p>
+      <div class="admin-table-wrap" style="margin-bottom:32px">
+        <table class="admin-table">
+          <thead><tr>
+            <th>Ano</th>
+            <th>Meses com venda</th>
+            <th>Vendas/mês (média)</th>
+            <th>Faturamento/mês (média)</th>
+            <th>Lucro/mês (média)</th>
+            <th>Ticket médio</th>
+          </tr></thead>
+          <tbody id="adminReportsYearlyBody"></tbody>
+        </table>
+      </div>
+
+      <h3 style="margin:0 0 14px;font-size:15px">Mês a mês</h3>
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead><tr>
@@ -3328,12 +3346,6 @@ img.team-badge{ background:transparent; }
         return { ok:true };
       }
 
-      if(action === "trackOrder"){
-        var trackRes = await sb.rpc("track_order", { p_order_id: params.orderId || "" });
-        if(trackRes.error) return { ok:false, error: trackRes.error.message };
-        return { ok:true, rows: (trackRes.data || []).map(function(r){ return mapFromDb(r, SALE_FIELD_MAP); }) };
-      }
-
       if(action === "updateSale"){
         var saleDbField = SALE_FIELD_MAP[params.field];
         if(!saleDbField) return { ok:false, error:"Campo inválido" };
@@ -5009,6 +5021,7 @@ img.team-badge{ background:transparent; }
   }
   function renderAdminReports(){
     var tbody = document.getElementById("adminReportsBody");
+    var yearlyTbody = document.getElementById("adminReportsYearlyBody");
     if(!tbody) return;
     var byMonth = {};
     adminSales.forEach(function(s){
@@ -5026,6 +5039,7 @@ img.team-badge{ background:transparent; }
     var keys = Object.keys(byMonth).sort().reverse(); // mês mais recente primeiro
     if(!keys.length){
       tbody.innerHTML = '<tr><td colspan="6" class="admin-empty">Nenhuma venda registrada ainda.</td></tr>';
+      if(yearlyTbody) yearlyTbody.innerHTML = '<tr><td colspan="6" class="admin-empty">Nenhuma venda registrada ainda.</td></tr>';
       return;
     }
     tbody.innerHTML = keys.map(function(key){
@@ -5037,6 +5051,43 @@ img.team-badge{ background:transparent; }
         "<td>" + m.concluded + "</td>" +
         "<td>" + formatBRL(m.faturamento) + "</td>" +
         "<td>" + formatBRL(m.lucro) + "</td>" +
+        "<td>" + formatBRL(ticket) + "</td>" +
+      "</tr>";
+    }).join("");
+
+    if(!yearlyTbody) return;
+    // Média por ano, calculada só com base nos meses que tiveram alguma
+    // venda concluída naquele ano — meses totalmente parados não "puxam a
+    // média pra baixo" de forma enganosa.
+    var byYear = {};
+    keys.forEach(function(key){
+      var m = byMonth[key];
+      if(!m.concluded) return;
+      var year = key.split("-")[0];
+      if(!byYear[year]) byYear[year] = { monthsWithSale:0, totalVendas:0, concluded:0, faturamento:0, lucro:0 };
+      byYear[year].monthsWithSale++;
+      byYear[year].totalVendas += m.total;
+      byYear[year].concluded += m.concluded;
+      byYear[year].faturamento += m.faturamento;
+      byYear[year].lucro += m.lucro;
+    });
+    var years = Object.keys(byYear).sort().reverse();
+    if(!years.length){
+      yearlyTbody.innerHTML = '<tr><td colspan="6" class="admin-empty">Nenhuma venda concluída ainda.</td></tr>';
+      return;
+    }
+    yearlyTbody.innerHTML = years.map(function(year){
+      var y = byYear[year];
+      var avgVendas = y.totalVendas / y.monthsWithSale;
+      var avgFaturamento = y.faturamento / y.monthsWithSale;
+      var avgLucro = y.lucro / y.monthsWithSale;
+      var ticket = y.concluded ? y.faturamento / y.concluded : 0;
+      return "<tr>" +
+        "<td>" + escapeHtml(year) + "</td>" +
+        "<td>" + y.monthsWithSale + "</td>" +
+        "<td>" + avgVendas.toFixed(1).replace(".", ",") + "</td>" +
+        "<td>" + formatBRL(avgFaturamento) + "</td>" +
+        "<td>" + formatBRL(avgLucro) + "</td>" +
         "<td>" + formatBRL(ticket) + "</td>" +
       "</tr>";
     }).join("");
