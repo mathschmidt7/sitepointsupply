@@ -1891,7 +1891,7 @@ img.team-badge{ background:transparent; }
   var SIZES_BY_TYPE_OVERRIDE = { "Infantil": "16,18,20,22,24,26,28" };
 
   var STATUS_STAGES = ["Pedido recebido", "Em preparação", "Enviado", "Entregue"];
-  var ORDER_STATUS_STAGES = ["Pendente", "Concluído", "Cancelado"];
+  var ORDER_STATUS_STAGES = ["Pendente", "Em atendimento", "Aguardando pagamento", "Concluído", "Cancelado"];
 
   // PLACEHOLDER — ajustar percentuais e regras reais com o dono da loja
   // (também editável em Painel administrativo → Descontos)
@@ -5290,6 +5290,8 @@ img.team-badge{ background:transparent; }
   };
   var ORDER_STATUS_COLORS = {
     "Pendente": "#f2c766",
+    "Em atendimento": "#5b9dd9",
+    "Aguardando pagamento": "#f0a35e",
     "Concluído": "#4caf7d",
     "Cancelado": "#ff8a80"
   };
