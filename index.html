@@ -5434,6 +5434,7 @@ img.team-badge{ background:transparent; }
           renderAdminSalesTable();
           renderAdminMetrics();
           renderAdminCustomersTable();
+          renderStalePendingWarning();
         } else {
           delBtn.disabled = false;
           window.alert("Não foi possível excluir essa venda agora (" + (res.error || "erro desconhecido") + "). Tente atualizar os dados e excluir de novo.");
@@ -6523,6 +6524,7 @@ img.team-badge{ background:transparent; }
         renderAdminSalesTable();
         renderAdminMetrics();
         renderAdminCustomersTable();
+        renderStalePendingWarning();
         closeModal("adminSaleModal");
       } else {
         alert("Algumas alterações não foram salvas. Confira sua conexão e tente de novo.");
