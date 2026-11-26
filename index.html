@@ -481,6 +481,12 @@ p{ margin:0; }
   .product-actions{ flex-direction:column; }
   .product-name{ font-size:14.5px; }
 }
+@media (max-width:480px){
+  /* Em celular de verdade, 2 colunas deixa cada card espremido (tamanhos,
+     botões de comprar, tudo amontoado) — 1 coluna só, card com a largura
+     toda, fica bem mais confortável de usar. */
+  .product-grid{ grid-template-columns:1fr; }
+}
 .no-results{ text-align:center; color:var(--gray); padding:60px 0; display:none; }
 .products-more{ display:flex; justify-content:center; margin-top:40px; }
 .products-more[hidden]{ display:none; }
@@ -700,6 +706,9 @@ img.team-badge{ background:transparent; }
     background:var(--wa); color:#08240f; font-weight:700; font-size:15px;
   }
   #storefrontRoot{ padding-bottom:58px; }
+  /* A barra fixa acima já cobre essa ação sempre visível — o botão da
+     seção inicial ficava duplicado, grudado bem em cima dela. */
+  .hero-wa-btn{ display:none; }
 }
 
 /* ============================================================
@@ -918,7 +927,7 @@ img.team-badge{ background:transparent; }
     <p class="hero-sub">Camisas e produtos esportivos para acompanhar sua paixão pelo futebol, basquete e pelo universo esportivo.</p>
     <div class="hero-ctas">
       <a href="#produtos" class="btn btn-primary">Ver produtos</a>
-      <a href="#" class="btn btn-whatsapp js-wa-generic" target="_blank" rel="noopener">
+      <a href="#" class="btn btn-whatsapp js-wa-generic hero-wa-btn" target="_blank" rel="noopener">
         <img class="icon" src="whatsapp-icon.png" alt="WhatsApp" onerror="this.style.display='none'">
         Falar no WhatsApp
       </a>
@@ -1735,8 +1744,12 @@ img.team-badge{ background:transparent; }
       <span style="font-size:12.5px;color:var(--gray)">Produto encontrado no catálogo — foto exibida automaticamente.</span>
     </div>
     <form id="adminSaleForm" class="form-grid">
-      <label class="form-field">Produto*<input type="text" name="product" list="adminSaleProductList" required autocomplete="off"></label>
-      <datalist id="adminSaleProductList"></datalist>
+      <label class="form-field">Produto*
+        <div style="position:relative">
+          <input type="text" name="product" required autocomplete="off">
+          <div id="adminSaleProductSuggestions" hidden style="position:absolute;top:100%;left:0;right:0;z-index:20;background:var(--graphite);border:1px solid rgba(247,247,244,.25);max-height:280px;overflow-y:auto;margin-top:2px;box-shadow:0 8px 20px rgba(0,0,0,.4)"></div>
+        </div>
+      </label>
       <input type="hidden" name="productId">
       <div id="adminSaleProductAmbiguous" hidden style="grid-column:1/-1;background:rgba(247,247,244,.06);border:1px solid rgba(247,247,244,.15);padding:10px 12px;font-size:12.5px">
         <p style="color:var(--gray);margin-bottom:8px">Mais de um produto com esse nome — escolha o certo:</p>
@@ -6362,9 +6375,7 @@ img.team-badge{ background:transparent; }
     adminSaleForm.querySelector("button[type=submit]").textContent = "Adicionar venda";
     document.getElementById("adminSaleProductPreview").hidden = true;
     document.getElementById("adminSaleProductAmbiguous").hidden = true;
-    document.getElementById("adminSaleProductList").innerHTML = PRODUCTS.map(function(p){
-      return '<option value="' + escapeHtml(p.name) + '">';
-    }).join("");
+    hideSaleProductSuggestions();
     openModal("adminSaleModal");
   });
   function parseBRLPrice(str){
@@ -6385,10 +6396,57 @@ img.team-badge{ background:transparent; }
     if(parsed !== null) adminSaleForm.saleValue.value = parsed;
   }
 
+  // Lista nativa <datalist> funciona mal no celular com catálogo grande
+  // (mais de 1000 produtos) — vários navegadores móveis limitam quantas
+  // sugestões mostram, ou só casam pelo começo do texto, deixando a
+  // pessoa sem achar o time que procura. Esse menu de sugestões é feito
+  // na mão, pra funcionar igual em qualquer navegador/aparelho
+  // (normalizeSearchText já existe mais acima, usada na busca do site).
+  function hideSaleProductSuggestions(){
+    var box = document.getElementById("adminSaleProductSuggestions");
+    if(box){ box.hidden = true; box.innerHTML = ""; }
+  }
+  function selectSaleProductSuggestion(product){
+    adminSaleForm.product.value = product.name;
+    adminSaleForm.productId.value = product.id;
+    document.getElementById("adminSaleProductAmbiguous").hidden = true;
+    hideSaleProductSuggestions();
+    updateSaleProductPreview({ productId: product.id, product: product.name });
+    maybeAutofillSaleValue(product);
+  }
+  function renderSaleProductSuggestions(typed){
+    var box = document.getElementById("adminSaleProductSuggestions");
+    if(!box) return;
+    var query = normalizeSearchText(typed);
+    if(!query){ hideSaleProductSuggestions(); return; }
+    var matches = PRODUCTS.filter(function(p){ return normalizeSearchText(p.name).indexOf(query) !== -1; }).slice(0, 40);
+    if(!matches.length){ hideSaleProductSuggestions(); return; }
+    box.innerHTML = matches.map(function(p){
+      var detail = [p.tipo, (p.liga && p.liga !== "—") ? p.liga : null].filter(Boolean).join(" · ");
+      return '<button type="button" class="admin-sale-suggestion" data-id="' + escapeHtml(p.id) + '" style="display:block;width:100%;text-align:left;background:none;border:none;border-bottom:1px solid rgba(247,247,244,.08);color:var(--off);padding:9px 12px;font-size:13px;cursor:pointer">' +
+        escapeHtml(p.name) + (detail ? '<br><span style="color:var(--gray);font-size:11.5px">' + escapeHtml(detail) + '</span>' : '') +
+      '</button>';
+    }).join("");
+    box.querySelectorAll(".admin-sale-suggestion").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var product = PRODUCTS.find(function(p){ return p.id === btn.dataset.id; });
+        if(product) selectSaleProductSuggestion(product);
+      });
+    });
+    box.hidden = false;
+  }
+  adminSaleForm.product.addEventListener("blur", function(){
+    setTimeout(hideSaleProductSuggestions, 150);
+  });
+  adminSaleForm.product.addEventListener("focus", function(){
+    if(adminSaleForm.product.value.trim()) renderSaleProductSuggestions(adminSaleForm.product.value);
+  });
+
   adminSaleForm.product.addEventListener("input", function(){
     updateSaleProductPreview({ product: adminSaleForm.product.value });
     adminSaleForm.productId.value = "";
     var typed = adminSaleForm.product.value.trim();
+    renderSaleProductSuggestions(typed);
     var ambWrap = document.getElementById("adminSaleProductAmbiguous");
     var ambList = document.getElementById("adminSaleProductAmbiguousList");
     var matches = typed ? PRODUCTS.filter(function(p){ return p.name === typed; }) : [];
@@ -6462,6 +6520,7 @@ img.team-badge{ background:transparent; }
     f.trackingCode.value = sale.trackingCode || "";
     f.productId.value = sale.productId || "";
     document.getElementById("adminSaleProductAmbiguous").hidden = true;
+    hideSaleProductSuggestions();
     updateSaleProductPreview(sale);
     document.getElementById("adminSaleTitle").textContent = "Editar venda";
     f.querySelector("button[type=submit]").textContent = "Salvar alterações";
