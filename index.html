@@ -813,14 +813,27 @@ img.team-badge{ background:transparent; }
   .admin-sidebar-brand .admin-badge{ display:none; }
   .admin-sidebar-brand .logo-mark{ width:26px; height:22px; }
   .admin-sidebar-brand .logo-word{ font-size:13px; }
-  .admin-nav{ flex-direction:row; flex:none; padding:8px 10px; overflow-x:auto; gap:4px; border-bottom:1px solid rgba(247,247,244,.08); -webkit-overflow-scrolling:touch; }
-  .admin-tab{ flex-direction:column; gap:4px; padding:8px 12px; flex-shrink:0; }
-  .admin-tab span{ display:block; font-size:10px; }
-  .admin-tab svg{ width:19px; height:19px; }
+  .admin-nav{
+    flex-direction:row; flex:none; padding:8px 6px; overflow-x:auto; gap:2px; border-bottom:1px solid rgba(247,247,244,.08);
+    -webkit-overflow-scrolling:touch;
+    /* Sombra nas duas bordas — avisa que dá pra arrastar pros lados pra
+       ver as outras abas (tem 11 ao todo, não cabem todas na tela). */
+    mask-image:linear-gradient(to right, transparent, black 16px, black calc(100% - 16px), transparent);
+    -webkit-mask-image:linear-gradient(to right, transparent, black 16px, black calc(100% - 16px), transparent);
+  }
+  .admin-tab{ flex-direction:column; gap:3px; padding:7px 9px; flex-shrink:0; }
+  .admin-tab span{ display:block; font-size:9.5px; }
+  .admin-tab svg{ width:16px; height:16px; }
   .admin-sidebar-footer{ border-top:none; padding:8px 16px; }
   .admin-sidebar-footer .btn{ width:auto; }
   .admin-shell{ flex-direction:column; }
   .admin-main{ margin-left:0; padding:24px 18px 50px; }
+  /* Mesma sombra nas bordas das tabelas (Vendas, Clientes, Produtos...) —
+     também cortam colunas à direita no celular e precisam de rolagem. */
+  .admin-table-wrap{
+    mask-image:linear-gradient(to right, transparent, black 10px, black calc(100% - 10px), transparent);
+    -webkit-mask-image:linear-gradient(to right, transparent, black 10px, black calc(100% - 10px), transparent);
+  }
 }
 </style>
 </head>
